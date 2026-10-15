@@ -31,10 +31,13 @@
 //! independently of checkpoint progression and committee transition rules.
 //! [`WithdrawalNonce`] tracks a reward account's withdrawal counter and provides
 //! checked advancement so that execution can reject exhaustion without wrapping.
+//! [`TransactionKind`] distinguishes private payments from public reward
+//! withdrawals so that each operation can use its own body and validation rules.
 
 mod account;
 mod amount;
 mod context;
+mod transaction;
 
 pub use account::WithdrawalNonce;
 pub use amount::{Amount, AmountError};
@@ -42,3 +45,4 @@ pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
     ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
+pub use transaction::TransactionKind;
