@@ -27,12 +27,14 @@
 //! descriptor so that a parser can apply the appropriate format rules.
 //! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
 //! and recipients use for note encryption and recovery.
+//! [`Epoch`] identifies a validator epoch and provides checked advancement
+//! independently of checkpoint progression and committee transition rules.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
 pub use context::{
-    AddressFormatVersion, CheckpointSequence, CryptoSuiteId, FeeScheduleId, NoteVersion,
+    AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
     ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
