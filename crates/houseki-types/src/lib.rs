@@ -10,7 +10,12 @@
 //! assert_eq!(amount.atoms(), 100_000_000_000_000_000_000);
 //! # Ok::<(), houseki_types::AmountError>(())
 //! ```
+//!
+//! [`CheckpointSequence`] identifies a numeric checkpoint position and provides
+//! checked advancement without wrapping when the counter is exhausted.
 
 mod amount;
+mod context;
 
 pub use amount::{Amount, AmountError};
+pub use context::CheckpointSequence;
