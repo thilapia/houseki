@@ -1,5 +1,6 @@
 //! Values that identify the context in which protocol rules apply.
 
+mod address_format_version;
 mod checkpoint_sequence;
 mod fee_schedule_id;
 mod note_version;
@@ -7,6 +8,7 @@ mod proof_profile_id;
 mod protocol_version;
 mod validity_checkpoint_range;
 
+pub use address_format_version::AddressFormatVersion;
 pub use checkpoint_sequence::CheckpointSequence;
 pub use fee_schedule_id::FeeScheduleId;
 pub use note_version::NoteVersion;
