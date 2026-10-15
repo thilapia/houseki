@@ -29,10 +29,14 @@
 //! and recipients use for note encryption and recovery.
 //! [`Epoch`] identifies a validator epoch and provides checked advancement
 //! independently of checkpoint progression and committee transition rules.
+//! [`WithdrawalNonce`] tracks a reward account's withdrawal counter and provides
+//! checked advancement so that execution can reject exhaustion without wrapping.
 
+mod account;
 mod amount;
 mod context;
 
+pub use account::WithdrawalNonce;
 pub use amount::{Amount, AmountError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
