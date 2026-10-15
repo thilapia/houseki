@@ -13,35 +13,51 @@
 //!
 //! [`CheckpointSequence`] identifies a numeric checkpoint position and provides
 //! checked advancement without wrapping when the counter is exhausted.
+//!
 //! [`ValidityCheckpointRange`] bounds transaction validity with an inclusive
 //! start and end, rejecting bounds that would put the start after the end.
+//!
 //! [`ProtocolVersion`] identifies protocol rules independently of the versions
 //! used for software releases, note formats and proof profiles.
+//!
 //! [`FeeScheduleId`] identifies the fee schedule that execution uses to check
 //! the required fee for a transaction's public workload.
+//!
 //! [`ProofProfileId`] identifies the proof configuration that a verifier must
 //! resolve and check against the transaction's expected statement.
+//!
 //! [`NoteVersion`] identifies a note's format and rules independently of the
 //! protocol version used by its creating or spending transaction.
+//!
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
+//!
 //! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
 //! and recipients use for note encryption and recovery.
+//!
 //! [`Epoch`] identifies a validator epoch and provides checked advancement
 //! independently of checkpoint progression and committee transition rules.
+//!
 //! [`WithdrawalNonce`] tracks a reward account's withdrawal counter and provides
 //! checked advancement so that execution can reject exhaustion without wrapping.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
+//!
 //! [`PaymentShape`] requires at least one real input and one ordinary note
 //! output while keeping the public fee separate from the output count.
+//!
+//! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
+//! recipient addresses, leaving cryptographic validation to the consumer.
 
 mod account;
+mod address;
 mod amount;
 mod context;
 mod transaction;
 
 pub use account::WithdrawalNonce;
+pub use address::{EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
