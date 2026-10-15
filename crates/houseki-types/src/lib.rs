@@ -19,12 +19,14 @@
 //! used for software releases, note formats and proof profiles.
 //! [`FeeScheduleId`] identifies the fee schedule that execution uses to check
 //! the required fee for a transaction's public workload.
+//! [`ProofProfileId`] identifies the proof configuration that a verifier must
+//! resolve and check against the transaction's expected statement.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
 pub use context::{
-    CheckpointSequence, FeeScheduleId, ProtocolVersion, ValidityCheckpointRange,
+    CheckpointSequence, FeeScheduleId, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
     ValidityCheckpointRangeError,
 };
