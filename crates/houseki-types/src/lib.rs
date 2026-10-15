@@ -49,11 +49,15 @@
 //!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
+//!
+//! [`EncodedMlKem1024Ciphertext`] holds the encapsulation bytes carried by an
+//! encrypted note envelope, leaving decapsulation and note recovery to consumers.
 
 mod account;
 mod address;
 mod amount;
 mod context;
+mod note;
 mod transaction;
 
 pub use account::WithdrawalNonce;
@@ -63,4 +67,5 @@ pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
     ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
+pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
 pub use transaction::{PaymentShape, PaymentShapeError, TransactionKind};
