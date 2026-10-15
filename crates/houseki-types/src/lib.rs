@@ -15,9 +15,13 @@
 //! checked advancement without wrapping when the counter is exhausted.
 //! [`ValidityCheckpointRange`] bounds transaction validity with an inclusive
 //! start and end, rejecting bounds that would put the start after the end.
+//! [`ProtocolVersion`] identifies protocol rules independently of the versions
+//! used for software releases, note formats and proof profiles.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
-pub use context::{CheckpointSequence, ValidityCheckpointRange, ValidityCheckpointRangeError};
+pub use context::{
+    CheckpointSequence, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
+};
