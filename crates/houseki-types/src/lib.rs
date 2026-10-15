@@ -25,12 +25,14 @@
 //! protocol version used by its creating or spending transaction.
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
+//! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
+//! and recipients use for note encryption and recovery.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
 pub use context::{
-    AddressFormatVersion, CheckpointSequence, FeeScheduleId, NoteVersion, ProofProfileId,
-    ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
+    AddressFormatVersion, CheckpointSequence, CryptoSuiteId, FeeScheduleId, NoteVersion,
+    ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };

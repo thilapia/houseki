@@ -2,6 +2,7 @@
 
 mod address_format_version;
 mod checkpoint_sequence;
+mod crypto_suite_id;
 mod fee_schedule_id;
 mod note_version;
 mod proof_profile_id;
@@ -10,6 +11,7 @@ mod validity_checkpoint_range;
 
 pub use address_format_version::AddressFormatVersion;
 pub use checkpoint_sequence::CheckpointSequence;
+pub use crypto_suite_id::CryptoSuiteId;
 pub use fee_schedule_id::FeeScheduleId;
 pub use note_version::NoteVersion;
 pub use proof_profile_id::ProofProfileId;
