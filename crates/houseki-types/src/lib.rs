@@ -17,11 +17,14 @@
 //! start and end, rejecting bounds that would put the start after the end.
 //! [`ProtocolVersion`] identifies protocol rules independently of the versions
 //! used for software releases, note formats and proof profiles.
+//! [`FeeScheduleId`] identifies the fee schedule that execution uses to check
+//! the required fee for a transaction's public workload.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
 pub use context::{
-    CheckpointSequence, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
+    CheckpointSequence, FeeScheduleId, ProtocolVersion, ValidityCheckpointRange,
+    ValidityCheckpointRangeError,
 };
