@@ -33,6 +33,8 @@
 //! checked advancement so that execution can reject exhaustion without wrapping.
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
+//! [`PaymentShape`] requires at least one real input and one ordinary note
+//! output while keeping the public fee separate from the output count.
 
 mod account;
 mod amount;
@@ -45,4 +47,4 @@ pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
     ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
-pub use transaction::TransactionKind;
+pub use transaction::{PaymentShape, PaymentShapeError, TransactionKind};
