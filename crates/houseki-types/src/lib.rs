@@ -47,6 +47,9 @@
 //! [`PaymentShape`] requires at least one real input and one ordinary note
 //! output while keeping the public fee separate from the output count.
 //!
+//! [`PaymentCountLimits`] checks a payment shape against configurable inclusive
+//! maxima for its input and ordinary note output counts.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -68,4 +71,6 @@ pub use context::{
     ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
 pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
-pub use transaction::{PaymentShape, PaymentShapeError, TransactionKind};
+pub use transaction::{
+    PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError, TransactionKind,
+};

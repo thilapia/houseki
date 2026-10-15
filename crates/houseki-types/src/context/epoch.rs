@@ -5,7 +5,6 @@
 /// An epoch identifies the validator context used by consensus and staking.
 /// It is separate from the checkpoint sequence used for transaction validity
 /// and does not prescribe a duration or a number of checkpoints per epoch.
-///
 /// Constructing or advancing this value does not authorize a committee change.
 ///
 /// Every `u64` value is representable, including zero. Advancement is checked so
