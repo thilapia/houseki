@@ -13,9 +13,11 @@
 //!
 //! [`CheckpointSequence`] identifies a numeric checkpoint position and provides
 //! checked advancement without wrapping when the counter is exhausted.
+//! [`ValidityCheckpointRange`] bounds transaction validity with an inclusive
+//! start and end, rejecting bounds that would put the start after the end.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
-pub use context::CheckpointSequence;
+pub use context::{CheckpointSequence, ValidityCheckpointRange, ValidityCheckpointRangeError};
