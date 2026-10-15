@@ -21,12 +21,14 @@
 //! the required fee for a transaction's public workload.
 //! [`ProofProfileId`] identifies the proof configuration that a verifier must
 //! resolve and check against the transaction's expected statement.
+//! [`NoteVersion`] identifies a note's format and rules independently of the
+//! protocol version used by its creating or spending transaction.
 
 mod amount;
 mod context;
 
 pub use amount::{Amount, AmountError};
 pub use context::{
-    CheckpointSequence, FeeScheduleId, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
-    ValidityCheckpointRangeError,
+    CheckpointSequence, FeeScheduleId, NoteVersion, ProofProfileId, ProtocolVersion,
+    ValidityCheckpointRange, ValidityCheckpointRangeError,
 };
