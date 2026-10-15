@@ -14,6 +14,9 @@
 //! [`CheckpointSequence`] identifies a numeric checkpoint position and provides
 //! checked advancement without wrapping when the counter is exhausted.
 //!
+//! [`NetworkId`] stores a SHA3-512 genesis commitment that identifies the
+//! intended network independently of its protocol and proof versions.
+//!
 //! [`ValidityCheckpointRange`] bounds transaction validity with an inclusive
 //! start and end, rejecting bounds that would put the start after the end.
 //!
@@ -67,8 +70,9 @@ pub use account::WithdrawalNonce;
 pub use address::{EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
 pub use context::{
-    AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NoteVersion,
-    ProofProfileId, ProtocolVersion, ValidityCheckpointRange, ValidityCheckpointRangeError,
+    AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
+    NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
+    ValidityCheckpointRangeError,
 };
 pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
 pub use transaction::{
