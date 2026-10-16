@@ -1,5 +1,13 @@
-//! Generation and import of protected nullifier key material.
+//! Protected nullifier key material and internal commitment derivation.
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "Ownership commitment composition is a separate increment."
+    )
+)]
+mod commitment;
 mod error;
 
 pub use error::NullifierKeyError;
