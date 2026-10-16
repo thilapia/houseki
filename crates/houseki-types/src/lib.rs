@@ -59,6 +59,9 @@
 //! [`WithdrawalNonce`] tracks a reward account's withdrawal counter and provides
 //! checked advancement so that execution can reject exhaustion without wrapping.
 //!
+//! [`EncodedMlDsa87PublicKey`] holds the public key bytes for reward withdrawal
+//! authority, leaving account binding and signature verification to consumers.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
@@ -125,7 +128,7 @@ mod execution;
 mod note;
 mod transaction;
 
-pub use account::WithdrawalNonce;
+pub use account::{EncodedMlDsa87PublicKey, EncodedMlDsa87PublicKeyError, WithdrawalNonce};
 pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
 pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
