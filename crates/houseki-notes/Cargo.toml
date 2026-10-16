@@ -10,5 +10,9 @@ publish.workspace = true
 houseki-crypto.workspace = true
 houseki-types.workspace = true
 
+# cryptography
+getrandom.workspace = true
+zeroize.workspace = true
+
 # error handling
 thiserror.workspace = true

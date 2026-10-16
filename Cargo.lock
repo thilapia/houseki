@@ -207,9 +207,11 @@ dependencies = [
 name = "houseki-notes"
 version = "0.1.0"
 dependencies = [
+ "getrandom",
  "houseki-crypto",
  "houseki-types",
  "thiserror",
+ "zeroize",
 ]
 
 [[package]]
