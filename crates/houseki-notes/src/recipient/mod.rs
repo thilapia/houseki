@@ -1,11 +1,14 @@
 //! Checked public recipient snapshots for private note construction and recovery.
 
+mod codec;
 mod error;
 
 pub use error::NoteRecipientError;
 
 use houseki_crypto::{CryptoSuite, MlKem1024EncapsulationKey};
-use houseki_types::{AddressContext, NetworkId, OwnershipCommitment, RecipientDescriptor};
+use houseki_types::{
+    AddressContext, AddressFormatVersion, NetworkId, OwnershipCommitment, RecipientDescriptor,
+};
 
 /// An immutable recipient descriptor checked against its intended network and address rules.
 ///
@@ -18,8 +21,11 @@ use houseki_types::{AddressContext, NetworkId, OwnershipCommitment, RecipientDes
 /// The ownership digest remains declared data, and validation establishes neither its secret
 /// opening nor honest key generation, decryption capability, provenance or spending authority.
 ///
-/// Address decoding and checksum checks belong to transport consumers, while opening
-/// construction checks compatibility with its note format.
+/// [`Self::from_bytes`] checks the canonical binary descriptor payload, while [`Self::to_bytes`]
+/// encodes the retained public fields without a text alphabet or checksum.
+///
+/// Display and checksum checks belong to transport consumers, while opening construction
+/// checks compatibility with its note format.
 ///
 /// Commitment consumers derive recipient binding internally through crypto from this snapshot's
 /// network, suite and key.
@@ -62,10 +68,7 @@ impl NoteRecipient {
             return Err(NoteRecipientError::NetworkMismatch { actual });
         }
 
-        let version = context.format_version();
-        if version.value() != 1 {
-            return Err(NoteRecipientError::UnsupportedAddressFormat { version });
-        }
+        validate_address_format(context.format_version())?;
 
         // Keep later suite additions from silently widening the address format's rules.
         let suite = match CryptoSuite::try_from(context.crypto_suite_id())? {
@@ -100,6 +103,15 @@ impl NoteRecipient {
     pub const fn kem_public_key(&self) -> &MlKem1024EncapsulationKey {
         &self.kem_public_key
     }
+}
+
+/// Recognizes the complete address format identifier without narrowing or selecting a fallback.
+fn validate_address_format(version: AddressFormatVersion) -> Result<(), NoteRecipientError> {
+    if version.value() != 1 {
+        return Err(NoteRecipientError::UnsupportedAddressFormat { version });
+    }
+
+    Ok(())
 }
 
 /// Recipient retention, complete context checks and public key validation precedence.

@@ -1,12 +1,19 @@
-//! Errors from validating typed recipient descriptors.
+//! Errors from decoding and validating recipient descriptors.
 
 use houseki_crypto::{CryptoSuiteError, MlKem1024EncapsulationKeyError};
 use houseki_types::{AddressFormatVersion, NetworkId};
 use thiserror::Error;
 
-/// A failure to validate a recipient's declared context or public key encoding.
+/// A failure to decode a recipient payload or validate its context and public key encoding.
 #[derive(Debug, Error)]
 pub enum NoteRecipientError {
+    /// The binary payload does not contain exactly the supported descriptor length.
+    #[error("invalid recipient descriptor binary length {actual}")]
+    InvalidBinaryLength {
+        /// Complete byte count supplied to binary decoding.
+        actual: usize,
+    },
+
     /// The declared network differs from the caller's intended network.
     #[error("recipient descriptor belongs to a different network")]
     NetworkMismatch {
