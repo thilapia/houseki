@@ -5,19 +5,23 @@
 mod encoding;
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "The guarded permutation is a separate increment.")
+    expect(dead_code, reason = "The guarded sponge is a separate increment.")
 )]
 mod field;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "The guarded sponge is a separate increment.")
+)]
+mod permutation;
 mod profile;
-
-use p3_field::PrimeCharacteristicRing;
-use p3_goldilocks::Goldilocks;
 
 use crate::{
     CryptoFramingError,
     domain::{Domain, Frame},
 };
 use encoding::{BytePacker, extract_digest};
+use p3_field::PrimeCharacteristicRing;
+use p3_goldilocks::Goldilocks;
 use profile::{OUTPUT_ELEMENTS, RATE, WIDTH, permute};
 
 /// Hashes canonical public parts under a registered domain.
