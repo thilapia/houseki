@@ -19,8 +19,10 @@ use houseki_types::{AddressContext, NetworkId, OwnershipCommitment, RecipientDes
 /// opening nor honest key generation, decryption capability, provenance or spending authority.
 ///
 /// Address decoding and checksum checks belong to transport consumers, while opening
-/// construction must check compatibility with its note format and derive recipient binding
-/// internally through crypto from this snapshot's network, suite and key.
+/// construction checks compatibility with its note format.
+///
+/// Commitment consumers derive recipient binding internally through crypto from this snapshot's
+/// network, suite and key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteRecipient {
     /// Address context checked for the intended network and supported identifiers.

@@ -42,6 +42,12 @@ impl NoteBlinding {
         Self::generate_with_rng(&mut SysRng)
     }
 
+    /// Borrows stored bytes only inside crate tests that check exact opening retention.
+    #[cfg(test)]
+    pub(crate) fn test_bytes(&self) -> &[u8; Self::LENGTH] {
+        &self.0
+    }
+
     /// Acquires the complete blinding value through guarded temporary storage.
     ///
     /// Only internal tests can substitute a deterministic source for the system generator.
