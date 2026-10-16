@@ -2,6 +2,7 @@
 
 mod context;
 mod encoded_transaction_proof;
+mod envelope;
 mod id;
 mod kind;
 mod payment;
@@ -15,6 +16,7 @@ mod reward_withdrawal_envelope;
 
 pub use context::TransactionContext;
 pub use encoded_transaction_proof::{EncodedTransactionProof, EncodedTransactionProofError};
+pub use envelope::TransactionEnvelope;
 pub use id::{TransactionId, TransactionIdError};
 pub use kind::TransactionKind;
 pub use payment::PaymentBody;

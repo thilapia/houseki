@@ -77,6 +77,9 @@
 //! [`RewardWithdrawalEnvelope`] groups a withdrawal body, encoded output proof
 //! and ML-DSA-87 signature without establishing validity or authorization.
 //!
+//! [`TransactionEnvelope`] carries either complete transaction envelope and
+//! derives its operation kind from the selected variant.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
@@ -166,6 +169,6 @@ pub use transaction::{
     EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
     PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
     PaymentOutputsError, PaymentShape, PaymentShapeError, RewardWithdrawalBody,
-    RewardWithdrawalBodyError, RewardWithdrawalEnvelope, TransactionContext, TransactionId,
-    TransactionIdError, TransactionKind,
+    RewardWithdrawalBodyError, RewardWithdrawalEnvelope, TransactionContext, TransactionEnvelope,
+    TransactionId, TransactionIdError, TransactionKind,
 };
