@@ -6,5 +6,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+# cryptography
+zeroize.workspace = true
+
 # error handling
 thiserror = { workspace = true }

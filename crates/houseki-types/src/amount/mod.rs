@@ -5,6 +5,8 @@ mod error;
 
 pub use error::AmountError;
 
+use zeroize::Zeroize;
+
 /// An exact amount from zero through [`Self::MAX_ATOMS`], stored as atoms.
 ///
 /// Each coin contains [`Self::ATOMS_PER_COIN`] atoms, providing 20 decimal places
@@ -19,6 +21,12 @@ pub use error::AmountError;
 /// followed by 1 to 20 fractional digits. Leading whole zeroes and trailing
 /// fractional zeroes are accepted and normalized when displayed, while signs,
 /// whitespace, exponents and digit separators are rejected.
+///
+/// [`Zeroize::zeroize`] clears the stored atom count to zero, allowing private owners to use
+/// [`zeroize::Zeroizing`] while retaining the bounded representation.
+///
+/// The value remains copyable and is not cleared automatically, so callers remain responsible
+/// for independent copies, diagnostics and storage outside a guarded owner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Amount(u128);
 
@@ -101,6 +109,15 @@ impl Amount {
     }
 }
 
+impl Zeroize for Amount {
+    /// Clears this value's atom count to the valid zero amount.
+    ///
+    /// This changes only the borrowed storage and does not clear independent copies.
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
 impl TryFrom<&[u8]> for Amount {
     type Error = AmountError;
 
@@ -123,7 +140,42 @@ impl TryFrom<&[u8]> for Amount {
 
 #[cfg(test)]
 mod tests {
+    use zeroize::{Zeroize, Zeroizing};
+
     use super::{Amount, AmountError};
+
+    /// Checks that explicit clearing handles both integer halves and retains a valid amount.
+    #[test]
+    fn zeroization_clears_live_values_to_a_valid_zero() {
+        let zero = Amount::from_atoms(0).unwrap();
+        for atoms in [
+            0,
+            1,
+            u128::from(u64::MAX),
+            1_u128 << 64,
+            1_u128 << 96,
+            Amount::MAX_ATOMS,
+        ] {
+            let mut amount = Amount::from_atoms(atoms).unwrap();
+            amount.zeroize();
+
+            assert_eq!(amount, zero);
+        }
+    }
+
+    /// Checks guarded typed borrowing and clearing without changing an independent copy.
+    #[test]
+    fn zeroizing_storage_retains_typed_borrowing_and_clears_only_its_value() {
+        let original = Amount::from_atoms(Amount::MAX_ATOMS).unwrap();
+        let mut guarded = Zeroizing::new(original);
+        let borrowed: &Amount = &guarded;
+        assert_eq!(borrowed.atoms(), Amount::MAX_ATOMS);
+
+        guarded.zeroize();
+
+        assert_eq!(guarded.atoms(), 0);
+        assert_eq!(original.atoms(), Amount::MAX_ATOMS);
+    }
 
     #[test]
     fn construction_accepts_the_monetary_range() {
