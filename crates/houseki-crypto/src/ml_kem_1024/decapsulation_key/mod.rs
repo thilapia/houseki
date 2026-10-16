@@ -1,5 +1,6 @@
 //! Protected private decapsulation keys for ML-KEM-1024.
 
+mod decapsulation;
 mod error;
 
 pub use error::MlKem1024DecapsulationKeyError;

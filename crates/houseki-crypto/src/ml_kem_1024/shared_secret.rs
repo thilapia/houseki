@@ -43,6 +43,10 @@ pub(crate) mod tests {
         assert_eq!(&secret.0, expected);
     }
 
+    pub(crate) fn assert_secrets_eq(left: &MlKem1024SharedSecret, right: &MlKem1024SharedSecret) {
+        assert_eq!(left.0, right.0);
+    }
+
     #[test]
     fn diagnostics_redact_shared_material_in_both_debug_formats() {
         let secret = MlKem1024SharedSecret::from_backend(Zeroizing::new([0xa5; 32].into()));
