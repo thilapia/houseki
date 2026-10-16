@@ -65,6 +65,9 @@
 //! [`EncodedMlDsa87Signature`] holds the encoded signature bytes for reward
 //! withdrawals, leaving canonical decoding and native verification to consumers.
 //!
+//! [`RewardAccountId`] stores a Poseidon2 identifier binding the network,
+//! signature scheme and withdrawal public key without computing that binding.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
@@ -133,7 +136,7 @@ mod transaction;
 
 pub use account::{
     EncodedMlDsa87PublicKey, EncodedMlDsa87PublicKeyError, EncodedMlDsa87Signature,
-    EncodedMlDsa87SignatureError, WithdrawalNonce,
+    EncodedMlDsa87SignatureError, RewardAccountId, RewardAccountIdError, WithdrawalNonce,
 };
 pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
