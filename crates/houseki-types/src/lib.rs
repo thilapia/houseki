@@ -71,6 +71,9 @@
 //! [`PaymentCountLimits`] checks a payment shape against configurable inclusive
 //! maxima for its input and ordinary note output counts.
 //!
+//! [`PaymentInputs`] pairs a declared note root with a nonempty ordered list of
+//! distinct nullifiers checked against the supplied input count limit.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -116,6 +119,6 @@ pub use note::{
     NoteCommitmentError, NotePosition, NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
-    PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
-    TransactionContext, TransactionKind,
+    PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentShape,
+    PaymentShapeError, TransactionContext, TransactionKind,
 };
