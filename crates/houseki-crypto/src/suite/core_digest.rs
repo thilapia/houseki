@@ -25,7 +25,7 @@ impl PaymentEncryptionCore {
     ///
     /// This is neither the transaction ID nor the AIR effect digest. It does
     /// not establish transaction validity or authenticate a completed body.
-    /// Future encryption context construction must derive it from this core,
+    /// Encryption context construction must derive it from this core,
     /// rather than accepting externally supplied digest bytes.
     ///
     /// # Errors
@@ -77,7 +77,7 @@ impl RewardWithdrawalEncryptionCore {
     ///
     /// This is neither the transaction ID nor the AIR effect digest. It does
     /// not validate the declared key, account binding or withdrawal authority.
-    /// Future encryption context construction must derive it from this core,
+    /// Encryption context construction must derive it from this core,
     /// rather than accepting externally supplied digest bytes.
     ///
     /// # Errors

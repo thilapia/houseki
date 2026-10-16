@@ -1,10 +1,12 @@
-//! Houseki note encryption suite selection and typed core inputs.
+//! Houseki note encryption suite selection, typed cores and output context.
 
+mod context;
 mod core_digest;
 mod error;
 mod payment_encryption_core;
 mod reward_withdrawal_encryption_core;
 
+pub use context::{NoteEncryptionContext, NoteEncryptionContextError};
 pub use error::CryptoSuiteError;
 pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreError};
 pub use reward_withdrawal_encryption_core::{
@@ -24,8 +26,9 @@ use houseki_types::CryptoSuiteId;
 /// relationships and validate the cryptographic material separately.
 ///
 /// This type currently provides identifier resolution only. Context
-/// construction, payload encoding and authenticated encryption follow as
-/// separate operations. Its Rust discriminant is not a wire encoding.
+/// preparation belongs to [`NoteEncryptionContext`]. Payload encoding and
+/// authenticated encryption remain separate work. Its Rust discriminant is
+/// not a wire encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptoSuite {
     /// The first candidate Houseki note encryption profile, numeric ID 1.
@@ -33,9 +36,10 @@ pub enum CryptoSuite {
     /// Uses ML-KEM-1024, HKDF with HMAC-SHA-512 and AES-256-GCM-SIV with
     /// a 32 byte key, 12 byte random nonce and 16 byte authentication tag.
     ///
-    /// Exact framing, context construction and composition rules remain
-    /// pending review and implementation. This identifies a Houseki profile,
-    /// not an HPKE suite or an address, note or protocol version.
+    /// Core digest framing is implemented. Recipient binding, associated
+    /// data and complete suite composition remain pending review and
+    /// implementation. This identifies a Houseki profile, not an HPKE suite
+    /// or an address, note or protocol version.
     V1,
 }
 
