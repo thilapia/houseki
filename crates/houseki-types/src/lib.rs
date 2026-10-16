@@ -116,6 +116,9 @@
 //! [`TransactionId`] stores a 64 byte SHA3-512 identifier for the canonical body
 //! and kind, derived outside proofs and excluding proof and signature bytes.
 //!
+//! [`VertexId`] stores a 64 byte SHA3-512 DAG vertex identifier derived outside
+//! proofs, leaving vertex encoding and authentication to consensus consumers.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -147,6 +150,7 @@ mod account;
 mod address;
 mod amount;
 mod checkpoint;
+mod consensus;
 mod context;
 mod execution;
 mod note;
@@ -163,6 +167,7 @@ pub use address::{
 };
 pub use amount::{Amount, AmountError};
 pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
+pub use consensus::{VertexId, VertexIdError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
