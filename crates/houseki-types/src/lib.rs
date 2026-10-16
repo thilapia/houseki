@@ -32,6 +32,9 @@
 //! [`NoteVersion`] identifies a note's format and rules independently of the
 //! protocol version used by its creating or spending transaction.
 //!
+//! [`NotePosition`] identifies the original insertion position used to bind a
+//! note instance to its nullifier and provides checked numeric advancement.
+//!
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
 //!
@@ -99,7 +102,7 @@ pub use context::{
     ValidityCheckpointRangeError,
 };
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
-pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
+pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NotePosition};
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
     TransactionContext, TransactionKind,
