@@ -83,6 +83,9 @@
 //! [`EncodedTransactionProof`] holds opaque proof bytes within a supplied byte
 //! limit, leaving profile decoding and proof verification to consumers.
 //!
+//! [`PaymentEnvelope`] pairs a payment body with its encoded proof without
+//! establishing authorization or eligibility for execution.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -136,6 +139,6 @@ pub use note::{
 };
 pub use transaction::{
     EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
-    PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentOutputs,
+    PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
     PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionKind,
 };
