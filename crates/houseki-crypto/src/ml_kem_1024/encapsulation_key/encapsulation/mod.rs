@@ -34,7 +34,7 @@ impl MlKem1024EncapsulationKey {
     /// Encapsulates using complete guarded randomness from the supplied source.
     ///
     /// Returns no ciphertext or secret if randomness acquisition fails.
-    fn encapsulate_with_rng<R: TryCryptoRng + ?Sized>(
+    pub(crate) fn encapsulate_with_rng<R: TryCryptoRng + ?Sized>(
         &self,
         rng: &mut R,
     ) -> Result<(EncodedMlKem1024Ciphertext, MlKem1024SharedSecret), MlKem1024EncapsulationError>

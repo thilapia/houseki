@@ -1,23 +1,15 @@
 //! Houseki note encryption suite selection, typed cores and output context.
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "awaiting complete envelope operations")
-)]
 mod aead;
 mod context;
 mod core_digest;
 mod error;
-// Complete envelope operations will connect the internal KDF and AEAD path.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "awaiting complete envelope operations")
-)]
 mod key_derivation;
 mod payload;
 mod payment_encryption_core;
 mod recipient_key_binding;
 mod reward_withdrawal_encryption_core;
+mod sealing;
 
 pub use context::{NoteEncryptionContext, NoteEncryptionContextError};
 pub use error::CryptoSuiteError;
@@ -26,6 +18,7 @@ pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreEr
 pub use reward_withdrawal_encryption_core::{
     RewardWithdrawalEncryptionCore, RewardWithdrawalEncryptionCoreError,
 };
+pub use sealing::NoteEncryptionError;
 
 use houseki_types::CryptoSuiteId;
 
@@ -40,8 +33,8 @@ use houseki_types::CryptoSuiteId;
 /// The suite provides recipient binding, while typed cores and [`NoteEncryptionContext`]
 /// prepare its transaction inputs.
 ///
-/// Internal KDF and AEAD operations consume those inputs, with complete envelope operations
-/// still pending.
+/// [`NoteEncryptionContext::seal`] combines these inputs with fresh randomness to produce a
+/// complete encrypted envelope.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptoSuite {
     /// The first candidate Houseki note encryption profile, numeric ID 1.
@@ -52,8 +45,8 @@ pub enum CryptoSuite {
     /// Its identifier selects that Houseki composition rather than an HPKE suite or an address,
     /// note or protocol version.
     ///
-    /// Core digests, recipient binding, associated data, KDF and AEAD are implemented, while
-    /// complete envelope operations remain pending.
+    /// [`NoteEncryptionContext::seal`] uses this composition to encrypt a complete envelope
+    /// after typed inputs establish the transaction and recipient binding.
     V1,
 }
 

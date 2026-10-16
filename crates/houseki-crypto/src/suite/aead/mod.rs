@@ -62,6 +62,10 @@ impl NoteEncryptionMaterial {
     ///
     /// Length violations return an error before allocation, while short inputs and failed tags
     /// share [`NoteAeadError::AuthenticationFailed`].
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "awaiting complete envelope opening")
+    )]
     pub(super) fn open(
         self,
         ciphertext: &[u8],
@@ -93,7 +97,11 @@ impl NoteEncryptionMaterial {
 /// Rejects lengths beyond the RFC 8452 ceilings or host allocation range before allocation.
 ///
 /// These per message bounds do not establish an aggregate usage or security budget.
-fn sealed_length(plaintext: usize, aad: usize, maximum: usize) -> Result<usize, NoteAeadError> {
+pub(super) fn sealed_length(
+    plaintext: usize,
+    aad: usize,
+    maximum: usize,
+) -> Result<usize, NoteAeadError> {
     if plaintext > maximum {
         return Err(NoteAeadError::PlaintextTooLong {
             actual: plaintext,
