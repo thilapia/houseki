@@ -38,6 +38,9 @@
 //! [`NoteCommitment`] stores the 64 byte representation of a Poseidon2 note
 //! commitment without computing it or verifying its opening or membership.
 //!
+//! [`Nullifier`] stores the public spend marker used to reject repeated spending
+//! of the same note instance, without deriving it or checking the spent set.
+//!
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
 //!
@@ -107,7 +110,7 @@ pub use context::{
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
 pub use note::{
     EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NoteCommitment,
-    NoteCommitmentError, NotePosition,
+    NoteCommitmentError, NotePosition, Nullifier, NullifierError,
 };
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
