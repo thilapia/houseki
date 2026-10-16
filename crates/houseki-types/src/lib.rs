@@ -137,6 +137,10 @@
 //! [`ExecutionRejectionReason`] identifies the reported state failure carried
 //! by a rejected outcome without assigning wire codes or check precedence.
 //!
+//! [`CheckpointId`] stores a Poseidon2 checkpoint identifier independently of
+//! its sequence number, leaving derivation and authenticated continuity to
+//! consumers.
+//!
 //! [`FinalityStatus`] reports checkpoint consensus finality independently of
 //! execution proof verification, data availability and note recovery.
 //!
@@ -166,7 +170,9 @@ pub use address::{
     OwnershipCommitmentError, RecipientDescriptor,
 };
 pub use amount::{Amount, AmountError};
-pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
+pub use checkpoint::{
+    AvailabilityStatus, CheckpointId, CheckpointIdError, ExecutionProofStatus, FinalityStatus,
+};
 pub use consensus::{VertexId, VertexIdError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
