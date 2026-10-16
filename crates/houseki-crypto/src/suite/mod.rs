@@ -1,8 +1,10 @@
 //! Resolution of Houseki note encryption suite identifiers.
 
 mod error;
+mod payment_encryption_core;
 
 pub use error::CryptoSuiteError;
+pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreError};
 
 use houseki_types::CryptoSuiteId;
 
