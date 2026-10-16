@@ -5,10 +5,10 @@ mod error;
 pub use error::MlKem1024DecapsulationKeyError;
 
 use super::MlKem1024EncapsulationKey;
+use crate::random::secret_bytes;
 use getrandom::{SysRng, rand_core::TryCryptoRng};
 use ml_kem::{KeyInit, ml_kem_1024::DecapsulationKey};
 use std::fmt;
-use zeroize::Zeroizing;
 
 /// An ML-KEM-1024 private decapsulation key and its matching public key.
 ///
@@ -59,8 +59,7 @@ impl MlKem1024DecapsulationKey {
     fn generate_with_rng<R: TryCryptoRng + ?Sized>(
         rng: &mut R,
     ) -> Result<Self, MlKem1024DecapsulationKeyError> {
-        let mut seed = Zeroizing::new([0; Self::SEED_LENGTH]);
-        rng.try_fill_bytes(seed.as_mut())
+        let seed = secret_bytes::<{ Self::SEED_LENGTH }, _>(rng)
             .map_err(|_| MlKem1024DecapsulationKeyError::RandomnessUnavailable)?;
         Ok(Self::from_seed(&seed))
     }

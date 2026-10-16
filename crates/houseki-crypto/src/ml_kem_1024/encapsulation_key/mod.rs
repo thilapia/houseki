@@ -1,7 +1,9 @@
 //! Validated public encapsulation keys for ML-KEM-1024.
 
+mod encapsulation;
 mod error;
 
+pub use encapsulation::MlKem1024EncapsulationError;
 pub use error::MlKem1024EncapsulationKeyError;
 
 use houseki_types::EncodedMlKem1024PublicKey;
