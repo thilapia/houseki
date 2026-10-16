@@ -76,6 +76,9 @@
 //!
 //! [`ExecutionProofStatus`] reports verification of a checkpoint's execution
 //! proof package, including the required wallet proofs and authorizations.
+//!
+//! [`AvailabilityStatus`] reports availability of identified data, with separate
+//! observations for transaction payloads and execution proof packages.
 
 mod account;
 mod address;
@@ -89,7 +92,7 @@ mod transaction;
 pub use account::WithdrawalNonce;
 pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
-pub use checkpoint::{ExecutionProofStatus, FinalityStatus};
+pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
