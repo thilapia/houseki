@@ -1,10 +1,14 @@
-//! Resolution of Houseki note encryption suite identifiers.
+//! Houseki note encryption suite selection and typed core inputs.
 
 mod error;
 mod payment_encryption_core;
+mod reward_withdrawal_encryption_core;
 
 pub use error::CryptoSuiteError;
 pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreError};
+pub use reward_withdrawal_encryption_core::{
+    RewardWithdrawalEncryptionCore, RewardWithdrawalEncryptionCoreError,
+};
 
 use houseki_types::CryptoSuiteId;
 
