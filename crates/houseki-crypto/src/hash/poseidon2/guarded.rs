@@ -28,7 +28,7 @@ use crate::{CryptoFramingError, domain::Domain};
 ///
 /// Rejects an unrepresentable count, part length or total frame length before absorbing any
 /// part contents, returning no digest on failure.
-pub(super) fn poseidon2_secret(
+pub(crate) fn poseidon2_secret(
     domain: Domain,
     parts: &[&[u8]],
 ) -> Result<Zeroizing<[u8; 64]>, CryptoFramingError> {

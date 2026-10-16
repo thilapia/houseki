@@ -5,16 +5,11 @@
 
 mod encoding;
 mod field;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Secret commitment consumers are separate increments."
-    )
-)]
 mod guarded;
 mod permutation;
 mod profile;
+
+pub(crate) use guarded::poseidon2_secret;
 
 use crate::{
     CryptoFramingError,

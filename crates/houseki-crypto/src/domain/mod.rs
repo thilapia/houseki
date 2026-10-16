@@ -9,6 +9,9 @@ pub(crate) use framing::Frame;
 /// Only registered roles can select a cryptographic domain.
 #[derive(Clone, Copy)]
 pub(crate) enum Domain {
+    /// Binds a spending secret to its network for ownership commitment composition.
+    SpendingKeyCommitment,
+
     /// Binds a typed transaction core before output encryption.
     NoteEncryptionCore,
 
@@ -29,6 +32,7 @@ impl Domain {
     /// Returns the exact ASCII label encoded in this domain's transcript.
     fn label(&self) -> &'static [u8] {
         match self {
+            Self::SpendingKeyCommitment => b"houseki/v1/ownership/spend-key",
             Self::NoteEncryptionCore => b"houseki/v1/note/encryption-core",
             Self::RecipientKemKey => b"houseki/v1/recipient/kem-key",
             Self::NoteAssociatedData => b"houseki/v1/note/aad",
