@@ -67,6 +67,9 @@
 //!
 //! [`ExecutionOutcome`] records acceptance or rejection by the state rules for
 //! an eligible occurrence in the canonical execution order.
+//!
+//! [`ExecutionRejectionReason`] identifies the reported state failure carried
+//! by a rejected outcome without assigning wire codes or check precedence.
 
 mod account;
 mod address;
@@ -84,7 +87,7 @@ pub use context::{
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
     ValidityCheckpointRangeError,
 };
-pub use execution::ExecutionOutcome;
+pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
 pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,

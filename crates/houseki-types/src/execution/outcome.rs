@@ -1,5 +1,7 @@
 //! State outcomes for eligible transaction occurrences.
 
+use super::ExecutionRejectionReason;
+
 /// The reported state outcome of an eligible transaction occurrence.
 ///
 /// Execution evaluates each occurrence against the state at its position in
@@ -11,8 +13,8 @@
 /// handled by eligibility checks before state execution. Local persistence
 /// failures require recovery and cannot be recorded as a state rejection.
 ///
-/// This value records only acceptance or rejection. It does not carry a
-/// rejection reason or prove execution, finality or successful note recovery.
+/// Rejection carries the reported state failure. Constructing either outcome
+/// does not prove execution, finality or successful note recovery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExecutionOutcome {
     /// The occurrence passed the state rules and its effects were applied
@@ -21,5 +23,5 @@ pub enum ExecutionOutcome {
 
     /// The occurrence failed a state rule and left state unchanged, including
     /// balances, fees, nonces, nullifiers and note outputs.
-    Rejected,
+    Rejected(ExecutionRejectionReason),
 }
