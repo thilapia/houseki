@@ -204,10 +204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "houseki-node"
-version = "0.1.0"
-
-[[package]]
 name = "houseki-notes"
 version = "0.1.0"
 
@@ -217,6 +213,10 @@ version = "0.1.0"
 dependencies = [
  "thiserror",
 ]
+
+[[package]]
+name = "houseki-validator"
+version = "0.1.0"
 
 [[package]]
 name = "hybrid-array"
