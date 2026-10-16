@@ -2,6 +2,7 @@
 
 use p3_field::PrimeField64;
 use p3_goldilocks::Goldilocks;
+use zeroize::{Zeroize, Zeroizing};
 
 use super::profile::{MODULUS, OUTPUT_ELEMENTS, PACKED_BYTES};
 
@@ -10,10 +11,13 @@ use super::profile::{MODULUS, OUTPUT_ELEMENTS, PACKED_BYTES};
 /// Finishing zero fills only a final partial word.
 ///
 /// The enclosing transcript supplies the byte length, and the sponge adds field padding.
+///
+/// Pending bytes and emitted words stay in guarded storage, with the sink borrowing each word
+/// only for the duration of its call.
 #[derive(Default)]
 pub(super) struct BytePacker {
     /// Pending bytes of the next little endian word.
-    buffer: [u8; PACKED_BYTES],
+    buffer: Zeroizing<[u8; PACKED_BYTES]>,
 
     /// Number of initialized pending bytes.
     used: usize,
@@ -21,11 +25,12 @@ pub(super) struct BytePacker {
 
 impl BytePacker {
     /// Emits full seven byte words while retaining a partial word across calls.
-    pub(super) fn update(&mut self, mut bytes: &[u8], emit: &mut impl FnMut(u64)) {
+    pub(super) fn update(&mut self, mut bytes: &[u8], emit: &mut impl FnMut(&u64)) {
         while !bytes.is_empty() {
             let take = bytes.len().min(PACKED_BYTES - self.used);
             self.buffer[self.used..self.used + take].copy_from_slice(&bytes[..take]);
             self.used += take;
+
             bytes = &bytes[take..];
             if self.used == PACKED_BYTES {
                 self.emit_word(emit);
@@ -34,18 +39,22 @@ impl BytePacker {
     }
 
     /// Emits a pending partial word with zero padding and consumes the packer.
-    pub(super) fn finish(mut self, emit: &mut impl FnMut(u64)) {
+    pub(super) fn finish(mut self, emit: &mut impl FnMut(&u64)) {
         if self.used != 0 {
             self.emit_word(emit);
         }
     }
 
-    /// Emits the pending bytes as a zero extended u64 and resets the pending length.
-    fn emit_word(&mut self, emit: &mut impl FnMut(u64)) {
-        let mut word = [0; 8];
+    /// Clears the pending bytes before lending their zero extended word to the sink.
+    fn emit_word(&mut self, emit: &mut impl FnMut(&u64)) {
+        let mut word = Zeroizing::new([0; 8]);
         word[..self.used].copy_from_slice(&self.buffer[..self.used]);
-        emit(u64::from_le_bytes(word));
+
+        let value = Zeroizing::new(u64::from_le_bytes(*word));
+        self.buffer.zeroize();
         self.used = 0;
+
+        emit(&value);
     }
 }
 
@@ -81,6 +90,28 @@ mod tests {
     use super::super::profile::MODULUS;
     use super::{BytePacker, Goldilocks, extract_digest};
 
+    /// Checks that emitted bytes are cleared before the packer begins another word.
+    #[test]
+    fn emitted_bytes_do_not_remain_in_the_pending_buffer() {
+        let mut packer = BytePacker::default();
+        packer.update(&[0xa5; 7], &mut |_| {});
+        assert_eq!(&packer.buffer[..], &[0; 7]);
+        assert_eq!(packer.used, 0);
+    }
+
+    /// Checks that a panicking sink cannot leave the emitted word in the pending buffer.
+    #[test]
+    fn pending_bytes_are_cleared_before_a_sink_unwinds() {
+        let mut packer = BytePacker::default();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            packer.update(&[0xa5; 7], &mut |_| panic!("fixture sink failure"));
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(&packer.buffer[..], &[0; 7]);
+        assert_eq!(packer.used, 0);
+    }
+
     /// Checks that input chunk boundaries do not alter packed words.
     #[test]
     fn packing_preserves_bytes_across_every_chunk_boundary() {
@@ -89,10 +120,10 @@ mod tests {
             let mut result = Vec::new();
             let mut packer = BytePacker::default();
             for chunk in bytes.chunks(chunk_size) {
-                packer.update(&[], &mut |x| result.push(x));
-                packer.update(chunk, &mut |x| result.push(x));
+                packer.update(&[], &mut |x| result.push(*x));
+                packer.update(chunk, &mut |x| result.push(*x));
             }
-            packer.finish(&mut |x| result.push(x));
+            packer.finish(&mut |x| result.push(*x));
             assert_eq!(
                 result,
                 [
@@ -115,8 +146,9 @@ mod tests {
         ] {
             let mut result = Vec::new();
             let mut packer = BytePacker::default();
-            packer.update(&input, &mut |x| result.push(x));
-            packer.finish(&mut |x| result.push(x));
+            packer.update(&input, &mut |x| result.push(*x));
+            packer.finish(&mut |x| result.push(*x));
+
             assert_eq!(result, expected);
             assert!(result.into_iter().all(|x| x < (1 << 56)));
         }
@@ -149,11 +181,13 @@ mod tests {
                 ),
             ),
         ];
+
         for (values, expected) in vectors {
             let actual = extract_digest(Goldilocks::new_array(values));
             let hex: String = actual.iter().map(|byte| format!("{byte:02x}")).collect();
             assert_eq!(hex, expected);
         }
+
         assert_eq!(extract_digest(Goldilocks::new_array([0; 11])), [0; 64]);
         assert_eq!(
             extract_digest(Goldilocks::new_array([MODULUS; 11])),

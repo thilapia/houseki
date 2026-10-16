@@ -1,17 +1,18 @@
-//! Houseki's fixed Poseidon2 sponge for public transcript inputs.
+//! Houseki's fixed Poseidon2 transcript adapters.
 //!
-//! Secret input timing and erasure policy is not established by this adapter.
+//! Public and guarded hashing share framing and packing while retaining separate arithmetic
+//! paths for their field state and integer extraction.
 
 mod encoding;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "The guarded sponge is a separate increment.")
-)]
 mod field;
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "The guarded sponge is a separate increment.")
+    expect(
+        dead_code,
+        reason = "Secret commitment consumers are separate increments."
+    )
 )]
+mod guarded;
 mod permutation;
 mod profile;
 
@@ -33,23 +34,31 @@ use profile::{OUTPUT_ELEMENTS, RATE, WIDTH, permute};
 ///
 /// Returns a framing error without a digest if a count or length is unrepresentable.
 pub(crate) fn poseidon2(domain: Domain, parts: &[&[u8]]) -> Result<[u8; 64], CryptoFramingError> {
-    let mut length = Ok(0_u64);
-    emit_frame(domain, parts, &mut |chunk| {
-        length = length.and_then(|length| add_frame_length(length, chunk.len()));
-    })?;
-    let length = length?;
-
+    let length = frame_length(domain, parts)?;
     let mut sponge = Sponge {
         state: [Goldilocks::ZERO; WIDTH],
         used: 0,
     };
     let mut packer = BytePacker::default();
-    packer.update(&length.to_le_bytes(), &mut |word| sponge.absorb(word));
+    packer.update(&length.to_le_bytes(), &mut |word| sponge.absorb(*word));
+
     emit_frame(domain, parts, &mut |chunk| {
-        packer.update(chunk, &mut |word| sponge.absorb(word));
+        packer.update(chunk, &mut |word| sponge.absorb(*word));
     })?;
-    packer.finish(&mut |word| sponge.absorb(word));
+    packer.finish(&mut |word| sponge.absorb(*word));
+
     Ok(sponge.finish())
+}
+
+/// Measures the complete frame without reading part contents or retaining their bytes.
+///
+/// Returns a framing error when a count, part length or total length cannot be represented.
+fn frame_length(domain: Domain, parts: &[&[u8]]) -> Result<u64, CryptoFramingError> {
+    let mut length = Ok(0_u64);
+    emit_frame(domain, parts, &mut |chunk| {
+        length = length.and_then(|length| add_frame_length(length, chunk.len()));
+    })?;
+    length
 }
 
 /// Streams the registered domain and ordered parts through the common codec.
@@ -62,9 +71,11 @@ fn emit_frame(
 ) -> Result<(), CryptoFramingError> {
     let count = u32::try_from(parts.len()).map_err(|_| CryptoFramingError::TooManyParts)?;
     let mut frame = Frame::new(domain, count, sink);
+
     for part in parts {
         frame.part(part)?;
     }
+
     frame.finish()
 }
 
@@ -105,6 +116,7 @@ impl Sponge {
         while self.used != 0 {
             self.absorb(0);
         }
+
         let mut values = [Goldilocks::ZERO; OUTPUT_ELEMENTS];
         values[..RATE].copy_from_slice(&self.state[..RATE]);
         permute(&mut self.state);
@@ -158,9 +170,13 @@ mod tests {
             ),
         ] {
             let bytes = vec![0xa3; length];
-            let digest = poseidon2(Domain::RecipientKemKey, &[&bytes]).unwrap();
-            let actual: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
-            assert_eq!(actual, expected, "length {length}");
+            for digest in [
+                poseidon2(Domain::RecipientKemKey, &[&bytes]).unwrap(),
+                *super::guarded::poseidon2_secret(Domain::RecipientKemKey, &[&bytes]).unwrap(),
+            ] {
+                let actual: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+                assert_eq!(actual, expected, "length {length}");
+            }
         }
     }
 
@@ -178,6 +194,7 @@ mod tests {
             &[b"abc", b"abc"],
             &[b"abc\0"],
         ];
+
         let mut digests = Vec::new();
         for domain in [Domain::RecipientKemKey, Domain::NoteEncryptionCore] {
             for parts in parts {
