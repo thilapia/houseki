@@ -80,6 +80,9 @@
 //! [`PaymentBody`] assembles the declared payment context, inputs, outputs and
 //! public fee, deriving its shape from the lists and rechecking their count limits.
 //!
+//! [`EncodedTransactionProof`] holds opaque proof bytes within a supplied byte
+//! limit, leaving profile decoding and proof verification to consumers.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -132,7 +135,7 @@ pub use note::{
     NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
-    PaymentBody, PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError,
-    PaymentOutputs, PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext,
-    TransactionKind,
+    EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
+    PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentOutputs,
+    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionKind,
 };
