@@ -74,6 +74,9 @@
 //! [`PaymentInputs`] pairs a declared note root with a nonempty ordered list of
 //! distinct nullifiers checked against the supplied input count limit.
 //!
+//! [`PaymentOutputs`] preserves a nonempty ordered list of ordinary note outputs
+//! within the supplied output count limit, with the fee kept separate.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -126,6 +129,6 @@ pub use note::{
     NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
-    PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentShape,
-    PaymentShapeError, TransactionContext, TransactionKind,
+    PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentOutputs,
+    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionKind,
 };
