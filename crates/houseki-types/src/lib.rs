@@ -47,6 +47,9 @@
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
+//! [`TransactionContext`] groups the declared network, protocol version, proof
+//! profile, fee schedule and validity window shared by both transaction bodies.
+//!
 //! [`PaymentShape`] requires at least one real input and one ordinary note
 //! output while keeping the public fee separate from the output count.
 //!
@@ -76,5 +79,6 @@ pub use context::{
 };
 pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
 pub use transaction::{
-    PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError, TransactionKind,
+    PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
+    TransactionContext, TransactionKind,
 };
