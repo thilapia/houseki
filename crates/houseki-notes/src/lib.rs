@@ -5,7 +5,9 @@
 mod blinding;
 mod encryption;
 mod format;
+mod recipient;
 
 pub use blinding::{NoteBlinding, NoteBlindingError};
 pub use encryption::{NoteContextError, payment_encryption_core, withdrawal_encryption_core};
 pub use format::{NoteFormat, NoteFormatError};
+pub use recipient::{NoteRecipient, NoteRecipientError};
