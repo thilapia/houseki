@@ -10,6 +10,7 @@ mod payment_envelope;
 mod payment_inputs;
 mod payment_outputs;
 mod payment_shape;
+mod reward_withdrawal;
 
 pub use context::TransactionContext;
 pub use encoded_transaction_proof::{EncodedTransactionProof, EncodedTransactionProofError};
@@ -21,3 +22,4 @@ pub use payment_envelope::PaymentEnvelope;
 pub use payment_inputs::{PaymentInputs, PaymentInputsError};
 pub use payment_outputs::{PaymentOutputs, PaymentOutputsError};
 pub use payment_shape::{PaymentShape, PaymentShapeError};
+pub use reward_withdrawal::{RewardWithdrawalBody, RewardWithdrawalBodyError};

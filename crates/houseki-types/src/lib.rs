@@ -71,6 +71,9 @@
 //! [`RewardAccount`] groups the declared withdrawal authority, public balance
 //! and next nonce, leaving registration and authenticated updates to consumers.
 //!
+//! [`RewardWithdrawalBody`] groups a declared reward withdrawal with a positive
+//! public amount, one ordinary note output and a separate public fee.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
@@ -159,6 +162,7 @@ pub use note::{
 pub use transaction::{
     EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
     PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
-    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionId,
-    TransactionIdError, TransactionKind,
+    PaymentOutputsError, PaymentShape, PaymentShapeError, RewardWithdrawalBody,
+    RewardWithdrawalBodyError, TransactionContext, TransactionId, TransactionIdError,
+    TransactionKind,
 };
