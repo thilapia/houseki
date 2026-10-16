@@ -206,6 +206,11 @@ dependencies = [
 [[package]]
 name = "houseki-notes"
 version = "0.1.0"
+dependencies = [
+ "houseki-crypto",
+ "houseki-types",
+ "thiserror",
+]
 
 [[package]]
 name = "houseki-types"

@@ -1,14 +1,7 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Note semantics and transaction encryption projection for Houseki.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod encryption;
+
+pub use encryption::{NoteContextError, payment_encryption_core};
