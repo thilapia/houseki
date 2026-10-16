@@ -122,6 +122,9 @@
 //! [`ValidatorId`] stores a Poseidon2 digest of immutable registration data,
 //! preserving validator identity across consensus signing key changes.
 //!
+//! [`CommitteeId`] stores a Poseidon2 committee snapshot digest to pair with
+//! an epoch, leaving snapshot authentication and activation to consumers.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -176,7 +179,9 @@ pub use amount::{Amount, AmountError};
 pub use checkpoint::{
     AvailabilityStatus, CheckpointId, CheckpointIdError, ExecutionProofStatus, FinalityStatus,
 };
-pub use consensus::{ValidatorId, ValidatorIdError, VertexId, VertexIdError};
+pub use consensus::{
+    CommitteeId, CommitteeIdError, ValidatorId, ValidatorIdError, VertexId, VertexIdError,
+};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
