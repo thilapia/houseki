@@ -14,12 +14,14 @@ mod error;
     expect(dead_code, reason = "awaiting complete envelope operations")
 )]
 mod key_derivation;
+mod payload;
 mod payment_encryption_core;
 mod recipient_key_binding;
 mod reward_withdrawal_encryption_core;
 
 pub use context::{NoteEncryptionContext, NoteEncryptionContextError};
 pub use error::CryptoSuiteError;
+pub use payload::NotePayloadError;
 pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreError};
 pub use reward_withdrawal_encryption_core::{
     RewardWithdrawalEncryptionCore, RewardWithdrawalEncryptionCoreError,
