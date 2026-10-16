@@ -12,6 +12,8 @@ pub(crate) enum Domain {
     NoteEncryptionCore,
     RecipientKemKey,
     NoteAssociatedData,
+    NoteKdfExtract,
+    NoteKdfExpand,
 }
 
 impl Domain {
@@ -20,6 +22,8 @@ impl Domain {
             Self::NoteEncryptionCore => b"houseki/v1/note/encryption-core",
             Self::RecipientKemKey => b"houseki/v1/recipient/kem-key",
             Self::NoteAssociatedData => b"houseki/v1/note/aad",
+            Self::NoteKdfExtract => b"houseki/v1/note/kdf-extract",
+            Self::NoteKdfExpand => b"houseki/v1/note/kdf-expand",
         }
     }
 }

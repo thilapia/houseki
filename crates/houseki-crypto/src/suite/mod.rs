@@ -3,6 +3,12 @@
 mod context;
 mod core_digest;
 mod error;
+// The next increment connects this private operation to authenticated encryption.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "awaiting suite AEAD integration")
+)]
+mod key_derivation;
 mod payment_encryption_core;
 mod recipient_key_binding;
 mod reward_withdrawal_encryption_core;
