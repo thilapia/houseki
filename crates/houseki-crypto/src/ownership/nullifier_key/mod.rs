@@ -1,7 +1,12 @@
-//! Protected nullifier key material and internal commitment derivation.
+//! Protected nullifier keys with internal commitment and note nullifier derivation.
 
 mod commitment;
 mod error;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "Public note consumers are separate increments.")
+)]
+mod nullifier;
 
 pub use error::NullifierKeyError;
 

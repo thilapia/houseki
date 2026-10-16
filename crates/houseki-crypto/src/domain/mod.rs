@@ -21,6 +21,9 @@ pub(crate) enum Domain {
     /// Binds a note's owner, recipient, amount and blinding to its network and version.
     NoteCommitment,
 
+    /// Binds a note instance to its secret nullifier key and original position.
+    NoteNullifier,
+
     /// Binds a typed transaction core before output encryption.
     NoteEncryptionCore,
 
@@ -45,6 +48,7 @@ impl Domain {
             Self::NullifierKeyCommitment => b"houseki/v1/ownership/nullifier-key",
             Self::OwnershipCommitment => b"houseki/v1/ownership/commitment",
             Self::NoteCommitment => b"houseki/v1/note/commitment",
+            Self::NoteNullifier => b"houseki/v1/note/nullifier",
             Self::NoteEncryptionCore => b"houseki/v1/note/encryption-core",
             Self::RecipientKemKey => b"houseki/v1/recipient/kem-key",
             Self::NoteAssociatedData => b"houseki/v1/note/aad",
