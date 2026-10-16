@@ -35,6 +35,9 @@
 //! [`NotePosition`] identifies the original insertion position used to bind a
 //! note instance to its nullifier and provides checked numeric advancement.
 //!
+//! [`NoteCommitment`] stores the 64 byte representation of a Poseidon2 note
+//! commitment without computing it or verifying its opening or membership.
+//!
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
 //!
@@ -102,7 +105,10 @@ pub use context::{
     ValidityCheckpointRangeError,
 };
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
-pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NotePosition};
+pub use note::{
+    EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NoteCommitment,
+    NoteCommitmentError, NotePosition,
+};
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
     TransactionContext, TransactionKind,
