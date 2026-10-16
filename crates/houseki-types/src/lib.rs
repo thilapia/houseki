@@ -125,6 +125,9 @@
 //! [`CommitteeId`] stores a Poseidon2 committee snapshot digest to pair with
 //! an epoch, leaving snapshot authentication and activation to consumers.
 //!
+//! [`CommitteeContext`] pairs an epoch with its declared committee snapshot
+//! identifier without establishing that the snapshot is authorized for use.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -180,7 +183,8 @@ pub use checkpoint::{
     AvailabilityStatus, CheckpointId, CheckpointIdError, ExecutionProofStatus, FinalityStatus,
 };
 pub use consensus::{
-    CommitteeId, CommitteeIdError, ValidatorId, ValidatorIdError, VertexId, VertexIdError,
+    CommitteeContext, CommitteeId, CommitteeIdError, ValidatorId, ValidatorIdError, VertexId,
+    VertexIdError,
 };
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
