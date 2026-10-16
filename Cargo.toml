@@ -12,6 +12,8 @@ publish = false
 houseki-types = { path = "crates/houseki-types" }
 
 # cryptography
+aes = { version = "=0.9.3", default-features = false, features = ["zeroize"] }
+aes-gcm-siv = { version = "=0.12.1", default-features = false, features = ["aes", "zeroize"] }
 getrandom = { version = "=0.4.3", default-features = false, features = ["sys_rng"] }
 sha3 = { version = "=0.11.0", default-features = false }
 sha2 = { version = "=0.11.1", default-features = false, features = ["zeroize"] }
@@ -21,7 +23,8 @@ ml-kem = { version = "=0.3.2", default-features = false, features = ["zeroize"] 
 p3-field = { version = "=0.8.0", default-features = false }
 p3-goldilocks = { version = "=0.8.0", default-features = false }
 p3-symmetric = { version = "=0.8.0", default-features = false }
-zeroize = { version = "=1.9.1", default-features = false }
+polyval = { version = "=0.7.3", default-features = false, features = ["zeroize"] }
+zeroize = { version = "=1.9.1", default-features = false, features = ["alloc"] }
 
 # error handling
 thiserror = { version = "2.0.21" }

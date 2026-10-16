@@ -1,12 +1,17 @@
 //! Houseki note encryption suite selection, typed cores and output context.
 
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "awaiting complete envelope operations")
+)]
+mod aead;
 mod context;
 mod core_digest;
 mod error;
-// The next increment connects this private operation to authenticated encryption.
+// Complete envelope operations will connect the internal KDF and AEAD path.
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "awaiting suite AEAD integration")
+    expect(dead_code, reason = "awaiting complete envelope operations")
 )]
 mod key_derivation;
 mod payment_encryption_core;

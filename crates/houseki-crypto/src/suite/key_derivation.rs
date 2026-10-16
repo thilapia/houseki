@@ -7,12 +7,13 @@ use crate::{
     domain::{Domain, Frame},
 };
 
-/// One operation's protected key and the exact associated data used to derive it.
+/// One operation's protected key, nonce and the associated data used to derive it.
 ///
 /// No cloning, formatting or serialization of this internal material is exposed.
 pub(super) struct NoteEncryptionMaterial {
     pub(super) key: Zeroizing<[u8; 32]>,
     pub(super) associated_data: Vec<u8>,
+    pub(super) nonce: [u8; 12],
 }
 
 /// Consumes the KEM result and derives V1 material without exposing secret bytes.
@@ -46,6 +47,7 @@ pub(super) fn derive_note_material(
             Ok(NoteEncryptionMaterial {
                 key,
                 associated_data,
+                nonce: *nonce,
             })
         }
     }
@@ -159,6 +161,75 @@ mod tests {
         assert_eq!(sender.associated_data, rejected.associated_data);
         // Implicit rejection still produces a key. AEAD must authenticate it
         // before a future opening operation can release any plaintext.
+    }
+
+    #[test]
+    fn kem_kdf_and_aead_recover_only_under_the_original_inputs() {
+        use crate::suite::aead::NoteAeadError;
+
+        let recipient = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
+        let public = recipient.encapsulation_key();
+        let other = MlKem1024DecapsulationKey::from_seed(&[8; 64]);
+        let (encapsulation, secret) = public.encapsulate().unwrap();
+        let nonce = [23; 12];
+        let original_context = context(&public, 0, 17);
+        let ciphertext = derive_note_material(&original_context, secret, &encapsulation, &nonce)
+            .unwrap()
+            .seal(b"note", 4)
+            .unwrap();
+        let recovered = derive_note_material(
+            &original_context,
+            recipient.decapsulate(&encapsulation),
+            &encapsulation,
+            &nonce,
+        )
+        .unwrap()
+        .open(&ciphertext, 4)
+        .unwrap();
+        assert_eq!(&**recovered, b"note");
+
+        let wrong_secret = derive_note_material(
+            &original_context,
+            other.decapsulate(&encapsulation),
+            &encapsulation,
+            &nonce,
+        )
+        .unwrap()
+        .open(&ciphertext, 4);
+        assert_eq!(
+            wrong_secret.unwrap_err(),
+            NoteAeadError::AuthenticationFailed
+        );
+
+        let mut changed_encapsulation = *encapsulation.as_bytes();
+        changed_encapsulation[1567] ^= 1;
+        for (changed_context, changed_encapsulation, changed_nonce) in [
+            (context(&public, 1, 17), encapsulation.clone(), nonce),
+            (context(&public, 0, 18), encapsulation.clone(), nonce),
+            (
+                context(&other.encapsulation_key(), 0, 17),
+                encapsulation.clone(),
+                nonce,
+            ),
+            (
+                original_context.clone(),
+                EncodedMlKem1024Ciphertext::from_bytes(changed_encapsulation),
+                nonce,
+            ),
+            (original_context.clone(), encapsulation.clone(), [24; 12]),
+        ] {
+            let material = derive_note_material(
+                &changed_context,
+                recipient.decapsulate(&changed_encapsulation),
+                &changed_encapsulation,
+                &changed_nonce,
+            )
+            .unwrap();
+            assert_eq!(
+                material.open(&ciphertext, 4).unwrap_err(),
+                NoteAeadError::AuthenticationFailed
+            );
+        }
     }
 
     #[test]

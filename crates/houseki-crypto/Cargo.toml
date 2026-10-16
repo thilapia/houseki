@@ -11,6 +11,9 @@ houseki-types = { workspace = true }
 
 # cryptography
 getrandom.workspace = true
+aes.workspace = true
+aes-gcm-siv.workspace = true
+polyval.workspace = true
 sha3.workspace = true
 sha2.workspace = true
 hkdf.workspace = true
