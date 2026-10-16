@@ -2,4 +2,7 @@
 
 mod ml_kem_1024;
 
-pub use ml_kem_1024::{MlKem1024EncapsulationKey, MlKem1024EncapsulationKeyError};
+pub use ml_kem_1024::{
+    MlKem1024DecapsulationKey, MlKem1024DecapsulationKeyError, MlKem1024EncapsulationKey,
+    MlKem1024EncapsulationKeyError,
+};
