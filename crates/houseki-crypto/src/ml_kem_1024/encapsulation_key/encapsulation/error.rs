@@ -1,3 +1,5 @@
+//! Errors from fresh shared secret encapsulation.
+
 use thiserror::Error;
 
 /// A failure to encapsulate a new ML-KEM-1024 shared secret.

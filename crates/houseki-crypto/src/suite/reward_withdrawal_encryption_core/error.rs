@@ -1,3 +1,5 @@
+//! Errors from assembling a withdrawal encryption core.
+
 use thiserror::Error;
 
 /// A failure to construct typed reward withdrawal inputs for note encryption.

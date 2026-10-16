@@ -11,34 +11,40 @@ use houseki_types::{
 
 use super::CryptoSuite;
 
-/// A reward withdrawal's declared fields available before its output is encrypted.
+/// A reward withdrawal's declared fields before output encryption.
 ///
-/// The single output is a note commitment followed by its recognized
-/// cryptographic suite. Construction requires a positive public withdrawal
-/// amount and preserves the public fee separately. It contains no encrypted
-/// envelope, recipient KEM key, plaintext opening, proof, signature or supplied
-/// encryption core digest.
+/// Construction requires a positive public amount and retains the fee separately from the
+/// single output, leaving the account, encoded authority key and nonce as declared inputs.
 ///
-/// The account identifier and encoded withdrawal authority key are declared
-/// inputs. Construction does not validate that key or its account binding,
-/// establish authority, match the nonce to state or check affordability.
-/// Every [`Amount`] is representable as a fee, and an exhausted nonce remains
-/// representable. Consumers must check the active rules, exact fee, nonce and
-/// gross debit with checked arithmetic before authorizing a withdrawal.
+/// The consumer must validate authority and account binding and apply the active rules to the
+/// nonce, fee and gross debit using checked arithmetic.
 ///
-/// Borrowing exposes no mutable fields. [`Self::digest`] derives a native
-/// encryption core digest from these typed fields. It does not construct a
-/// per-output encryption context. Final body assembly
-/// must preserve these fields and match the encrypted payload's suite to the
-/// output entry. Note recovery and proof validation remain separate checks.
+/// [`Self::digest`] binds these fields without an encrypted envelope, recipient KEM key,
+/// opening, proof or signature.
+///
+/// Final body assembly must preserve them and match the payload suite to the output, while note
+/// recovery and proof validation remain separate checks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RewardWithdrawalEncryptionCore {
+    /// Declared context for the withdrawal.
     context: TransactionContext,
+
+    /// Declared source account whose authority is checked by the consumer.
     reward_account_id: RewardAccountId,
+
+    /// Encoded authority key retained without cryptographic validation.
     withdrawal_public_key: EncodedMlDsa87PublicKey,
+
+    /// Declared account nonce before comparison with live state.
     nonce: WithdrawalNonce,
+
+    /// Positive public amount assigned to the output note.
     public_amount: Amount,
+
+    /// Declared fee, separate from the output amount.
     public_fee: Amount,
+
+    /// The sole output commitment and its recognized suite.
     output: (NoteCommitment, CryptoSuite),
 }
 
@@ -47,9 +53,9 @@ impl RewardWithdrawalEncryptionCore {
     ///
     /// # Errors
     ///
-    /// Returns [`RewardWithdrawalEncryptionCoreError::ZeroPublicAmount`] when
-    /// the withdrawal amount is zero, regardless of the fee. No other authority
-    /// or execution checks are performed here.
+    /// Returns [`RewardWithdrawalEncryptionCoreError::ZeroPublicAmount`] when the withdrawal
+    /// amount is zero, regardless of the fee.
+    /// No other authority or execution checks are performed here.
     pub fn new(
         context: TransactionContext,
         reward_account_id: RewardAccountId,
@@ -138,6 +144,7 @@ impl RewardWithdrawalEncryptionCore {
     }
 }
 
+/// Withdrawal amount bounds and declared field preservation.
 #[cfg(test)]
 mod tests {
     use houseki_types::{
@@ -151,6 +158,7 @@ mod tests {
         TransactionKind, WithdrawalNonce,
     };
 
+    /// Builds a declared context fixture for this module's binding checks.
     fn context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes([1; 64]),
@@ -162,10 +170,12 @@ mod tests {
         )
     }
 
+    /// Builds the sole withdrawal output fixture.
     fn output() -> (NoteCommitment, CryptoSuite) {
         (NoteCommitment::from_bytes([9; 64]), CryptoSuite::V1)
     }
 
+    /// Checks rejection of a zero withdrawal for every tested fee.
     #[test]
     fn zero_withdrawal_is_rejected_regardless_of_the_fee() {
         for fee in [0, 1, Amount::MAX_ATOMS] {
@@ -186,6 +196,7 @@ mod tests {
         }
     }
 
+    /// Checks retention of all withdrawal fields and a separate fee.
     #[test]
     fn positive_withdrawal_preserves_the_complete_core_and_separate_fee() {
         let context = context();
@@ -220,6 +231,7 @@ mod tests {
         );
     }
 
+    /// Checks representable boundaries without implying execution validity.
     #[test]
     fn positive_boundaries_leave_key_nonce_and_gross_debit_checks_to_consumers() {
         for (amount, fee) in [

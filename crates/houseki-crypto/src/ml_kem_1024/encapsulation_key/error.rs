@@ -1,3 +1,5 @@
+//! Errors from public key encoding validation.
+
 use thiserror::Error;
 
 /// A failure to validate an encoded ML-KEM-1024 public encapsulation key.

@@ -1,3 +1,5 @@
+//! Canonical digest derivation for typed transaction cores.
+
 use houseki_types::TransactionContext;
 
 use crate::{
@@ -11,27 +13,30 @@ use super::{PaymentEncryptionCore, RewardWithdrawalEncryptionCore};
 impl PaymentEncryptionCore {
     /// Derives the 64 byte SHA3-512 digest of the complete encryption core.
     ///
-    /// The fixed `houseki/v1/note/encryption-core` frame binds a `payment`
-    /// tag, the complete context, anchor, actual input count, ordered nullifiers,
-    /// public fee, actual output count and ordered commitment/suite pairs.
-    /// Integers use fixed width little endian encodings. Hashing streams the
-    /// fields without allocating a second copy of the core.
+    /// Hashing streams the `houseki/v1/note/encryption-core` frame without allocating a second
+    /// copy of the core.
     ///
-    /// Version and suite identifiers use four bytes, checkpoints and list
-    /// counts eight, and the fee sixteen. Byte identifiers use all 64 bytes.
-    /// Every field is a separate length-prefixed part, including each
-    /// commitment and its suite. The frame has `11 + inputs + 2 * outputs`
-    /// parts and requires that total to fit in a `u32`.
+    /// After a `payment` tag, the frame binds the complete context and anchor, then the input
+    /// count and ordered nullifiers, followed by the public fee, output count and ordered
+    /// commitment/suite pairs.
     ///
-    /// This is neither the transaction ID nor the AIR effect digest. It does
-    /// not establish transaction validity or authenticate a completed body.
-    /// Encryption context construction must derive it from this core,
-    /// rather than accepting externally supplied digest bytes.
+    /// Each field occupies a separate length prefixed part, including each commitment and its
+    /// suite, giving `11 + inputs + 2 * outputs` parts that must fit in a `u32`.
+    ///
+    /// Integer encodings are little endian with four bytes for version and suite identifiers,
+    /// eight for checkpoints and list counts, and sixteen for the fee, while byte identifiers
+    /// retain all 64 bytes.
+    ///
+    /// Encryption context construction derives this digest directly from the core to avoid
+    /// accepting an externally supplied value.
+    ///
+    /// It serves a different purpose from the transaction ID or AIR effect digest and does not
+    /// establish transaction validity or authenticate a completed body.
     ///
     /// # Errors
     ///
-    /// Returns [`CryptoFramingError`] if the layout exceeds framing limits or
-    /// the encoder's emitted part count does not match its declaration.
+    /// Returns [`CryptoFramingError`] if the layout exceeds framing limits or the encoder's
+    /// emitted part count does not match its declaration.
     pub fn digest(&self) -> Result<[u8; 64], CryptoFramingError> {
         let input_count = self.inputs().input_count();
         let output_count = self.outputs().len();
@@ -63,27 +68,32 @@ impl PaymentEncryptionCore {
 impl RewardWithdrawalEncryptionCore {
     /// Derives the 64 byte SHA3-512 digest of the complete encryption core.
     ///
-    /// The fixed `houseki/v1/note/encryption-core` frame binds a
-    /// `reward-withdrawal` tag, complete context, account identifier, encoded
-    /// authority key, nonce, public amount, fee, single output count and
-    /// commitment/suite pair. Integers use fixed width little endian encodings.
-    /// Hashing streams the fields without allocating a second copy of the core.
+    /// Hashing streams the `houseki/v1/note/encryption-core` frame without allocating a second
+    /// copy of the core.
     ///
-    /// Version and suite identifiers use four bytes, checkpoints, nonce and
-    /// the output count eight, and amount and fee sixteen. Byte identifiers
-    /// use all 64 bytes and the authority key uses all 2592 encoded bytes.
-    /// Every field is a separate length-prefixed part, including the output
-    /// commitment and its suite.
+    /// After a `reward-withdrawal` tag, its 15 fixed width parts bind the complete context,
+    /// account identifier, encoded authority key, nonce, public amount, fee, single output
+    /// count and commitment/suite pair.
     ///
-    /// This is neither the transaction ID nor the AIR effect digest. It does
-    /// not validate the declared key, account binding or withdrawal authority.
-    /// Encryption context construction must derive it from this core,
-    /// rather than accepting externally supplied digest bytes.
+    /// Each field occupies a separate length prefixed part, including the output commitment and
+    /// its suite.
+    ///
+    /// Integer encodings are little endian with four bytes for version and suite identifiers,
+    /// eight for checkpoints, nonce and output count, and sixteen for amount and fee.
+    ///
+    /// The remaining identifiers retain all 64 bytes and the authority key all 2592 encoded
+    /// bytes.
+    ///
+    /// Encryption context construction derives this digest directly from the core to avoid
+    /// accepting an externally supplied value.
+    ///
+    /// It serves a different purpose from the transaction ID or AIR effect digest and does not
+    /// validate the declared key, account binding or withdrawal authority.
     ///
     /// # Errors
     ///
-    /// Returns [`CryptoFramingError`] if the encoder cannot represent or
-    /// complete the declared frame. This layout has 15 fixed width parts.
+    /// Returns [`CryptoFramingError`] if the encoder cannot represent or complete the declared
+    /// frame.
     pub fn digest(&self) -> Result<[u8; 64], CryptoFramingError> {
         sha3_512(|sink| {
             let mut frame = Frame::new(Domain::NoteEncryptionCore, 15, sink);
@@ -102,11 +112,12 @@ impl RewardWithdrawalEncryptionCore {
     }
 }
 
+/// Computes the payment frame's part count with checked u32 arithmetic.
 fn payment_part_count(inputs: usize, outputs: usize) -> Result<u32, CryptoFramingError> {
     let inputs = u32::try_from(inputs).map_err(|_| CryptoFramingError::TooManyParts)?;
     let outputs = u32::try_from(outputs).map_err(|_| CryptoFramingError::TooManyParts)?;
-    // Seven context parts, anchor, input count, fee, output count, plus each
-    // nullifier and two separate parts for each commitment/suite pair.
+    // Seven context parts, anchor, input count, fee, output count, plus each nullifier and two
+    // separate parts for each commitment/suite pair.
     outputs
         .checked_mul(2)
         .and_then(|parts| parts.checked_add(inputs))
@@ -114,6 +125,9 @@ fn payment_part_count(inputs: usize, outputs: usize) -> Result<u32, CryptoFramin
         .ok_or(CryptoFramingError::TooManyParts)
 }
 
+/// Emits the operation tag and six canonical transaction context fields.
+///
+/// Propagates errors from the shared frame encoder.
 fn frame_context(
     frame: &mut Frame<'_>,
     operation: &[u8],
@@ -140,6 +154,7 @@ fn frame_context(
     )
 }
 
+/// Independent core codec vectors and complete field binding.
 #[cfg(test)]
 mod tests {
     use houseki_types::{
@@ -155,6 +170,7 @@ mod tests {
     };
     use crate::CryptoSuite;
 
+    /// Builds a declared context fixture for this module's binding checks.
     fn context(changed_field: Option<usize>) -> TransactionContext {
         let mut network = std::array::from_fn(|index| u8::try_from(index).unwrap());
         let mut protocol = 0x01020304;
@@ -185,14 +201,17 @@ mod tests {
         )
     }
 
+    /// Returns the count limits used by this module's fixtures.
     fn limits() -> PaymentCountLimits {
         PaymentCountLimits::new(4, 4).unwrap()
     }
 
+    /// Builds a fee fixture exercising high integer bits.
     fn fee() -> Amount {
         Amount::from_atoms((1 << 80) + 0x2122232425262728).unwrap()
     }
 
+    /// Builds the payment fixture used by this module's codec checks.
     fn payment(context: TransactionContext) -> PaymentEncryptionCore {
         PaymentEncryptionCore::new(
             context,
@@ -213,6 +232,7 @@ mod tests {
         .unwrap()
     }
 
+    /// Builds the withdrawal fixture used by this module's codec checks.
     fn withdrawal(context: TransactionContext) -> RewardWithdrawalEncryptionCore {
         RewardWithdrawalEncryptionCore::new(
             context,
@@ -228,18 +248,22 @@ mod tests {
         .unwrap()
     }
 
+    /// Formats public fixture bytes as lowercase hexadecimal.
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|byte| format!("{byte:02x}")).collect()
     }
 
+    /// Checks both core layouts against independent SHA3-512 vectors.
     #[test]
     fn core_digests_match_independently_encoded_sha3_512_vectors() {
-        // Independently assembled with Python int.to_bytes(n, "little") and
-        // hashlib.sha3_512. The label is 31 bytes. Each part gets a u64 length.
+        // Independently assembled with Python int.to_bytes(n, "little") and hashlib.sha3_512.
+        // The label is 31 bytes.
+        // Each part gets a u64 length.
         // Payment has 19 parts / 716 framed bytes, withdrawal 15 / 3038.
-        // The fixtures pin the operation tags, all integer widths, output
-        // multiplicity and suite ID 1. They are Houseki codec vectors, not NIST
-        // vectors or evidence of validity of the declared authority key.
+        // The fixtures pin the operation tags, all integer widths, output multiplicity and
+        // suite ID 1.
+        // They are Houseki codec vectors, not NIST vectors or evidence of validity of the
+        // declared authority key.
         assert_eq!(
             hex(&payment(context(None)).digest().unwrap()),
             concat!(
@@ -256,6 +280,7 @@ mod tests {
         );
     }
 
+    /// Checks each transaction context field in both digest layouts.
     #[test]
     fn every_context_field_is_bound_for_both_operations() {
         let payment_digest = payment(context(None)).digest().unwrap();
@@ -274,6 +299,7 @@ mod tests {
         }
     }
 
+    /// Checks payment source, fee and ordered output binding.
     #[test]
     fn payment_binds_source_fee_output_order_and_multiplicity() {
         let original = payment(context(None));
@@ -314,6 +340,7 @@ mod tests {
         }
     }
 
+    /// Checks every withdrawal field, including the complete authority key.
     #[test]
     fn withdrawal_binds_account_complete_key_nonce_amount_fee_and_output() {
         let original = withdrawal(context(None));
@@ -346,6 +373,7 @@ mod tests {
         }
     }
 
+    /// Checks part count limits without constructing oversized lists.
     #[test]
     fn payment_layout_rejects_unrepresentable_counts_without_allocating() {
         let max = usize::try_from(u32::MAX).unwrap();

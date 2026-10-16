@@ -1,32 +1,45 @@
-//! Fixed public-input profile from Plonky3 0.8.0 at
-//! a21e3ed42905040ad49c519e402f018381c12d0c. No caller-selected parameters.
+//! Fixed public input profile from Plonky3 0.8.0 at a21e3ed42905040ad49c519e402f018381c12d0c.
+//! No caller-selected parameters.
 
 use std::sync::OnceLock;
 
 use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks, default_goldilocks_poseidon2_16};
 use p3_symmetric::Permutation;
 
+/// Prime modulus of the Goldilocks field.
 pub(super) const MODULUS: u64 = 0xffff_ffff_0000_0001;
+
+/// Number of field elements in the permutation state.
 pub(super) const WIDTH: usize = 16;
+
+/// Number of state elements available for absorption and each squeeze block.
 pub(super) const RATE: usize = 7;
+
+/// Bytes per word, keeping every packed value below the field modulus.
 pub(super) const PACKED_BYTES: usize = 7;
+
+/// Canonical field samples used for the 512 bit integer extraction.
 pub(super) const OUTPUT_ELEMENTS: usize = 11;
 
+/// Applies the pinned width 16 permutation using shared immutable parameters.
 pub(super) fn permute(state: &mut [Goldilocks; WIDTH]) {
-    // The factory uses the pinned constants, x^7, four initial full rounds,
-    // 22 partial rounds and four final full rounds on every supported target.
+    // The factory uses the pinned constants, x^7, four initial full rounds, 22 partial rounds
+    // and four final full rounds on every supported target.
     // Cache only public permutation parameters, never a transcript state.
+    /// Cached public permutation parameters shared across independent hash states.
     static PERMUTATION: OnceLock<Poseidon2Goldilocks<WIDTH>> = OnceLock::new();
     PERMUTATION
         .get_or_init(default_goldilocks_poseidon2_16)
         .permute_mut(state);
 }
 
+/// Pinned upstream permutation conformance.
 #[cfg(test)]
 mod tests {
     use super::{Goldilocks, permute};
     use p3_field::PrimeField64;
 
+    /// Checks the pinned permutation against its upstream vector.
     #[test]
     fn fixed_backend_matches_upstream_width_16_known_answer() {
         // Plonky3 a21e3ed42905040ad49c519e402f018381c12d0c,

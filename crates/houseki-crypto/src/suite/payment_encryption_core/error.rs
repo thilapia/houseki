@@ -1,3 +1,5 @@
+//! Errors from assembling a payment encryption core.
+
 use houseki_types::PaymentCountLimitsError;
 use thiserror::Error;
 
@@ -10,5 +12,9 @@ pub enum PaymentEncryptionCoreError {
 
     /// An actual input or output count exceeds its supplied maximum.
     #[error(transparent)]
-    CountLimitExceeded(#[from] PaymentCountLimitsError),
+    CountLimitExceeded(
+        /// Original input or output count failure.
+        #[from]
+        PaymentCountLimitsError,
+    ),
 }

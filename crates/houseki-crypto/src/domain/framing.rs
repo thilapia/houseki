@@ -1,21 +1,27 @@
+//! Streaming encoding of registered cryptographic transcripts.
+
 use super::{CryptoFramingError, Domain};
 
-/// Streams one frame without allocating a transcript buffer.
+/// Streams a length prefixed transcript without buffering it in full.
 ///
-/// Emits `u16_le(label length) || label || u32_le(part count)`, followed by
-/// `u64_le(part length) || part` for each ordered part, including empty parts.
-/// Labels come only from the fixed domain registry. Parts must already have
-/// their operation's canonical byte representation. Lengths must fit their
-/// encoded widths, and the emitted part count must match the declaration.
+/// The header encodes the registered ASCII label with its u16 length, followed by the u32 part
+/// count.
 ///
-/// A failed operation can have emitted a prefix. Its consumer must discard
-/// that output on any error and must call `finish` before using the result.
+/// Each caller supplied canonical part then carries a `u64` byte length, even when empty, with
+/// all integers encoded in little endian order.
+///
+/// Because a failed frame may already have emitted a prefix, the sink's result is usable only
+/// after `finish` succeeds.
 pub(crate) struct Frame<'a> {
+    /// Receives each encoded chunk in transcript order.
     sink: &'a mut dyn FnMut(&[u8]),
+
+    /// Number of declared parts still to be emitted.
     remaining: u32,
 }
 
 impl<'a> Frame<'a> {
+    /// Writes the registered domain and declared part count to the sink.
     pub(crate) fn new(domain: Domain, part_count: u32, sink: &'a mut dyn FnMut(&[u8])) -> Self {
         let label = domain.label();
         let label_length =
@@ -29,6 +35,10 @@ impl<'a> Frame<'a> {
         }
     }
 
+    /// Writes one length prefix and its bytes.
+    ///
+    /// Returns an error before emission if the declared count is exhausted or the length
+    /// exceeds u64.
     pub(crate) fn part(&mut self, bytes: &[u8]) -> Result<(), CryptoFramingError> {
         if self.remaining == 0 {
             return Err(CryptoFramingError::PartCountMismatch);
@@ -40,6 +50,9 @@ impl<'a> Frame<'a> {
         Ok(())
     }
 
+    /// Confirms that every declared part was emitted.
+    ///
+    /// Returns a count mismatch if the transcript is incomplete.
     pub(crate) fn finish(self) -> Result<(), CryptoFramingError> {
         if self.remaining != 0 {
             return Err(CryptoFramingError::PartCountMismatch);
@@ -48,10 +61,12 @@ impl<'a> Frame<'a> {
     }
 }
 
+/// Exact transcript bytes, part boundaries and count failures.
 #[cfg(test)]
 mod tests {
     use super::{CryptoFramingError, Domain, Frame};
 
+    /// Collects a frame under the core domain for byte comparisons.
     fn encode(parts: &[&[u8]]) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
@@ -67,6 +82,7 @@ mod tests {
         bytes
     }
 
+    /// Checks exact frame bytes for empty and nonempty parts.
     #[test]
     fn exact_domain_and_length_prefixes_include_empty_parts() {
         let expected = b"\x1f\x00houseki/v1/note/encryption-core\x03\x00\x00\x00\
@@ -80,6 +96,7 @@ mod tests {
         );
     }
 
+    /// Checks that distinct part structures produce distinct frames.
     #[test]
     fn boundaries_order_counts_and_multiplicity_are_unambiguous() {
         let cases: &[&[&[u8]]] = &[
@@ -100,6 +117,7 @@ mod tests {
         }
     }
 
+    /// Checks integer width and byte order in frame prefixes.
     #[test]
     fn counts_and_lengths_use_all_little_endian_bytes() {
         let mut bytes = Vec::new();
@@ -114,6 +132,7 @@ mod tests {
         assert_eq!(&encoded[45..], part);
     }
 
+    /// Checks rejection of missing and excess declared parts.
     #[test]
     fn incomplete_and_excess_parts_are_rejected() {
         let mut sink = |_: &[u8]| {};

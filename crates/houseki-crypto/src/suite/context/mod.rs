@@ -10,51 +10,62 @@ use houseki_types::{NoteCommitment, TransactionContext};
 use super::{CryptoSuite, PaymentEncryptionCore, RewardWithdrawalEncryptionCore};
 use crate::MlKem1024EncapsulationKey;
 
-/// Prepared public inputs for encrypting or recovering one note output.
+/// Immutable inputs for encrypting or recovering one note output.
 ///
-/// Construction selects the commitment and suite from a typed core and
-/// derives its complete digest internally. It retains an owned clone of the
-/// validated recipient public key. It accepts no supplied core digest,
-/// recipient-binding hash or independently chosen output fields.
+/// Construction selects the output commitment and suite from a typed core, derives its complete
+/// digest and retains an owned validated recipient key.
 ///
-/// The context is an immutable snapshot. Rebuilding or discarding the source
-/// core or key does not alter it. A changed intended body requires a new
-/// context. Final body assembly must preserve the core fields and output order
-/// and match each payload's suite to its corresponding output.
+/// This snapshot remains independent of the source core and key, so changes to the intended
+/// body require a new context.
 ///
-/// Construction prepares inputs only. [`Self::associated_data`] derives the
-/// Poseidon2 recipient binding internally and frames it with the selected
-/// output, core digest, encapsulation and nonce. Encapsulation, key derivation
-/// and authenticated encryption are separate operations.
-/// The recipient key is not included in the core digest itself.
+/// Final body assembly must preserve the core fields, output order and matching payload suites
+/// to keep that context applicable.
 ///
-/// Construction does not establish recipient identity, agreement with a note
-/// opening, active protocol rules or transaction validity. Recovery must
-/// reconstruct the core from the completed body and resolve its payload
-/// suites. Successful context construction is not authentication.
+/// The recipient key stays outside the core digest and instead contributes to the binding
+/// derived by [`Self::associated_data`], alongside the selected output, core digest,
+/// encapsulation and nonce.
+///
+/// Recovery reconstructs the typed core from the completed body and resolved payload suites
+/// before preparing the same inputs.
+///
+/// Preparing a context does not authenticate ciphertext or establish recipient identity, note
+/// agreement, protocol activation or transaction validity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteEncryptionContext {
+    /// Declared transaction context already bound by the core digest.
     transaction_context: TransactionContext,
+
+    /// Digest derived internally from the complete typed core.
     core_digest: [u8; 64],
+
+    /// Selected output's position in the core.
     output_index: u64,
+
+    /// Commitment selected from the same output position.
     note_commitment: NoteCommitment,
+
+    /// Recognized suite declared by the selected output.
     suite: CryptoSuite,
+
+    /// Owned validated recipient key used to derive the recipient binding.
     recipient_key: MlKem1024EncapsulationKey,
 }
 
 impl NoteEncryptionContext {
     /// Prepares the payment output at the supplied zero based index.
     ///
-    /// Selects its commitment and suite from the actual core before deriving
-    /// the digest. Hashing traverses the complete core for each successful
-    /// construction. Only the selected fields and public key are retained.
+    /// Selection takes the commitment and suite from the actual output before hashing the
+    /// complete core, retaining only the selected fields and public key.
+    ///
+    /// Each successful construction therefore traverses the full core even when preparing
+    /// several outputs from one payment.
     ///
     /// # Errors
     ///
-    /// Rejects a missing output with
-    /// [`NoteEncryptionContextError::OutputIndexOutOfBounds`] before hashing,
-    /// including an index that cannot be represented by the host indexing
-    /// type. Otherwise propagates framing errors as
+    /// Rejects a missing output with [`NoteEncryptionContextError::OutputIndexOutOfBounds`]
+    /// before hashing, including an index that cannot be represented by the host indexing type.
+    ///
+    /// Once selection succeeds, framing failures propagate as
     /// [`NoteEncryptionContextError::CoreDigest`].
     pub fn for_payment(
         core: &PaymentEncryptionCore,
@@ -81,13 +92,12 @@ impl NoteEncryptionContext {
 
     /// Prepares the withdrawal's sole output at index zero.
     ///
-    /// The recipient KEM key is separate from the declared withdrawal
-    /// authority key already bound by the core digest.
+    /// The recipient KEM key is separate from the declared withdrawal authority key already
+    /// bound by the core digest.
     ///
     /// # Errors
     ///
-    /// Propagates core framing errors as
-    /// [`NoteEncryptionContextError::CoreDigest`].
+    /// Propagates core framing errors as [`NoteEncryptionContextError::CoreDigest`].
     pub fn for_reward_withdrawal(
         core: &RewardWithdrawalEncryptionCore,
         recipient_key: &MlKem1024EncapsulationKey,
@@ -108,8 +118,8 @@ impl NoteEncryptionContext {
 
     /// Borrows the internally derived digest of the complete typed core.
     ///
-    /// This digest does not include the recipient KEM key, encapsulation or
-    /// nonce and is not by itself the final associated data.
+    /// This digest does not include the recipient KEM key, encapsulation or nonce and is not by
+    /// itself the final associated data.
     pub const fn core_digest(&self) -> &[u8; 64] {
         &self.core_digest
     }
@@ -143,8 +153,8 @@ impl NoteEncryptionContext {
         recipient_key: &MlKem1024EncapsulationKey,
     ) -> Self {
         let (note_commitment, suite) = output;
-        // Keep suite handling exhaustive so a future algorithm assignment
-        // must explicitly address compatibility with this validated key type.
+        // Keep suite handling exhaustive so a future algorithm assignment must explicitly
+        // address compatibility with this validated key type.
         let recipient_key = match suite {
             CryptoSuite::V1 => recipient_key.clone(),
         };
@@ -159,6 +169,7 @@ impl NoteEncryptionContext {
     }
 }
 
+/// Output selection, immutable snapshots and derived digest binding.
 #[cfg(test)]
 mod tests {
     use houseki_types::{
@@ -173,22 +184,27 @@ mod tests {
         TransactionContext,
     };
 
-    // Independently assembled using the specified Houseki core layouts,
-    // Python int.to_bytes(n, "little") and hashlib.sha3_512. Recipient keys
-    // are absent from these preimages and are retained separately below.
+    // Independently assembled using the specified Houseki core layouts, Python int.to_bytes(n,
+    // "little") and hashlib.sha3_512.
+    // Recipient keys are absent from these preimages and are retained separately below.
+    /// Independent SHA3-512 digest of the payment core fixture.
     const PAYMENT_DIGEST: &str = concat!(
         "f1d90173ffac8411e9ba423d5caa7fb9296367609b1b3f9f7c3b6ad41804fc10",
         "c6d259c5ec4e8c94ed2fcf311330eec8827d4727eb9bf5fdfa22b146b7c3c220"
     );
+
+    /// Independent SHA3-512 digest of the withdrawal core fixture.
     const WITHDRAWAL_DIGEST: &str = concat!(
         "5a52be6970c5341cd0591dfc88e3a8415a395b879b4ea3ad0a75d0180f66122d1",
         "45be827421fdac9e7c3e1da770e60a2712f420fc2aa6d0703a8f3dd9e17e644"
     );
 
+    /// Formats public fixture bytes as lowercase hexadecimal.
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|byte| format!("{byte:02x}")).collect()
     }
 
+    /// Builds the declared transaction context shared by the fixtures.
     fn transaction_context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes([1; 64]),
@@ -200,10 +216,12 @@ mod tests {
         )
     }
 
+    /// Returns the count limits used by this module's fixtures.
     fn limits() -> PaymentCountLimits {
         PaymentCountLimits::new(2, 3).unwrap()
     }
 
+    /// Builds the payment fixture used by this module's codec checks.
     fn payment() -> PaymentEncryptionCore {
         PaymentEncryptionCore::new(
             transaction_context(),
@@ -224,6 +242,7 @@ mod tests {
         .unwrap()
     }
 
+    /// Builds the withdrawal fixture used by this module's codec checks.
     fn withdrawal() -> RewardWithdrawalEncryptionCore {
         RewardWithdrawalEncryptionCore::new(
             transaction_context(),
@@ -237,6 +256,7 @@ mod tests {
         .unwrap()
     }
 
+    /// Constructs a canonical recipient fixture with the supplied matrix seed.
     fn recipient_key(seed_byte: u8) -> MlKem1024EncapsulationKey {
         // Canonical zero coefficients with unrestricted public seed bytes.
         // This fixture asserts encoding validation, not honest key generation.
@@ -245,6 +265,7 @@ mod tests {
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
+    /// Checks selection from the actual output list, including duplicate commitments.
     #[test]
     fn payment_selects_actual_outputs_and_distinguishes_duplicate_positions() {
         let core = payment();
@@ -273,6 +294,7 @@ mod tests {
         assert_ne!(contexts[0], contexts[2]);
     }
 
+    /// Checks complete index reporting for out of bounds payment outputs.
     #[test]
     fn invalid_payment_indices_preserve_all_supplied_bits() {
         let core = payment();
@@ -288,6 +310,7 @@ mod tests {
         }
     }
 
+    /// Checks withdrawal output selection and retained recipient key ownership.
     #[test]
     fn withdrawal_selects_its_only_output_and_separate_recipient_key() {
         let context = {
@@ -309,6 +332,7 @@ mod tests {
         );
     }
 
+    /// Checks that a rebuilt payment changes its digest without altering an old snapshot.
     #[test]
     fn rebuilding_a_payment_binds_unselected_fields_without_changing_the_old_context() {
         let key = recipient_key(20);
@@ -336,6 +360,7 @@ mod tests {
         }
     }
 
+    /// Checks that a rebuilt withdrawal derives a new complete digest.
     #[test]
     fn rebuilding_a_withdrawal_recomputes_the_complete_core_digest() {
         let core = withdrawal();
@@ -362,6 +387,7 @@ mod tests {
         assert_eq!(hex(original.core_digest()), WITHDRAWAL_DIGEST);
     }
 
+    /// Checks that recipient key changes leave the transaction core digest unchanged.
     #[test]
     fn recipient_keys_remain_distinct_inputs_outside_the_core_digest() {
         let payment = payment();

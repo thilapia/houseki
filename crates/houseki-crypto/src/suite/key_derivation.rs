@@ -1,3 +1,5 @@
+//! Protected operation keys derived from KEM results and output context.
+
 use houseki_types::EncodedMlKem1024Ciphertext;
 use zeroize::Zeroizing;
 
@@ -11,16 +13,29 @@ use crate::{
 ///
 /// No cloning, formatting or serialization of this internal material is exposed.
 pub(super) struct NoteEncryptionMaterial {
+    /// Protected AES key consumed by one sealing or opening operation.
     pub(super) key: Zeroizing<[u8; 32]>,
+
+    /// Exact associated data used by both key derivation and authentication.
     pub(super) associated_data: Vec<u8>,
+
+    /// Nonce already bound by the associated data and derived key.
     pub(super) nonce: [u8; 12],
 }
 
-/// Consumes the KEM result and derives V1 material without exposing secret bytes.
+/// Derives V1 operation material from a consumed KEM secret and prepared context.
 ///
-/// The suite's seal/open callers must pair the secret with this encapsulation
-/// and recipient key. Derivation alone does not verify that relationship or
-/// authenticate a payload; implicit rejection also yields derivable material.
+/// The network and suite form the framed extraction salt, while the associated data forms the
+/// expansion info used to derive a key.
+///
+/// That key stays with the associated data and nonce for one AEAD operation, with framing
+/// failures dropping the consumed secret and returning no material.
+///
+/// The suite caller must pair the secret with the supplied encapsulation and recipient key
+/// because derivation does not verify that relationship.
+///
+/// Implicit rejection secrets also yield material, so successful derivation cannot authenticate
+/// a payload.
 pub(super) fn derive_note_material(
     context: &NoteEncryptionContext,
     secret: MlKem1024SharedSecret,
@@ -53,6 +68,7 @@ pub(super) fn derive_note_material(
     }
 }
 
+/// Independent derivation vectors and combined KEM, KDF and AEAD recovery.
 #[cfg(test)]
 mod tests {
     use super::{EncodedMlKem1024Ciphertext, NoteEncryptionContext, derive_note_material};
@@ -66,6 +82,7 @@ mod tests {
         ProtocolVersion, TransactionContext, ValidityCheckpointRange,
     };
 
+    /// Builds a payment output context with a selectable recipient, network and fee.
     fn context(key: &MlKem1024EncapsulationKey, network: u8, fee: u128) -> NoteEncryptionContext {
         let limits = PaymentCountLimits::new(1, 1).unwrap();
         let core = PaymentEncryptionCore::new(
@@ -94,6 +111,7 @@ mod tests {
         NoteEncryptionContext::for_payment(&core, 0, key).unwrap()
     }
 
+    /// Checks the complete suite derivation against an independent framed vector.
     #[test]
     fn complete_suite_key_matches_independent_framed_hkdf_vector() {
         let key =
@@ -108,9 +126,9 @@ mod tests {
             &[0; 12],
         )
         .unwrap();
-        // Python hashlib/hmac with the specified core, AAD, salt and info
-        // codecs, plus the independent recipient-binding vector. Synthetic
-        // material tests the codec; honest KEM pairing is tested separately.
+        // Python hashlib/hmac with the specified core, AAD, salt and info codecs, plus the
+        // independent recipient-binding vector.
+        // Synthetic material tests the codec, while honest KEM pairing is tested separately.
         let actual: String = material
             .key
             .iter()
@@ -126,6 +144,7 @@ mod tests {
         );
     }
 
+    /// Checks KEM and KDF agreement and divergence under a wrong private key.
     #[test]
     fn sender_and_recipient_derive_the_same_key_and_associated_data() {
         let recipient = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
@@ -159,10 +178,12 @@ mod tests {
         .unwrap();
         assert_ne!(*sender.key, *rejected.key);
         assert_eq!(sender.associated_data, rejected.associated_data);
-        // Implicit rejection still produces a key. AEAD must authenticate it
-        // before a future opening operation can release any plaintext.
+        // Implicit rejection still produces a key.
+        // AEAD must authenticate it before a future opening operation can release any
+        // plaintext.
     }
 
+    /// Checks complete native recovery and rejection of changed bound inputs.
     #[test]
     fn kem_kdf_and_aead_recover_only_under_the_original_inputs() {
         use crate::suite::aead::NoteAeadError;
@@ -232,6 +253,7 @@ mod tests {
         }
     }
 
+    /// Checks that changing each context or operation input changes the derived key.
     #[test]
     fn key_derivation_binds_network_core_recipient_encapsulation_and_nonce() {
         let public = MlKem1024DecapsulationKey::from_seed(&[7; 64]).encapsulation_key();

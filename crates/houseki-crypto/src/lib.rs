@@ -1,5 +1,7 @@
 //! Cryptographic types and reusable operations for Houseki.
 
+#![warn(missing_docs, clippy::missing_docs_in_private_items)]
+
 mod domain;
 mod hash;
 mod ml_kem_1024;

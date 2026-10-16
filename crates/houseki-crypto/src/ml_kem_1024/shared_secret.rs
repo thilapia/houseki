@@ -3,25 +3,28 @@
 use std::fmt;
 use zeroize::{Zeroize, Zeroizing};
 
-/// A protected 32 byte result of an ML-KEM-1024 operation.
+/// A protected 32 byte result passed internally from ML-KEM-1024 to Houseki's KDF.
 ///
-/// Only the KEM implementation can construct this value. Its bytes remain
-/// internal to Houseki for use by the encryption suite's key derivation.
-/// This value is not an AEAD key and does not establish successful recovery,
-/// recipient identity or ciphertext authentication.
+/// The type keeps its bytes private, redacts debug output and provides no cloning, equality or
+/// serialization.
 ///
-/// Debug output is redacted. The type has no public byte access, cloning,
-/// equality or serialization. Its stored bytes are zeroized on drop, without
-/// guaranteeing erasure of backend intermediates, compiler or system copies.
-pub struct MlKem1024SharedSecret([u8; 32]);
+/// Stored bytes are zeroized on drop, although this cannot guarantee erasure of backend,
+/// compiler or system copies.
+///
+/// Because decapsulation can return an implicit rejection secret, holding this result does not
+/// establish successful recovery or ciphertext authentication.
+pub struct MlKem1024SharedSecret(
+    /// Stored KEM result cleared by this type's drop implementation.
+    [u8; 32],
+);
 
 impl MlKem1024SharedSecret {
-    /// Consumes this secret to derive the suite's fixed 32-byte operation key.
+    /// Consumes the secret to derive a 32 byte key with HKDF-HMAC-SHA512.
     ///
-    /// Only the suite supplies framed salt and info. No raw-secret accessor is
-    /// needed. Guard the returned PRK explicitly: the backend's convenience
-    /// constructor discards that buffer without zeroizing it. Backend expansion
-    /// blocks and HMAC temporaries are outside this stored-buffer guarantee.
+    /// The suite supplies framed salt and info.
+    /// The returned extraction key is explicitly cleared, and the derived key remains in
+    /// zeroizing storage.
+    /// Backend expansion blocks and HMAC temporaries remain outside this cleanup guarantee.
     pub(crate) fn derive_key(self, salt: &[u8], info: &[u8]) -> Zeroizing<[u8; 32]> {
         let (prk, hkdf) = hkdf::Hkdf::<sha2::Sha512>::extract(Some(salt), &self.0);
         drop(Zeroizing::new(prk));
@@ -38,31 +41,36 @@ impl MlKem1024SharedSecret {
 }
 
 impl fmt::Debug for MlKem1024SharedSecret {
+    /// Formats a fixed label that conceals the shared secret.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("MlKem1024SharedSecret([REDACTED])")
     }
 }
 
 impl Drop for MlKem1024SharedSecret {
+    /// Clears the stored shared secret before releasing its storage.
     fn drop(&mut self) {
         self.0.zeroize();
     }
 }
 
+/// Independent KDF vectors and shared secret redaction.
 #[cfg(test)]
 pub(crate) mod tests {
     use super::MlKem1024SharedSecret;
     use zeroize::Zeroizing;
 
     impl MlKem1024SharedSecret {
+        /// Constructs synthetic shared material available only in tests.
         pub(crate) fn fixture_secret() -> Self {
             Self::from_backend(Zeroizing::new([0xa5; 32].into()))
         }
     }
 
+    /// Checks HKDF output against independent HMAC-SHA512 vectors.
     #[test]
     fn key_derivation_matches_independent_hmac_sha512_vectors() {
-        // Python hmac.digest with SHA-512: Extract, then T(1) = HMAC(PRK, info || 1).
+        // Python hmac.digest with SHA-512 computes Extract, then T(1) = HMAC(PRK, info || 1).
         for (salt, info, expected) in [
             (
                 vec![],
@@ -81,14 +89,17 @@ pub(crate) mod tests {
         }
     }
 
+    /// Compares stored secret bytes with a published test vector.
     pub(crate) fn assert_secret_eq(secret: &MlKem1024SharedSecret, expected: &[u8; 32]) {
         assert_eq!(&secret.0, expected);
     }
 
+    /// Compares two stored secrets inside the test boundary.
     pub(crate) fn assert_secrets_eq(left: &MlKem1024SharedSecret, right: &MlKem1024SharedSecret) {
         assert_eq!(left.0, right.0);
     }
 
+    /// Checks redaction in both shared secret debug formats.
     #[test]
     fn diagnostics_redact_shared_material_in_both_debug_formats() {
         let secret = MlKem1024SharedSecret::from_backend(Zeroizing::new([0xa5; 32].into()));

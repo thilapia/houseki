@@ -8,25 +8,25 @@ use super::MlKem1024DecapsulationKey;
 use crate::MlKem1024SharedSecret;
 
 impl MlKem1024DecapsulationKey {
-    /// Decapsulates an encoded ciphertext into a protected shared secret.
+    /// Decapsulates an encoded ciphertext into a protected shared secret without randomness.
     ///
-    /// The encoded type already enforces the required 1568 byte length, and
-    /// this key can only be generated or restored from a seed. No randomness
-    /// is needed for this operation.
+    /// The encoded type enforces the required 1568 byte length, while key construction ensures
+    /// a generated or seed restored private key.
     ///
-    /// ML-KEM uses implicit rejection. A ciphertext that fails its internal
-    /// consistency check, including one for a different key, produces a
-    /// secret fallback value without an error or validity flag. Returning a
-    /// secret does not establish successful recovery or authentication.
+    /// If the ciphertext fails ML-KEM's internal consistency check, including when intended for
+    /// another key, implicit rejection produces a fallback secret without an error or validity
+    /// flag.
     ///
-    /// The result is intended for Houseki's suite KDF. The complete encryption
-    /// suite must authenticate the payload before releasing plaintext.
+    /// The result feeds Houseki's suite KDF but does not establish successful recovery or
+    /// authentication, so the complete suite must authenticate the payload before releasing
+    /// plaintext.
     pub fn decapsulate(&self, ciphertext: &EncodedMlKem1024Ciphertext) -> MlKem1024SharedSecret {
         let shared_key = self.0.decapsulate(ciphertext.as_bytes().into());
         MlKem1024SharedSecret::from_backend(Zeroizing::new(shared_key))
     }
 }
 
+/// NIST recovery vectors, implicit rejection and KEM agreement.
 #[cfg(test)]
 mod tests {
     use houseki_types::EncodedMlKem1024Ciphertext;
@@ -36,10 +36,15 @@ mod tests {
 
     // Public NIST ACVP seed-format decapsulation fixtures.
     // https://github.com/usnistgov/ACVP-Server/tree/ad33b3d9504491767f1aa76382464f3b3fa2359e/gen-val/json-files/ML-KEM-encapDecap-FIPS203-tr1
-    // Seed order is d || z. Case 116's published result equals J(z || c),
-    // exercising implicit rejection. Case 118 recovers the encapsulated secret.
+    // Seed order is d || z.
+    // Case 116's published result equals J(z || c),
+    // exercising implicit rejection.
+    // Case 118 recovers the encapsulated secret.
     // tgId 8, tcId 118.
+    /// NIST seed for the valid decapsulation case.
     const VALID_SEED: &str = "dc90b0495ef0b1baaf01ec0668f53c6fa270c088e37ef7bb98ee8101e9031bca40fcdaeb265ee60e5ed7c1623000abd32bbda5f7f51d8bb67bd6a844fe0f9170";
+
+    /// NIST ciphertext accepted by the matching private key.
     const VALID_CIPHERTEXT: &str = concat!(
         "928864d15d172aa6ac24c496fc376f8c8743270b0e74f764055f2ea60ff74d1004630698aa2beea9f4590febf63655c7",
         "10e9ccce4d9bb5e660b9078c28c125a297edae5d792c2db5e930ccbf88f56bbfcc0cc46d71ad8faa26a910b74892467b",
@@ -75,9 +80,14 @@ mod tests {
         "44ea15efa8458652dee66c0cbb1883844f92f06fab633f7716a5af9658bc4023a96e92809cf93c7cf24721d83d3c8ec1",
         "2b62c2eb6478a67d403c63d54f6bb807f18145d8a722a7ab6be94958ad3d0f45",
     );
+
+    /// NIST expected secret for valid decapsulation.
     const VALID_SECRET: &str = "fac11276b8629a5be2fdd4b523a3bf3d25bd078b20603f3a2655d8d2e8cff6a2";
     // tgId 8, tcId 116.
+    /// NIST seed for the implicit rejection case.
     const REJECTED_SEED: &str = "74ae40cf70f181a17e1abcc49e8f96ac089d68fc17ef8e0e22563afea3298890716928c1b17b00bf7eb728a453070196bd725cc3e2b82e9c6ff24b71b00059a6";
+
+    /// NIST ciphertext that selects implicit rejection.
     const REJECTED_CIPHERTEXT: &str = concat!(
         "c91507183411e16b8cb7ae6b6478fef375fb41517cd916d8e175d9d16d1bcf71185758265365f20013085435227521f8",
         "d9406e06ca68d948929f34b25fd69acc5a7597cd3fa034b44476581b67286bdbe3f058a9fd0e19aa6390485956d3af46",
@@ -113,14 +123,18 @@ mod tests {
         "fb5fb18d90a0a7191eca6d2a9bc774c8c87f8beb6d228be2e28dbca736c51ae43d9a5c24a817882416d75bcab1de0ef7",
         "597fef80848eeafc463857693b39a9c0103f1026f6c9c47c81d6e05c6215e02f",
     );
+
+    /// NIST expected fallback secret for the rejected ciphertext.
     const REJECTED_SECRET: &str =
         "d883d6ccbba2f85c2d7acf5f5e4ccda345c17ab43ab768c51cb1a4c63eed3596";
 
+    /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
+    /// Checks recovery against the NIST valid decapsulation vector.
     #[test]
     fn decapsulation_matches_nist_shared_secret() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(VALID_SEED));
@@ -129,6 +143,7 @@ mod tests {
         assert_secret_eq(&key.decapsulate(&ciphertext), &decode_hex(VALID_SECRET));
     }
 
+    /// Checks the exact fallback secret from the NIST rejection vector.
     #[test]
     fn implicit_rejection_matches_nist_fallback_secret() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(REJECTED_SEED));
@@ -137,11 +152,12 @@ mod tests {
         assert_secret_eq(&key.decapsulate(&ciphertext), &decode_hex(REJECTED_SECRET));
     }
 
+    /// Checks the fallback derivation after ciphertext mutations.
     #[test]
     fn changed_ciphertexts_produce_exact_fallback_secrets() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(VALID_SEED));
-        // Independent FIPS 203 Algorithm 18 fallback oracles, calculated with
-        // Python hashlib.shake_256(z + modified_ciphertext).hexdigest(32).
+        // Independent FIPS 203 Algorithm 18 fallback oracles, calculated with Python
+        // hashlib.shake_256(z + modified_ciphertext).hexdigest(32).
         for (index, expected) in [
             (
                 0,
@@ -161,6 +177,7 @@ mod tests {
         }
     }
 
+    /// Checks the fallback derivation under a different recipient key.
     #[test]
     fn wrong_recipient_produces_exact_fallback_secret() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(REJECTED_SEED));
@@ -172,6 +189,7 @@ mod tests {
         assert_secret_eq(&key.decapsulate(&ciphertext), &expected);
     }
 
+    /// Checks agreement between public encapsulation and decapsulation operations.
     #[test]
     fn public_api_round_trip_agrees_on_shared_secret() {
         let key = MlKem1024DecapsulationKey::generate().unwrap();

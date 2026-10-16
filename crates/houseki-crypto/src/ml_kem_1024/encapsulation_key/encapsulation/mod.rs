@@ -14,19 +14,16 @@ use crate::{MlKem1024SharedSecret, random::secret_bytes};
 impl MlKem1024EncapsulationKey {
     /// Encapsulates a fresh shared secret to this validated public key.
     ///
-    /// Returns the public ciphertext first and the protected shared secret
-    /// second. Each call obtains fresh 32 byte secret randomness from the
-    /// system source. Construction of this key already established the
-    /// required encoding checks.
+    /// Each call obtains 32 fresh secret bytes from the system source and returns the public
+    /// ciphertext followed by the protected shared secret for Houseki's suite KDF.
     ///
-    /// The secret is intended for Houseki's suite KDF. Encapsulation alone
-    /// neither authenticates the recipient nor encrypts a note payload.
+    /// The key's encoding was checked during construction, but encapsulation neither
+    /// authenticates the recipient nor encrypts a note payload.
     ///
     /// # Errors
     ///
-    /// Returns [`MlKem1024EncapsulationError::RandomnessUnavailable`] if
-    /// randomness acquisition fails, including after a partial write. No
-    /// ciphertext or shared secret is returned on failure.
+    /// Returns [`MlKem1024EncapsulationError::RandomnessUnavailable`] without either output if
+    /// randomness acquisition fails, including after a partial write.
     pub fn encapsulate(
         &self,
     ) -> Result<(EncodedMlKem1024Ciphertext, MlKem1024SharedSecret), MlKem1024EncapsulationError>
@@ -34,6 +31,9 @@ impl MlKem1024EncapsulationKey {
         self.encapsulate_with_rng(&mut SysRng)
     }
 
+    /// Encapsulates using complete guarded randomness from the supplied source.
+    ///
+    /// Returns no ciphertext or secret if randomness acquisition fails.
     fn encapsulate_with_rng<R: TryCryptoRng + ?Sized>(
         &self,
         rng: &mut R,
@@ -54,6 +54,7 @@ impl MlKem1024EncapsulationKey {
     }
 }
 
+/// NIST encapsulation vectors and entropy failure handling.
 #[cfg(test)]
 mod tests {
     use getrandom::rand_core::{TryCryptoRng, TryRng};
@@ -64,6 +65,7 @@ mod tests {
 
     // Public NIST ACVP fixture, ML-KEM-encapDecap-FIPS203, tgId 3, tcId 51.
     // https://github.com/usnistgov/ACVP-Server/tree/15c0f3deeefbfa8cb6cd32a99e1ca3b738c66bf0/gen-val/json-files/ML-KEM-encapDecap-FIPS203
+    /// NIST public key for the encapsulation fixture.
     const ENCODED_KEY: &str = concat!(
         "f6690e77251a47a0126f3cae222b8873eb0ec9669aa7b08f4854aa72c0731649ce60eaa8b08198b8712158238dbe83ca",
         "efd7641434ce1a1346f6900a53c105462b4f1e909e680476000c8e8ff43dff9ac7f36657bf852262d383e68ca2c8764b",
@@ -99,7 +101,11 @@ mod tests {
         "0ac3aca6762b0100640f92040be73906e68e8103a57669532120312fe50ddd47ac0b19151fd6137b16a09324948629b8",
         "4fa2e7c8ec150fb8c7db1d800c0825ac18915be2529771b8390945e6da65f324",
     );
+
+    /// NIST encapsulation randomness for the fixed ciphertext vector.
     const RANDOMNESS: &str = "bf233cf6121d41585b4af0ea74b35df7ed52bb5782107a8259cd4aecc3587e61";
+
+    /// Complete NIST encapsulation ciphertext for the fixture.
     const CIPHERTEXT: &str = concat!(
         "efdb7f7e56302a199a7be79c00715f670a5024c0fd357bfd446b4a9371079c5a04964f5f4d0c8fb3d12ad1f6f2007d26",
         "f698c49da91e3b107d2332c7612df3d7a216fe4f07c5ad8a1e9e2de80e3ed3b79bdba3e5388fbda4311f79401798d193",
@@ -135,18 +141,23 @@ mod tests {
         "052c4a6aa4009e2a210c5d4a3ae2165dc44d5072123354c542c80e57f86bfec55500181c7e057d1884047a5e6815a954",
         "5b642bd631c5a46579a507253ffafec18581381d50fe491d319a1ab4a0d19689",
     );
+
+    /// NIST shared secret for the fixed encapsulation vector.
     const SHARED_SECRET: &str = "bcf2efed1e45c35c5fafe170aac3f4f5b3ef11220ea6b9a254f0b90ee8d56b94";
 
+    /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
+    /// Imports the public key from the published encapsulation fixture.
     fn fixture_key() -> MlKem1024EncapsulationKey {
         let encoded = EncodedMlKem1024PublicKey::from_bytes(decode_hex(ENCODED_KEY));
         MlKem1024EncapsulationKey::try_from(&encoded).unwrap()
     }
 
+    /// Checks both encapsulation outputs against the NIST vector.
     #[test]
     fn encapsulation_matches_nist_ciphertext_and_shared_secret() {
         let mut rng = FixtureRng {
@@ -160,6 +171,7 @@ mod tests {
         assert_secret_eq(&secret, &decode_hex(SHARED_SECRET));
     }
 
+    /// Checks encapsulation failure after a partial entropy write.
     #[test]
     fn encapsulation_returns_no_result_when_randomness_fails() {
         for fail_after in [0, 16, 31, 32] {
@@ -175,6 +187,7 @@ mod tests {
         }
     }
 
+    /// Checks repeated system encapsulations produce distinct ciphertexts.
     #[test]
     fn each_system_encapsulation_uses_fresh_randomness() {
         let key = fixture_key();
@@ -185,29 +198,38 @@ mod tests {
         assert_ne!(first, second);
     }
 
+    /// Deterministic entropy source with injectable partial failure.
     struct FixtureRng {
+        /// Offset of the next byte in the deterministic entropy fixture.
         position: usize,
+
+        /// Optional byte count at which the source reports failure.
         fail_after: Option<usize>,
     }
 
-    // Deterministic and deliberately insecure. This implementation is test-only.
+    // Deterministic and deliberately insecure.
+    // This implementation is test-only.
     impl TryCryptoRng for FixtureRng {}
 
     impl TryRng for FixtureRng {
+        /// Error returned by the fixture entropy source.
         type Error = std::io::Error;
 
+        /// Reads four fixture bytes as a little endian integer.
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
             Ok(u32::from_le_bytes(bytes))
         }
 
+        /// Reads eight fixture bytes as a little endian integer.
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
             Ok(u64::from_le_bytes(bytes))
         }
 
+        /// Writes fixture entropy and optionally fails after a partial write.
         fn try_fill_bytes(&mut self, output: &mut [u8]) -> Result<(), Self::Error> {
             let randomness = decode_hex::<32>(RANDOMNESS);
             for byte in output {

@@ -1,3 +1,5 @@
+//! Errors from canonical cryptographic framing.
+
 use thiserror::Error;
 
 /// Failure to represent or complete a cryptographic transcript frame.

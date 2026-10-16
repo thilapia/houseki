@@ -1,3 +1,5 @@
+//! SHA3-512 hashing of streamed public transcripts.
+
 use sha3::{Digest, Sha3_512};
 
 /// Hashes streamed public transcript bytes and releases no digest on failure.
@@ -11,14 +13,17 @@ pub(crate) fn sha3_512<E>(
     Ok(hasher.finalize().into())
 }
 
+/// NIST SHA3-512 vectors and fallible streaming behavior.
 #[cfg(test)]
 mod tests {
     use super::sha3_512;
 
+    /// Formats public fixture bytes as lowercase hexadecimal.
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|byte| format!("{byte:02x}")).collect()
     }
 
+    /// Checks SHA3-512 against the NIST empty message vector.
     #[test]
     fn nist_empty_message_known_answer() {
         // NIST SHA3-512_Msg0.pdf, final "Hash val".
@@ -33,6 +38,7 @@ mod tests {
         );
     }
 
+    /// Checks the NIST vector across different emission boundaries.
     #[test]
     fn nist_1600_bit_known_answer_is_independent_of_stream_boundaries() {
         // NIST SHA3-512_1600.pdf, 200 bytes of A3, final "Hash val".
@@ -58,6 +64,7 @@ mod tests {
         }
     }
 
+    /// Checks that a failed emitter never returns a partial digest.
     #[test]
     fn emission_errors_release_no_digest_even_after_a_prefix() {
         assert_eq!(

@@ -1,3 +1,5 @@
+//! Errors from cryptographic suite resolution.
+
 use houseki_types::CryptoSuiteId;
 use thiserror::Error;
 

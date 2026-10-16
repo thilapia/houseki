@@ -1,3 +1,5 @@
+//! Errors from private key generation.
+
 use thiserror::Error;
 
 /// A failure to generate an ML-KEM-1024 private decapsulation key.

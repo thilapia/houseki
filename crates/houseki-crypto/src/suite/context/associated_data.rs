@@ -1,3 +1,5 @@
+//! Canonical associated data derived from a prepared output context.
+
 use houseki_types::EncodedMlKem1024Ciphertext;
 
 use super::NoteEncryptionContext;
@@ -9,28 +11,28 @@ use crate::{
 impl NoteEncryptionContext {
     /// Builds the canonical associated data for this output and operation.
     ///
-    /// Derives the recipient binding internally from the retained validated
-    /// key, network and suite. Under `houseki/v1/note/aad`, frames nine separate
-    /// parts in order: network, protocol version, suite identifier, core digest,
-    /// output index, note commitment, recipient binding, complete encoded KEM
-    /// ciphertext and nonce. Identifiers use four little endian bytes and the
-    /// output index uses eight. Network, digests and commitment use all 64 bytes.
-    /// Suite V1 produces 1949 bytes, including framing and the 12 byte nonce.
+    /// The `houseki/v1/note/aad` frame starts with the network, protocol version and suite,
+    /// followed by the core digest, output index and commitment.
     ///
-    /// The returned bytes are inputs to key derivation and authenticated
-    /// encryption. They contain a stable recipient binding: reconstruct them
-    /// locally during recovery rather than publishing them with the envelope.
-    /// This operation neither generates nor checks freshness of the supplied
-    /// encapsulation and nonce. Sealing must generate both freshly; recovery
-    /// must supply the values carried by the envelope and payload.
+    /// It then binds the recipient key through an internally derived hash before including the
+    /// complete KEM ciphertext and nonce.
     ///
-    /// Framing does not establish ciphertext authenticity, recipient identity
-    /// or note validity. No secret material or plaintext is consumed here.
+    /// Version and suite occupy four little endian bytes and the index eight, while the
+    /// network, digests and commitment each occupy 64 bytes.
+    ///
+    /// Together with framing and the 12 byte nonce, these fields produce 1949 bytes for V1.
+    ///
+    /// The stable recipient binding makes this local KDF and AEAD input, which recovery
+    /// reconstructs instead of publishing in the envelope.
+    ///
+    /// Sealing supplies fresh encapsulation and nonce values and recovery supplies their
+    /// transmitted values, but framing itself neither checks freshness nor authenticates
+    /// ciphertext.
     ///
     /// # Errors
     ///
-    /// Propagates [`CryptoFramingError`] from recipient binding or framing.
-    /// Returns no partial transcript on failure. All V1 parts have fixed sizes.
+    /// Propagates [`CryptoFramingError`] from recipient binding or framing without returning
+    /// partial output.
     pub fn associated_data(
         &self,
         encapsulation: &EncodedMlKem1024Ciphertext,
@@ -62,6 +64,7 @@ impl NoteEncryptionContext {
     }
 }
 
+/// Exact associated data layouts and complete input binding.
 #[cfg(test)]
 mod tests {
     use houseki_types::{
@@ -77,12 +80,14 @@ mod tests {
         RewardWithdrawalEncryptionCore,
     };
 
+    /// Constructs a canonical public key fixture with the supplied matrix seed.
     fn key(seed: u8) -> MlKem1024EncapsulationKey {
         let mut bytes = [0; 1568];
         bytes[1536..].fill(seed);
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
+    /// Builds a declared context fixture for this module's binding checks.
     fn context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes(std::array::from_fn(|i| u8::try_from(i).unwrap())),
@@ -94,6 +99,7 @@ mod tests {
         )
     }
 
+    /// Builds the payment fixture used by this module's codec checks.
     fn payment() -> PaymentEncryptionCore {
         let limits = PaymentCountLimits::new(2, 3).unwrap();
         PaymentEncryptionCore::new(
@@ -113,6 +119,7 @@ mod tests {
         .unwrap()
     }
 
+    /// Builds the withdrawal fixture used by this module's codec checks.
     fn withdrawal() -> RewardWithdrawalEncryptionCore {
         RewardWithdrawalEncryptionCore::new(
             context(),
@@ -126,8 +133,9 @@ mod tests {
         .unwrap()
     }
 
-    // Independent decoder: checks the exact label, count, field lengths,
-    // ordering and absence of trailing data without using the Frame encoder.
+    // Independent decoding checks the exact label, count, field lengths, ordering and absence
+    // of trailing data without using the Frame encoder.
+    /// Decodes and checks the exact associated data layout independently of its encoder.
     fn parts(bytes: &[u8]) -> Vec<&[u8]> {
         assert_eq!(&bytes[..25], b"\x13\x00houseki/v1/note/aad\x09\x00\x00\x00");
         let mut rest = &bytes[25..];
@@ -146,10 +154,12 @@ mod tests {
         fields
     }
 
+    /// Formats public fixture bytes as lowercase hexadecimal.
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|byte| format!("{byte:02x}")).collect()
     }
 
+    /// Checks every associated data field for both transaction kinds.
     #[test]
     fn complete_payment_and_withdrawal_transcripts_match_the_specified_codec() {
         let key = key(0);
@@ -157,9 +167,10 @@ mod tests {
             u8::try_from(i % 256).unwrap()
         }));
         let nonce = std::array::from_fn(|i| u8::try_from(i + 128).unwrap());
-        // Core hashes independently computed with Python hashlib.sha3_512
-        // and the documented core codec. E is the independent Poseidon2
-        // vector already pinned by the recipient-binding operation.
+        // Core hashes independently computed with Python hashlib.sha3_512 and the documented
+        // core codec.
+        // E is the independent Poseidon2 vector already pinned by the recipient-binding
+        // operation.
         for (prepared, index, commitment, digest) in [
             (
                 NoteEncryptionContext::for_payment(&payment(), 2, &key).unwrap(),
@@ -192,6 +203,7 @@ mod tests {
         }
     }
 
+    /// Checks that output position and recipient changes alter their framed fields.
     #[test]
     fn duplicate_output_positions_and_recipient_keys_have_distinct_transcripts() {
         let core = payment();
@@ -213,6 +225,7 @@ mod tests {
         }
     }
 
+    /// Checks that an unselected output remains bound by the core digest.
     #[test]
     fn changes_outside_the_selected_output_are_bound_through_the_core_digest() {
         let core = payment();
@@ -240,6 +253,7 @@ mod tests {
         }
     }
 
+    /// Checks complete operation byte preservation and recovery reconstruction.
     #[test]
     fn encapsulation_and_nonce_bytes_are_preserved_without_interpretation() {
         let prepared = NoteEncryptionContext::for_payment(&payment(), 0, &key(0)).unwrap();
@@ -257,11 +271,12 @@ mod tests {
         }
     }
 
+    /// Checks all output index bytes at the private codec boundary.
     #[test]
     fn output_index_encoding_preserves_all_eight_bytes() {
         let mut prepared = NoteEncryptionContext::for_payment(&payment(), 0, &key(0)).unwrap();
-        // Exercise the private codec boundary without allocating an enormous
-        // output list. Public construction still rejects absent indices.
+        // Exercise the private codec boundary without allocating an enormous output list.
+        // Public construction still rejects absent indices.
         prepared.output_index = 0x0102030405060708;
         let encoded = prepared
             .associated_data(&EncodedMlKem1024Ciphertext::from_bytes([0; 1568]), &[0; 12])

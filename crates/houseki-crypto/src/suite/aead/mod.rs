@@ -1,4 +1,4 @@
-//! Internal V1 AEAD operations; payload headers and randomness belong to the suite.
+//! Internal V1 authenticated encryption of bounded byte messages.
 
 mod error;
 
@@ -9,12 +9,18 @@ use aes_gcm_siv::{AeadInOut, Aes256GcmSiv, KeyInit};
 use zeroize::Zeroizing;
 
 impl NoteEncryptionMaterial {
-    /// Consumes one derived key to return ciphertext followed by its 16-byte tag.
+    /// Encrypts canonical padded plaintext using the derived key, nonce and associated data.
     ///
-    /// The caller supplies canonical padded note bytes and an active inclusive
-    /// plaintext limit. This is not the complete suite payload or envelope.
+    /// After checking the inclusive plaintext limit and algorithm and host bounds, sealing
+    /// copies the input into a zeroizing buffer and releases it only after encryption succeeds.
     ///
-    /// The nonce is the one retained during derivation, not a new caller input.
+    /// The returned bytes contain ciphertext followed by a 16 byte tag, leaving the suite
+    /// header and nonce encoding to the caller.
+    ///
+    /// # Errors
+    ///
+    /// Length violations return an error before allocation, while backend rejection returns
+    /// [`NoteAeadError::EncryptionFailed`] and clears the working buffer.
     pub(super) fn seal(
         self,
         plaintext: &[u8],
@@ -25,8 +31,8 @@ impl NoteEncryptionMaterial {
             self.associated_data.len(),
             max_plaintext_bytes,
         )?;
-        // Reserve once, before copying plaintext, so growing for the tag never
-        // reallocates a buffer that previously held plaintext.
+        // Reserve once, before copying plaintext, so growing for the tag never reallocates a
+        // buffer that previously held plaintext.
         let mut buffer = Zeroizing::new(Vec::with_capacity(length));
         buffer.extend_from_slice(plaintext);
         let cipher = Aes256GcmSiv::new((&*self.key).into());
@@ -43,14 +49,19 @@ impl NoteEncryptionMaterial {
         Ok(std::mem::take(&mut *buffer))
     }
 
-    /// Consumes one derived key and returns only authenticated plaintext.
+    /// Authenticates and decrypts ciphertext using the derived key, nonce and associated data.
     ///
-    /// Short inputs and tag failures share an error. Size limits are checked
-    /// before copying input; failed authentication drops the private guarded
-    /// buffer.
+    /// After checking the inclusive plaintext limit and algorithm and host bounds, opening
+    /// copies the ciphertext into a private zeroizing buffer that is dropped on authentication
+    /// failure.
     ///
-    /// The caller's ciphertext is never modified. Success does not establish
-    /// note validity, commitment agreement or transaction finality.
+    /// Success returns authenticated plaintext in that guarded storage without modifying the
+    /// caller's input, but does not establish note validity or transaction finality.
+    ///
+    /// # Errors
+    ///
+    /// Length violations return an error before allocation, while short inputs and failed tags
+    /// share [`NoteAeadError::AuthenticationFailed`].
     pub(super) fn open(
         self,
         ciphertext: &[u8],
@@ -77,7 +88,11 @@ impl NoteEncryptionMaterial {
     }
 }
 
-/// RFC 8452 per-message ceilings, not an aggregate security or usage budget.
+/// Checks the inclusive plaintext limit and returns its length with a 16 byte tag.
+///
+/// Rejects lengths beyond the RFC 8452 ceilings or host allocation range before allocation.
+///
+/// These per message bounds do not establish an aggregate usage or security budget.
 fn sealed_length(plaintext: usize, aad: usize, maximum: usize) -> Result<usize, NoteAeadError> {
     if plaintext > maximum {
         return Err(NoteAeadError::PlaintextTooLong {
@@ -97,10 +112,12 @@ fn sealed_length(plaintext: usize, aad: usize, maximum: usize) -> Result<usize, 
     Ok(length)
 }
 
+/// RFC vectors, authentication failures and message length boundaries.
 #[cfg(test)]
 mod tests {
     use super::{NoteAeadError, NoteEncryptionMaterial, Zeroizing, sealed_length};
 
+    /// Constructs RFC vector material with the supplied associated data.
     fn material(aad: &[u8]) -> NoteEncryptionMaterial {
         let mut key = [0; 32];
         key[0] = 1;
@@ -113,6 +130,7 @@ mod tests {
         }
     }
 
+    /// Decodes a hexadecimal AEAD conformance fixture.
     fn decode(hex: &str) -> Vec<u8> {
         hex.as_bytes()
             .as_chunks::<2>()
@@ -122,9 +140,10 @@ mod tests {
             .collect()
     }
 
+    /// Checks sealing and opening against AES-256 vectors from RFC 8452.
     #[test]
     fn seal_and_open_match_rfc8452_aes256_vectors() {
-        // RFC 8452 Appendix C.2: empty, partial and full blocks, with/without AAD.
+        // RFC 8452 Appendix C.2 covers empty, partial and full blocks with and without AAD.
         for (plaintext, aad, sealed) in [
             ("", "", "07f5f4169bbf55a8400cd47ea6fd400f"),
             (
@@ -157,6 +176,7 @@ mod tests {
         }
     }
 
+    /// Checks mutation, truncation and extension rejection without modifying input.
     #[test]
     fn every_ciphertext_and_tag_byte_is_authenticated() {
         let sealed = material(b"bound context")
@@ -188,6 +208,7 @@ mod tests {
         );
     }
 
+    /// Checks authentication failure after key, nonce or associated data changes.
     #[test]
     fn altered_key_nonce_and_associated_data_release_no_plaintext() {
         let sealed = material(b"context").seal(b"note", 4).unwrap();
@@ -213,6 +234,7 @@ mod tests {
         );
     }
 
+    /// Checks exact caller limits and authenticated empty plaintext.
     #[test]
     fn caller_limits_are_inclusive_and_empty_plaintext_is_authenticated() {
         assert_eq!(
@@ -236,6 +258,7 @@ mod tests {
         assert!(material(b"").open(&empty, 0).unwrap().is_empty());
     }
 
+    /// Checks algorithm and host limits using synthetic lengths.
     #[test]
     fn algorithm_and_host_length_limits_are_checked_without_large_allocations() {
         assert_eq!(sealed_length(0, 0, 0), Ok(16));

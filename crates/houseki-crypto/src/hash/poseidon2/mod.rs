@@ -1,6 +1,6 @@
 //! Houseki's fixed Poseidon2 sponge for public transcript inputs.
 //!
-//! Secret-input timing and erasure policy is not established by this adapter.
+//! Secret input timing and erasure policy is not established by this adapter.
 
 mod encoding;
 mod profile;
@@ -15,10 +15,14 @@ use crate::{
 use encoding::{BytePacker, extract_digest};
 use profile::{OUTPUT_ELEMENTS, RATE, WIDTH, permute};
 
-/// Hashes one registered domain and canonical public parts without buffering
-/// the transcript. Measures the actual frame first, then streams the same
-/// immutable parts through the length-prefixed byte packer and additive sponge.
-/// A measurement or framing error releases no digest.
+/// Hashes canonical public parts under a registered domain.
+///
+/// Measures the common frame, then streams its u64 byte length and contents through packing and
+/// the additive sponge.
+///
+/// The same immutable parts supply both passes.
+///
+/// Returns a framing error without a digest if a count or length is unrepresentable.
 pub(crate) fn poseidon2(domain: Domain, parts: &[&[u8]]) -> Result<[u8; 64], CryptoFramingError> {
     let mut length = Ok(0_u64);
     emit_frame(domain, parts, &mut |chunk| {
@@ -39,6 +43,9 @@ pub(crate) fn poseidon2(domain: Domain, parts: &[&[u8]]) -> Result<[u8; 64], Cry
     Ok(sponge.finish())
 }
 
+/// Streams the registered domain and ordered parts through the common codec.
+///
+/// Returns an error if part counts or lengths cannot be represented.
 fn emit_frame(
     domain: Domain,
     parts: &[&[u8]],
@@ -52,6 +59,7 @@ fn emit_frame(
     frame.finish()
 }
 
+/// Accumulates one chunk length or rejects overflow of the u64 frame prefix.
 fn add_frame_length(length: u64, chunk_length: usize) -> Result<u64, CryptoFramingError> {
     let chunk_length = u64::try_from(chunk_length).map_err(|_| CryptoFramingError::FrameTooLong)?;
     length
@@ -59,12 +67,17 @@ fn add_frame_length(length: u64, chunk_length: usize) -> Result<u64, CryptoFrami
         .ok_or(CryptoFramingError::FrameTooLong)
 }
 
+/// Fresh additive sponge state for one public transcript.
 struct Sponge {
+    /// Permutation state containing rate and capacity elements.
     state: [Goldilocks; WIDTH],
+
+    /// Rate elements occupied since the last permutation.
     used: usize,
 }
 
 impl Sponge {
+    /// Adds a packed word or padding value and permutes each completed rate block.
     fn absorb(&mut self, word: u64) {
         // Only seven-byte words and the field padding values 0 and 1 enter.
         debug_assert!(word < (1 << 56));
@@ -76,6 +89,7 @@ impl Sponge {
         }
     }
 
+    /// Appends mandatory field padding, squeezes eleven elements and extracts the digest.
     fn finish(mut self) -> [u8; 64] {
         // Always append one, including at an exact rate boundary.
         self.absorb(1);
@@ -90,17 +104,20 @@ impl Sponge {
     }
 }
 
+/// Complete sponge vectors, domain separation and frame length limits.
 #[cfg(test)]
 mod tests {
     use super::{CryptoFramingError, Domain, add_frame_length, poseidon2};
 
+    /// Checks complete sponge vectors around packing and padding boundaries.
     #[test]
     fn sponge_matches_independent_vectors_at_packing_and_padding_boundaries() {
-        // Independent Python field arithmetic using the pinned upstream
-        // constants, checked against its permutation KAT first. Includes the
-        // u64 frame-length prefix, seven-byte words, mandatory field padding,
-        // two squeeze reads and base-p extraction. Length 48 gives exactly
-        // fourteen input words and requires a complete extra padding block.
+        // Independent Python field arithmetic using the pinned upstream constants, checked
+        // against its permutation KAT first.
+        // Includes the u64 frame-length prefix, seven-byte words, mandatory field padding, two
+        // squeeze reads and base-p extraction.
+        // Length 48 gives exactly fourteen input words and requires a complete extra padding
+        // block.
         for (length, expected) in [
             (
                 0,
@@ -138,6 +155,7 @@ mod tests {
         }
     }
 
+    /// Checks separation of domains, ordered parts and trailing zero bytes.
     #[test]
     fn domain_and_framed_part_boundaries_remain_distinct() {
         let parts: &[&[&[u8]]] = &[
@@ -161,6 +179,7 @@ mod tests {
         }
     }
 
+    /// Checks frame length overflow using synthetic counts.
     #[test]
     fn complete_frame_length_is_checked_without_allocating_large_inputs() {
         assert_eq!(add_frame_length(u64::MAX, 0), Ok(u64::MAX));

@@ -11,31 +11,37 @@ use houseki_types::{
 
 use super::CryptoSuite;
 
-/// A payment's declared fields available before its outputs are encrypted.
+/// A payment's declared fields before output encryption.
 ///
-/// Each output is a note commitment followed by its recognized cryptographic
-/// suite. The list preserves order and multiplicity. It contains no encrypted
-/// envelopes, recipient keys, plaintext openings, proofs or supplied core digests.
-/// The public fee remains separate from the ordinary note outputs.
+/// Each output pairs a note commitment with a recognized suite, preserving order and
+/// multiplicity while keeping the public fee separate.
 ///
-/// Construction requires at least one output and rechecks both actual counts
-/// against the supplied limits. [`PaymentInputs`] already requires nonempty,
-/// distinct input nullifiers. Borrowing exposes no mutable fields or lists.
+/// Construction requires at least one output and checks both actual counts against the supplied
+/// limits, building on [`PaymentInputs`]' requirement for nonempty, distinct nullifiers.
 ///
-/// Callers must supply the active limits and bound allocations before building
-/// the lists. This does not establish protocol or suite activation, anchor
-/// eligibility, conservation, note validity or authority to spend. A change
-/// in applicable limits requires rechecking the derived [`Self::shape`].
+/// The caller must bound allocations before building the lists and supply active limits,
+/// rechecking [`Self::shape`] if those limits change.
 ///
-/// [`Self::digest`] derives a native encryption core digest from these typed
-/// fields. It does not construct a per-output encryption context. Final body
-/// assembly must preserve these fields and output order,
-/// and match each encrypted payload's suite to its corresponding entry.
+/// These structural checks do not establish anchor eligibility, value conservation, note
+/// validity or spending authority.
+///
+/// [`Self::digest`] binds the declared fields without encrypted envelopes, recipient keys,
+/// openings or proofs.
+///
+/// To preserve that binding, final body assembly must retain the same fields and output order
+/// and match each payload suite to its entry.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentEncryptionCore {
+    /// Declared context shared by every payment output.
     context: TransactionContext,
+
+    /// Validated input list and its declared anchor.
     inputs: PaymentInputs,
+
+    /// Ordered commitments and recognized suites, preserving duplicate commitments.
     outputs: Vec<(NoteCommitment, CryptoSuite)>,
+
+    /// Declared fee in atoms, separate from ordinary outputs.
     public_fee: Amount,
 }
 
@@ -44,9 +50,8 @@ impl PaymentEncryptionCore {
     ///
     /// # Errors
     ///
-    /// Rejects an empty output list first with
-    /// [`PaymentEncryptionCoreError::EmptyOutputs`]. Then checks input and
-    /// output maxima in that order, returning
+    /// Rejects an empty output list first with [`PaymentEncryptionCoreError::EmptyOutputs`].
+    /// Then checks input and output maxima in that order, returning
     /// [`PaymentEncryptionCoreError::CountLimitExceeded`] on failure.
     pub fn new(
         context: TransactionContext,
@@ -114,6 +119,7 @@ impl PaymentEncryptionCore {
     }
 }
 
+/// Payment core retention and count validation order.
 #[cfg(test)]
 mod tests {
     use houseki_types::{
@@ -127,6 +133,7 @@ mod tests {
         TransactionKind,
     };
 
+    /// Builds a declared context fixture for this module's binding checks.
     fn context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes([1; 64]),
@@ -138,6 +145,7 @@ mod tests {
         )
     }
 
+    /// Builds the ordered input fixture and its anchor.
     fn inputs() -> PaymentInputs {
         PaymentInputs::new(
             NoteRoot::from_bytes([9; 64]),
@@ -150,12 +158,14 @@ mod tests {
         .unwrap()
     }
 
+    /// Builds ordered output fixtures including a duplicate commitment.
     fn outputs() -> Vec<(NoteCommitment, CryptoSuite)> {
         [2, 1, 2]
             .map(|byte| (NoteCommitment::from_bytes([byte; 64]), CryptoSuite::V1))
             .to_vec()
     }
 
+    /// Checks retention of all payment fields and duplicate output positions.
     #[test]
     fn construction_preserves_complete_inputs_output_order_and_multiplicity() {
         let context = context();
@@ -180,6 +190,7 @@ mod tests {
         assert_eq!(core.into_parts(), (context, inputs, outputs, fee));
     }
 
+    /// Checks empty output rejection takes precedence over count limits.
     #[test]
     fn empty_outputs_are_rejected_before_count_limits() {
         for maximum_inputs in [1, 2] {
@@ -198,6 +209,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction revalidates input limits first.
     #[test]
     fn input_limits_are_rechecked_before_output_limits() {
         for maximum_outputs in [1, 3] {
@@ -221,6 +233,7 @@ mod tests {
         }
     }
 
+    /// Checks output count rejection after inputs satisfy their limit.
     #[test]
     fn output_limits_are_enforced_after_inputs_fit() {
         let result = PaymentEncryptionCore::new(
@@ -242,6 +255,7 @@ mod tests {
         ));
     }
 
+    /// Checks the minimum output count and separate fee treatment.
     #[test]
     fn one_output_is_sufficient_and_the_fee_never_counts_as_an_output() {
         for atoms in [0, 1, Amount::MAX_ATOMS] {

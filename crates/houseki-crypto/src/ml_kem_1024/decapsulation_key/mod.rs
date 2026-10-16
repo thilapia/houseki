@@ -13,16 +13,21 @@ use std::fmt;
 
 /// An ML-KEM-1024 private decapsulation key and its matching public key.
 ///
-/// Generate a new key with [`Self::generate`] or restore an existing secret
-/// seed with [`Self::from_seed`]. Debug output is redacted. This type does not
-/// expose private key bytes or implement cloning, equality or serialization.
+/// Create a fresh key with [`Self::generate`] or restore an existing secret seed with
+/// [`Self::from_seed`].
 ///
-/// The backend zeroizes its stored private material when dropped. Temporary
-/// generation seed storage is also zeroized on success, error or unwinding.
+/// The resulting key keeps private bytes internal, redacts debug output and provides no
+/// cloning, equality or serialization.
 ///
-/// These measures cannot erase every copy made by the compiler or operating
-/// system, and do not clear a caller's imported seed.
-pub struct MlKem1024DecapsulationKey(DecapsulationKey);
+/// The backend zeroizes stored private material on drop, and temporary generation seeds are
+/// cleared on success, error or unwinding.
+///
+/// This cleanup excludes the caller's imported seed and cannot erase every copy made by the
+/// compiler or operating system.
+pub struct MlKem1024DecapsulationKey(
+    /// Backend private key with its matching public key and drop cleanup.
+    DecapsulationKey,
+);
 
 impl MlKem1024DecapsulationKey {
     /// The number of secret seed bytes, comprising 32 bytes of d followed by 32 of z.
@@ -32,22 +37,24 @@ impl MlKem1024DecapsulationKey {
     ///
     /// # Errors
     ///
-    /// Returns [`MlKem1024DecapsulationKeyError::RandomnessUnavailable`] if the
-    /// source cannot supply all 64 seed bytes. No key is returned on failure.
+    /// Returns [`MlKem1024DecapsulationKeyError::RandomnessUnavailable`] if the source cannot
+    /// supply all 64 seed bytes.
+    /// No key is returned on failure.
     pub fn generate() -> Result<Self, MlKem1024DecapsulationKeyError> {
         Self::generate_with_rng(&mut SysRng)
     }
 
     /// Restores a key from the secret seed format in FIPS 203 Section 3.3.
     ///
-    /// The seed is d followed by z, each originally sampled independently as
-    /// 32 uniformly random bytes with a 256 bit security strength. It is not a
-    /// password, public matrix seed or expanded private key encoding.
+    /// The seed consists of d followed by z, each originally sampled independently as 32
+    /// uniformly random bytes with a 256 bit security strength.
+    /// Because every 64 byte value can be expanded, import cannot establish entropy or
+    /// provenance and must not be used with a password, public matrix seed or expanded key
+    /// encoding.
+    /// Use [`Self::generate`] to obtain a fresh key with the required randomness.
     ///
-    /// Every 64 byte value can be expanded, so this method cannot establish
-    /// the seed's entropy or provenance. Use [`Self::generate`] for fresh keys.
-    /// The caller retains ownership of the seed and responsibility for clearing
-    /// its storage. No reference to that storage is retained by the key.
+    /// The key retains no reference to the borrowed seed, whose storage remains the caller's
+    /// responsibility to clear.
     pub fn from_seed(seed: &[u8; Self::SEED_LENGTH]) -> Self {
         Self(DecapsulationKey::new(seed.into()))
     }
@@ -57,6 +64,9 @@ impl MlKem1024DecapsulationKey {
         MlKem1024EncapsulationKey::from_backend(self.0.encapsulation_key().clone())
     }
 
+    /// Generates a key from a complete guarded seed supplied by the given source.
+    ///
+    /// Returns a randomness error without a key if any seed byte cannot be obtained.
     fn generate_with_rng<R: TryCryptoRng + ?Sized>(
         rng: &mut R,
     ) -> Result<Self, MlKem1024DecapsulationKeyError> {
@@ -67,11 +77,13 @@ impl MlKem1024DecapsulationKey {
 }
 
 impl fmt::Debug for MlKem1024DecapsulationKey {
+    /// Formats a fixed redacted label without inspecting private key bytes.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("MlKem1024DecapsulationKey([REDACTED])")
     }
 }
 
+/// Seed conformance, entropy failures and private key redaction.
 #[cfg(test)]
 mod tests {
     use std::fmt;
@@ -83,8 +95,12 @@ mod tests {
 
     // Public NIST ACVP fixture, ML-KEM-keyGen-FIPS203, tgId 3, tcId 51.
     // https://github.com/usnistgov/ACVP-Server/tree/15c0f3deeefbfa8cb6cd32a99e1ca3b738c66bf0/gen-val/json-files/ML-KEM-keyGen-FIPS203
-    // Seed order is d || z. The expanded key is used only as a test oracle.
+    // Seed order is d || z.
+    // The expanded key is used only as a test oracle.
+    /// NIST private seed encoded as d followed by z.
     const SEED: &str = "f3a706faf090c03db506863ab0b20bd8a1627956318e88c67eb875e8e726600935d2bc43dd1cc879f765bf2a0c5e297889dde910e57e2bb0eae417b90ab7a275";
+
+    /// Complete NIST expanded private key for the seed fixture.
     const EXPANDED_KEY: &str = concat!(
         "6cbbb491d7b3a3439f53c9027bd727a0e1c78004b4cdb66760e50f1bf97fff0139f82862f1f3178a077b6af77735cb80",
         "2e91316bc207b9f1485ff7a868891e003bb9c6558be6052c0826af1cb5836b94c7d5d714eefc7cfd983e9884b7134849",
@@ -154,11 +170,13 @@ mod tests {
         "36f45cd20c5748cf3ac891a4c260449635d2bc43dd1cc879f765bf2a0c5e297889dde910e57e2bb0eae417b90ab7a275",
     );
 
+    /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
+    /// Compares the complete generated key with its published NIST fixture.
     fn assert_matches_nist_key(key: &MlKem1024DecapsulationKey) {
         // The public API intentionally offers no private key export.
         #[allow(deprecated)]
@@ -174,6 +192,7 @@ mod tests {
         );
     }
 
+    /// Checks the complete expanded key against the NIST seed vector.
     #[test]
     fn seed_import_matches_the_complete_nist_key_generation_vector() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(SEED));
@@ -181,6 +200,7 @@ mod tests {
         assert_matches_nist_key(&key);
     }
 
+    /// Checks consumption of the full seed in its prescribed order.
     #[test]
     fn generation_uses_all_random_seed_bytes_in_the_prescribed_order() {
         let mut rng = FixtureRng {
@@ -193,6 +213,7 @@ mod tests {
         assert_matches_nist_key(&key);
     }
 
+    /// Checks key generation failure after a partial entropy write.
     #[test]
     fn generation_returns_an_error_even_after_randomness_was_partially_written() {
         for fail_after in [0, 32, 63] {
@@ -208,6 +229,7 @@ mod tests {
         }
     }
 
+    /// Checks fresh system generation produces distinct validated public keys.
     #[test]
     fn system_generation_produces_distinct_valid_public_keys() {
         let first = MlKem1024DecapsulationKey::generate()
@@ -226,6 +248,7 @@ mod tests {
         }
     }
 
+    /// Checks redaction in both private key debug formats.
     #[test]
     fn diagnostics_redact_private_material_in_both_debug_formats() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(SEED));
@@ -234,19 +257,26 @@ mod tests {
         assert_eq!(format!("{key:#?}"), "MlKem1024DecapsulationKey([REDACTED])");
     }
 
+    /// Deterministic entropy source with injectable partial failure.
     #[derive(Debug)]
     struct FixtureRng {
+        /// Offset of the next byte in the deterministic entropy fixture.
         position: usize,
+
+        /// Optional byte count at which the source reports failure.
         fail_after: Option<usize>,
     }
 
-    // Deterministic and deliberately insecure. This implementation is test-only.
+    // Deterministic and deliberately insecure.
+    // This implementation is test-only.
     impl TryCryptoRng for FixtureRng {}
 
+    /// Synthetic error from the fixture entropy source.
     #[derive(Debug)]
     struct EntropyFailure;
 
     impl fmt::Display for EntropyFailure {
+        /// Formats the synthetic entropy failure for error propagation tests.
         fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
             formatter.write_str("fixture entropy exhausted")
         }
@@ -255,20 +285,24 @@ mod tests {
     impl std::error::Error for EntropyFailure {}
 
     impl TryRng for FixtureRng {
+        /// Error returned by the fixture entropy source.
         type Error = EntropyFailure;
 
+        /// Reads four fixture bytes as a little endian integer.
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
             Ok(u32::from_le_bytes(bytes))
         }
 
+        /// Reads eight fixture bytes as a little endian integer.
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
             Ok(u64::from_le_bytes(bytes))
         }
 
+        /// Writes fixture entropy and optionally fails after a partial write.
         fn try_fill_bytes(&mut self, output: &mut [u8]) -> Result<(), Self::Error> {
             let seed = decode_hex::<64>(SEED);
             for byte in output {

@@ -29,29 +29,29 @@ use houseki_types::CryptoSuiteId;
 
 /// A recognized Houseki note encryption profile.
 ///
-/// Resolve an untrusted [`CryptoSuiteId`] with [`Self::try_from`]. Each suite
-/// names one KEM, KDF and AEAD composition. Callers cannot select those
-/// algorithms independently.
+/// [`Self::try_from`] resolves the encoded identifier to a fixed KEM, KDF and AEAD composition,
+/// and [`Self::id`] returns that identifier for addresses and payloads.
 ///
-/// Recognition does not establish that a suite is allowed by the active
-/// protocol or matches an address or payload. Consumers must check those
-/// relationships and validate the cryptographic material separately.
+/// Recognizing a profile does not establish protocol activation or agreement with either
+/// representation.
 ///
-/// This type provides identifier resolution and recipient key binding. Context
-/// preparation and associated data belong to [`NoteEncryptionContext`].
-/// Payload encoding and authenticated encryption remain separate work. Its
-/// Rust discriminant is not a wire encoding.
+/// The suite provides recipient binding, while typed cores and [`NoteEncryptionContext`]
+/// prepare its transaction inputs.
+///
+/// Internal KDF and AEAD operations consume those inputs, with complete envelope operations
+/// still pending.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptoSuite {
     /// The first candidate Houseki note encryption profile, numeric ID 1.
     ///
-    /// Uses ML-KEM-1024, HKDF with HMAC-SHA-512 and AES-256-GCM-SIV with
-    /// a 32 byte key, 12 byte random nonce and 16 byte authentication tag.
+    /// This profile combines ML-KEM-1024, HKDF with HMAC-SHA-512 and AES-256-GCM-SIV using a 32
+    /// byte key, 12 byte random nonce and 16 byte authentication tag.
     ///
-    /// Core digest framing, recipient key binding and associated data are
-    /// implemented. Complete suite composition remains pending review and
-    /// implementation. This identifies a Houseki profile, not an HPKE suite
-    /// or an address, note or protocol version.
+    /// Its identifier selects that Houseki composition rather than an HPKE suite or an address,
+    /// note or protocol version.
+    ///
+    /// Core digests, recipient binding, associated data, KDF and AEAD are implemented, while
+    /// complete envelope operations remain pending.
     V1,
 }
 
@@ -65,14 +65,16 @@ impl CryptoSuite {
 }
 
 impl TryFrom<CryptoSuiteId> for CryptoSuite {
+    /// Error returned when this conversion fails.
     type Error = CryptoSuiteError;
 
     /// Resolves a recognized suite without selecting a fallback.
     ///
     /// # Errors
     ///
-    /// Returns [`CryptoSuiteError::Unsupported`] for every unrecognized
-    /// identifier, including zero. This does not check protocol activation.
+    /// Returns [`CryptoSuiteError::Unsupported`] for every unrecognized identifier, including
+    /// zero.
+    /// This does not check protocol activation.
     fn try_from(id: CryptoSuiteId) -> Result<Self, Self::Error> {
         match id.value() {
             1 => Ok(Self::V1),
@@ -81,12 +83,14 @@ impl TryFrom<CryptoSuiteId> for CryptoSuite {
     }
 }
 
+/// Suite identifier recognition and unsupported value rejection.
 #[cfg(test)]
 mod tests {
     use houseki_types::CryptoSuiteId;
 
     use super::{CryptoSuite, CryptoSuiteError};
 
+    /// Checks the exact numeric assignment of the fixed V1 suite.
     #[test]
     fn suite_one_resolves_to_the_fixed_v1_profile() {
         assert_eq!(CryptoSuite::V1.id(), CryptoSuiteId::new(1));
@@ -96,6 +100,7 @@ mod tests {
         );
     }
 
+    /// Checks unsupported identifiers without narrowing or fallback.
     #[test]
     fn unknown_suites_are_rejected_with_the_complete_identifier() {
         // Values ending in 1 also catch narrowing to an 8 or 16 bit identifier.
