@@ -64,11 +64,15 @@
 //!
 //! [`EncodedMlKem1024Ciphertext`] holds the encapsulation bytes carried by an
 //! encrypted note envelope, leaving decapsulation and note recovery to consumers.
+//!
+//! [`ExecutionOutcome`] records acceptance or rejection by the state rules for
+//! an eligible occurrence in the canonical execution order.
 
 mod account;
 mod address;
 mod amount;
 mod context;
+mod execution;
 mod note;
 mod transaction;
 
@@ -80,6 +84,7 @@ pub use context::{
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
     ValidityCheckpointRangeError,
 };
+pub use execution::ExecutionOutcome;
 pub use note::{EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError};
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,
