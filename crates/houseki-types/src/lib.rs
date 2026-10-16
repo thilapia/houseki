@@ -119,6 +119,9 @@
 //! [`VertexId`] stores a 64 byte SHA3-512 DAG vertex identifier derived outside
 //! proofs, leaving vertex encoding and authentication to consensus consumers.
 //!
+//! [`ValidatorId`] stores a Poseidon2 digest of immutable registration data,
+//! preserving validator identity across consensus signing key changes.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -173,7 +176,7 @@ pub use amount::{Amount, AmountError};
 pub use checkpoint::{
     AvailabilityStatus, CheckpointId, CheckpointIdError, ExecutionProofStatus, FinalityStatus,
 };
-pub use consensus::{VertexId, VertexIdError};
+pub use consensus::{ValidatorId, ValidatorIdError, VertexId, VertexIdError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
