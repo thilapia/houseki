@@ -10,6 +10,7 @@ publish.workspace = true
 houseki-types = { workspace = true }
 
 # cryptography
+crypto-bigint.workspace = true
 getrandom.workspace = true
 aes.workspace = true
 aes-gcm-siv.workspace = true

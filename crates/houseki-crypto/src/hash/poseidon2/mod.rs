@@ -3,6 +3,11 @@
 //! Secret input timing and erasure policy is not established by this adapter.
 
 mod encoding;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "The guarded permutation is a separate increment.")
+)]
+mod field;
 mod profile;
 
 use p3_field::PrimeCharacteristicRing;
