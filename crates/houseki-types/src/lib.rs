@@ -74,6 +74,9 @@
 //! [`RewardWithdrawalBody`] groups a declared reward withdrawal with a positive
 //! public amount, one ordinary note output and a separate public fee.
 //!
+//! [`RewardWithdrawalEnvelope`] groups a withdrawal body, encoded output proof
+//! and ML-DSA-87 signature without establishing validity or authorization.
+//!
 //! [`TransactionKind`] distinguishes private payments from public reward
 //! withdrawals so that each operation can use its own body and validation rules.
 //!
@@ -163,6 +166,6 @@ pub use transaction::{
     EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
     PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
     PaymentOutputsError, PaymentShape, PaymentShapeError, RewardWithdrawalBody,
-    RewardWithdrawalBodyError, TransactionContext, TransactionId, TransactionIdError,
-    TransactionKind,
+    RewardWithdrawalBodyError, RewardWithdrawalEnvelope, TransactionContext, TransactionId,
+    TransactionIdError, TransactionKind,
 };
