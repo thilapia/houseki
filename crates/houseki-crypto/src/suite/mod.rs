@@ -4,6 +4,7 @@ mod context;
 mod core_digest;
 mod error;
 mod payment_encryption_core;
+mod recipient_key_binding;
 mod reward_withdrawal_encryption_core;
 
 pub use context::{NoteEncryptionContext, NoteEncryptionContextError};
@@ -25,7 +26,7 @@ use houseki_types::CryptoSuiteId;
 /// protocol or matches an address or payload. Consumers must check those
 /// relationships and validate the cryptographic material separately.
 ///
-/// This type currently provides identifier resolution only. Context
+/// This type provides identifier resolution and recipient key binding. Context
 /// preparation belongs to [`NoteEncryptionContext`]. Payload encoding and
 /// authenticated encryption remain separate work. Its Rust discriminant is
 /// not a wire encoding.
@@ -36,8 +37,8 @@ pub enum CryptoSuite {
     /// Uses ML-KEM-1024, HKDF with HMAC-SHA-512 and AES-256-GCM-SIV with
     /// a 32 byte key, 12 byte random nonce and 16 byte authentication tag.
     ///
-    /// Core digest framing is implemented. Recipient binding, associated
-    /// data and complete suite composition remain pending review and
+    /// Core digest framing and public recipient key binding are implemented.
+    /// Associated data and complete suite composition remain pending review and
     /// implementation. This identifies a Houseki profile, not an HPKE suite
     /// or an address, note or protocol version.
     V1,

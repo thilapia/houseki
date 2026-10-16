@@ -21,10 +21,11 @@ use crate::MlKem1024EncapsulationKey;
 /// context. Final body assembly must preserve the core fields and output order
 /// and match each payload's suite to its corresponding output.
 ///
-/// This prepares inputs only. It does not yet derive the Poseidon2 recipient
-/// binding, frame associated data, encapsulate or encrypt. Later suite
-/// operations must derive that binding from the retained key, network and
-/// suite and bind the selected output, core digest, encapsulation and nonce.
+/// Construction prepares inputs only. [`CryptoSuite::recipient_key_binding`]
+/// separately derives the Poseidon2 binding from the retained key, network and
+/// suite. This type does not frame associated data, encapsulate or encrypt.
+/// Later suite operations must bind that result together with the selected
+/// output, core digest, encapsulation and nonce.
 /// The recipient key is not included in the core digest itself.
 ///
 /// Construction does not establish recipient identity, agreement with a note

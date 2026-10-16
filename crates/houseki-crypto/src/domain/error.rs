@@ -11,6 +11,10 @@ pub enum CryptoFramingError {
     #[error("cryptographic frame part is too long")]
     PartTooLong,
 
+    /// The complete framed byte length cannot be represented as a `u64`.
+    #[error("cryptographic frame is too long for its length prefix")]
+    FrameTooLong,
+
     /// The encoder emitted a different number of parts than it declared.
     #[error("cryptographic frame part count does not match its declaration")]
     PartCountMismatch,
