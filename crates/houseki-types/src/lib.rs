@@ -80,6 +80,9 @@
 //! [`EncodedMlKem1024Ciphertext`] holds the encapsulation bytes carried by an
 //! encrypted note envelope, leaving decapsulation and note recovery to consumers.
 //!
+//! [`EncryptedNoteEnvelope`] pairs an ML-KEM-1024 encapsulation with an opaque
+//! payload checked against a supplied byte limit, leaving its layout to the suite.
+//!
 //! [`ExecutionOutcome`] records acceptance or rejection by the state rules for
 //! an eligible occurrence in the canonical execution order.
 //!
@@ -115,8 +118,9 @@ pub use context::{
 };
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
 pub use note::{
-    EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NoteCommitment,
-    NoteCommitmentError, NotePosition, NoteRoot, NoteRootError, Nullifier, NullifierError,
+    EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, EncryptedNoteEnvelope,
+    EncryptedNoteEnvelopeError, NoteCommitment, NoteCommitmentError, NotePosition, NoteRoot,
+    NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentShape,
