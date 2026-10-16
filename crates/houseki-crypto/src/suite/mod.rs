@@ -5,6 +5,7 @@ mod context;
 mod core_digest;
 mod error;
 mod key_derivation;
+mod opening;
 mod payload;
 mod payment_encryption_core;
 mod recipient_key_binding;
@@ -13,6 +14,7 @@ mod sealing;
 
 pub use context::{NoteEncryptionContext, NoteEncryptionContextError};
 pub use error::CryptoSuiteError;
+pub use opening::NoteDecryptionError;
 pub use payload::NotePayloadError;
 pub use payment_encryption_core::{PaymentEncryptionCore, PaymentEncryptionCoreError};
 pub use reward_withdrawal_encryption_core::{
@@ -35,6 +37,9 @@ use houseki_types::CryptoSuiteId;
 ///
 /// [`NoteEncryptionContext::seal`] combines these inputs with fresh randomness to produce a
 /// complete encrypted envelope.
+///
+/// [`NoteEncryptionContext::open`] recovers its bytes after matching the recipient key and
+/// authenticating the payload under the reconstructed context.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptoSuite {
     /// The first candidate Houseki note encryption profile, numeric ID 1.

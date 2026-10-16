@@ -14,7 +14,8 @@ pub use ml_kem_1024::{
     MlKem1024EncapsulationKey, MlKem1024EncapsulationKeyError, MlKem1024SharedSecret,
 };
 pub use suite::{
-    CryptoSuite, CryptoSuiteError, NoteEncryptionContext, NoteEncryptionContextError,
-    NoteEncryptionError, NotePayloadError, PaymentEncryptionCore, PaymentEncryptionCoreError,
-    RewardWithdrawalEncryptionCore, RewardWithdrawalEncryptionCoreError,
+    CryptoSuite, CryptoSuiteError, NoteDecryptionError, NoteEncryptionContext,
+    NoteEncryptionContextError, NoteEncryptionError, NotePayloadError, PaymentEncryptionCore,
+    PaymentEncryptionCoreError, RewardWithdrawalEncryptionCore,
+    RewardWithdrawalEncryptionCoreError,
 };

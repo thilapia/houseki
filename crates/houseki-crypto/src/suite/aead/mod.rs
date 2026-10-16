@@ -62,10 +62,6 @@ impl NoteEncryptionMaterial {
     ///
     /// Length violations return an error before allocation, while short inputs and failed tags
     /// share [`NoteAeadError::AuthenticationFailed`].
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "awaiting complete envelope opening")
-    )]
     pub(super) fn open(
         self,
         ciphertext: &[u8],
