@@ -53,6 +53,9 @@
 //! [`OwnershipCommitment`] stores a digest of recipient ownership information,
 //! leaving its construction, opening relation and key binding to the profile.
 //!
+//! [`RecipientDescriptor`] groups address context, an ownership commitment and
+//! the full public encapsulation key without validating recipient information.
+//!
 //! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
 //! and recipients use for note encryption and recovery.
 //!
@@ -156,7 +159,7 @@ pub use account::{
 };
 pub use address::{
     AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError, OwnershipCommitment,
-    OwnershipCommitmentError,
+    OwnershipCommitmentError, RecipientDescriptor,
 };
 pub use amount::{Amount, AmountError};
 pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
