@@ -41,6 +41,9 @@
 //! [`Nullifier`] stores the public spend marker used to reject repeated spending
 //! of the same note instance, without deriving it or checking the spent set.
 //!
+//! [`NoteRoot`] stores a note tree root used by membership proofs without
+//! establishing finality or eligibility as a spending anchor.
+//!
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
 //!
@@ -110,7 +113,7 @@ pub use context::{
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
 pub use note::{
     EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, NoteCommitment,
-    NoteCommitmentError, NotePosition, Nullifier, NullifierError,
+    NoteCommitmentError, NotePosition, NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
     PaymentCountLimits, PaymentCountLimitsError, PaymentShape, PaymentShapeError,

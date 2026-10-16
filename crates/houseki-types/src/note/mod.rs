@@ -4,6 +4,7 @@ mod commitment;
 mod encoded_ml_kem_1024_ciphertext;
 mod nullifier;
 mod position;
+mod root;
 
 pub use commitment::{NoteCommitment, NoteCommitmentError};
 pub use encoded_ml_kem_1024_ciphertext::{
@@ -11,3 +12,4 @@ pub use encoded_ml_kem_1024_ciphertext::{
 };
 pub use nullifier::{Nullifier, NullifierError};
 pub use position::NotePosition;
+pub use root::{NoteRoot, NoteRootError};
