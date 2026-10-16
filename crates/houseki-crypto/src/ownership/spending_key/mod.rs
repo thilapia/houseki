@@ -1,12 +1,5 @@
 //! Protected spending key material and internal commitment derivation.
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Ownership commitment composition is a separate increment."
-    )
-)]
 mod commitment;
 mod error;
 

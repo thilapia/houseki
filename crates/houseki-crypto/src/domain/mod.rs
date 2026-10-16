@@ -15,6 +15,9 @@ pub(crate) enum Domain {
     /// Binds a nullifier secret to its network for ownership commitment composition.
     NullifierKeyCommitment,
 
+    /// Binds ordered spending and nullifier key commitments to their network.
+    OwnershipCommitment,
+
     /// Binds a typed transaction core before output encryption.
     NoteEncryptionCore,
 
@@ -37,6 +40,7 @@ impl Domain {
         match self {
             Self::SpendingKeyCommitment => b"houseki/v1/ownership/spend-key",
             Self::NullifierKeyCommitment => b"houseki/v1/ownership/nullifier-key",
+            Self::OwnershipCommitment => b"houseki/v1/ownership/commitment",
             Self::NoteEncryptionCore => b"houseki/v1/note/encryption-core",
             Self::RecipientKemKey => b"houseki/v1/recipient/kem-key",
             Self::NoteAssociatedData => b"houseki/v1/note/aad",
