@@ -1,5 +1,6 @@
 //! Immutable inputs for one output's later authenticated encryption.
 
+mod associated_data;
 mod error;
 
 pub use error::NoteEncryptionContextError;
@@ -21,11 +22,10 @@ use crate::MlKem1024EncapsulationKey;
 /// context. Final body assembly must preserve the core fields and output order
 /// and match each payload's suite to its corresponding output.
 ///
-/// Construction prepares inputs only. [`CryptoSuite::recipient_key_binding`]
-/// separately derives the Poseidon2 binding from the retained key, network and
-/// suite. This type does not frame associated data, encapsulate or encrypt.
-/// Later suite operations must bind that result together with the selected
-/// output, core digest, encapsulation and nonce.
+/// Construction prepares inputs only. [`Self::associated_data`] derives the
+/// Poseidon2 recipient binding internally and frames it with the selected
+/// output, core digest, encapsulation and nonce. Encapsulation, key derivation
+/// and authenticated encryption are separate operations.
 /// The recipient key is not included in the core digest itself.
 ///
 /// Construction does not establish recipient identity, agreement with a note

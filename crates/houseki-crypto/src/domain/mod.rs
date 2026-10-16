@@ -11,6 +11,7 @@ pub(crate) use framing::Frame;
 pub(crate) enum Domain {
     NoteEncryptionCore,
     RecipientKemKey,
+    NoteAssociatedData,
 }
 
 impl Domain {
@@ -18,6 +19,7 @@ impl Domain {
         match self {
             Self::NoteEncryptionCore => b"houseki/v1/note/encryption-core",
             Self::RecipientKemKey => b"houseki/v1/recipient/kem-key",
+            Self::NoteAssociatedData => b"houseki/v1/note/aad",
         }
     }
 }

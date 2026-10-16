@@ -27,9 +27,9 @@ use houseki_types::CryptoSuiteId;
 /// relationships and validate the cryptographic material separately.
 ///
 /// This type provides identifier resolution and recipient key binding. Context
-/// preparation belongs to [`NoteEncryptionContext`]. Payload encoding and
-/// authenticated encryption remain separate work. Its Rust discriminant is
-/// not a wire encoding.
+/// preparation and associated data belong to [`NoteEncryptionContext`].
+/// Payload encoding and authenticated encryption remain separate work. Its
+/// Rust discriminant is not a wire encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptoSuite {
     /// The first candidate Houseki note encryption profile, numeric ID 1.
@@ -37,8 +37,8 @@ pub enum CryptoSuite {
     /// Uses ML-KEM-1024, HKDF with HMAC-SHA-512 and AES-256-GCM-SIV with
     /// a 32 byte key, 12 byte random nonce and 16 byte authentication tag.
     ///
-    /// Core digest framing and public recipient key binding are implemented.
-    /// Associated data and complete suite composition remain pending review and
+    /// Core digest framing, recipient key binding and associated data are
+    /// implemented. Complete suite composition remains pending review and
     /// implementation. This identifies a Houseki profile, not an HPKE suite
     /// or an address, note or protocol version.
     V1,
