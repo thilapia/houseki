@@ -2,6 +2,7 @@
 
 mod context;
 mod encoded_transaction_proof;
+mod id;
 mod kind;
 mod payment;
 mod payment_count_limits;
@@ -12,6 +13,7 @@ mod payment_shape;
 
 pub use context::TransactionContext;
 pub use encoded_transaction_proof::{EncodedTransactionProof, EncodedTransactionProofError};
+pub use id::{TransactionId, TransactionIdError};
 pub use kind::TransactionKind;
 pub use payment::PaymentBody;
 pub use payment_count_limits::{PaymentCountLimits, PaymentCountLimitsError};

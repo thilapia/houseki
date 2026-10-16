@@ -86,6 +86,9 @@
 //! [`PaymentEnvelope`] pairs a payment body with its encoded proof without
 //! establishing authorization or eligibility for execution.
 //!
+//! [`TransactionId`] stores a 64 byte SHA3-512 identifier for the canonical body
+//! and kind, derived outside proofs and excluding proof and signature bytes.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -140,5 +143,6 @@ pub use note::{
 pub use transaction::{
     EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
     PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
-    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionKind,
+    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionId,
+    TransactionIdError, TransactionKind,
 };
