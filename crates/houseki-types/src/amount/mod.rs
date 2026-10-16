@@ -37,7 +37,8 @@ impl Amount {
 
     /// Constructs an amount from an atom count within the protocol limit.
     ///
-    /// Zero is accepted so that ordinary notes can also represent empty change.
+    /// Zero remains representable for balances, fees and arithmetic results, while ordinary
+    /// note consumers require a positive amount.
     ///
     /// # Errors
     ///
