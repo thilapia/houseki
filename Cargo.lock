@@ -86,6 +86,7 @@ dependencies = [
  "getrandom",
  "houseki-types",
  "ml-kem",
+ "sha3",
  "thiserror",
  "zeroize",
 ]

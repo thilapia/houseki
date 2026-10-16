@@ -26,9 +26,9 @@ use super::CryptoSuite;
 /// representable. Consumers must check the active rules, exact fee, nonce and
 /// gross debit with checked arithmetic before authorizing a withdrawal.
 ///
-/// Borrowing exposes no mutable fields. This type supplies typed inputs for
-/// later internal digest derivation. It does not yet define an encoding,
-/// compute a digest or construct an encryption context. Final body assembly
+/// Borrowing exposes no mutable fields. [`Self::digest`] derives a native
+/// encryption core digest from these typed fields. It does not construct a
+/// per-output encryption context. Final body assembly
 /// must preserve these fields and match the encrypted payload's suite to the
 /// output entry. Note recovery and proof validation remain separate checks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,5 +1,6 @@
 //! Houseki note encryption suite selection and typed core inputs.
 
+mod core_digest;
 mod error;
 mod payment_encryption_core;
 mod reward_withdrawal_encryption_core;

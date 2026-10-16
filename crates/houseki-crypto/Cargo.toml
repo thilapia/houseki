@@ -12,6 +12,7 @@ houseki-types = { workspace = true }
 # cryptography
 getrandom.workspace = true
 ml-kem.workspace = true
+sha3.workspace = true
 zeroize.workspace = true
 
 # error handling

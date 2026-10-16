@@ -27,9 +27,9 @@ use super::CryptoSuite;
 /// eligibility, conservation, note validity or authority to spend. A change
 /// in applicable limits requires rechecking the derived [`Self::shape`].
 ///
-/// This type supplies typed inputs for later internal digest derivation. It
-/// does not yet define an encoding, compute a digest or construct an encryption
-/// context. Final body assembly must preserve these fields and output order,
+/// [`Self::digest`] derives a native encryption core digest from these typed
+/// fields. It does not construct a per-output encryption context. Final body
+/// assembly must preserve these fields and output order,
 /// and match each encrypted payload's suite to its corresponding entry.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentEncryptionCore {
