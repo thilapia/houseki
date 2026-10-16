@@ -143,6 +143,12 @@
 //! [`ExecutionOutcome`] records acceptance or rejection by the state rules for
 //! an eligible occurrence in the canonical execution order.
 //!
+//! [`Occurrence`] groups a vertex reference, declared author, committee context,
+//! payload position and complete envelope without authenticating their binding.
+//!
+//! [`Receipt`] links a reported execution outcome to a vertex payload position,
+//! with checkpoint context and ordering supplied by its containing receipt list.
+//!
 //! [`ExecutionRejectionReason`] identifies the reported state failure carried
 //! by a rejected outcome without assigning wire codes or check precedence.
 //!
@@ -191,7 +197,7 @@ pub use context::{
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
     ValidityCheckpointRangeError,
 };
-pub use execution::{ExecutionOutcome, ExecutionRejectionReason};
+pub use execution::{ExecutionOutcome, ExecutionRejectionReason, Occurrence, Receipt};
 pub use note::{
     EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, EncryptedNoteEnvelope,
     EncryptedNoteEnvelopeError, NoteCommitment, NoteCommitmentError, NoteOutput, NotePosition,
