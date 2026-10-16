@@ -1,6 +1,8 @@
 //! Errors from projecting completed bodies into note encryption inputs.
 
-use houseki_crypto::{NotePayloadError, PaymentEncryptionCoreError};
+use houseki_crypto::{
+    NotePayloadError, PaymentEncryptionCoreError, RewardWithdrawalEncryptionCoreError,
+};
 use thiserror::Error;
 
 /// A failure to derive typed encryption inputs from a completed transaction body.
@@ -12,6 +14,14 @@ pub enum NoteContextError {
         /// Original failure from checking or assembling the payment core.
         #[from]
         PaymentEncryptionCoreError,
+    ),
+
+    /// The reward withdrawal fields cannot form a typed encryption core.
+    #[error(transparent)]
+    WithdrawalCore(
+        /// Original failure from assembling the withdrawal core.
+        #[from]
+        RewardWithdrawalEncryptionCoreError,
     ),
 
     /// An output payload exceeds its limit or has no recognized complete layout.

@@ -4,4 +4,4 @@
 
 mod encryption;
 
-pub use encryption::{NoteContextError, payment_encryption_core};
+pub use encryption::{NoteContextError, payment_encryption_core, withdrawal_encryption_core};

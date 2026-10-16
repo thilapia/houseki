@@ -4,4 +4,4 @@ mod error;
 mod projection;
 
 pub use error::NoteContextError;
-pub use projection::payment_encryption_core;
+pub use projection::{payment_encryption_core, withdrawal_encryption_core};
