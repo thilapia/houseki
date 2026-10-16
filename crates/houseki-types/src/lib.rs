@@ -70,10 +70,14 @@
 //!
 //! [`ExecutionRejectionReason`] identifies the reported state failure carried
 //! by a rejected outcome without assigning wire codes or check precedence.
+//!
+//! [`FinalityStatus`] reports checkpoint consensus finality independently of
+//! execution proof verification, data availability and note recovery.
 
 mod account;
 mod address;
 mod amount;
+mod checkpoint;
 mod context;
 mod execution;
 mod note;
@@ -82,6 +86,7 @@ mod transaction;
 pub use account::WithdrawalNonce;
 pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
+pub use checkpoint::FinalityStatus;
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
     NetworkIdError, NoteVersion, ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
