@@ -35,6 +35,9 @@
 //! [`AddressFormatVersion`] identifies how an address represents its recipient
 //! descriptor so that a parser can apply the appropriate format rules.
 //!
+//! [`AddressContext`] groups the declared network, address format version and
+//! cryptographic suite used to interpret a recipient descriptor.
+//!
 //! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
 //! and recipients use for note encryption and recovery.
 //!
@@ -70,7 +73,7 @@ mod note;
 mod transaction;
 
 pub use account::WithdrawalNonce;
-pub use address::{EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
+pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 pub use amount::{Amount, AmountError};
 pub use context::{
     AddressFormatVersion, CheckpointSequence, CryptoSuiteId, Epoch, FeeScheduleId, NetworkId,
