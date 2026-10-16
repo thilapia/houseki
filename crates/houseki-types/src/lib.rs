@@ -50,6 +50,9 @@
 //! [`AddressContext`] groups the declared network, address format version and
 //! cryptographic suite used to interpret a recipient descriptor.
 //!
+//! [`OwnershipCommitment`] stores a digest of recipient ownership information,
+//! leaving its construction, opening relation and key binding to the profile.
+//!
 //! [`CryptoSuiteId`] identifies the complete cryptographic suite that senders
 //! and recipients use for note encryption and recovery.
 //!
@@ -151,7 +154,10 @@ pub use account::{
     EncodedMlDsa87SignatureError, RewardAccount, RewardAccountId, RewardAccountIdError,
     WithdrawalNonce,
 };
-pub use address::{AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
+pub use address::{
+    AddressContext, EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError, OwnershipCommitment,
+    OwnershipCommitmentError,
+};
 pub use amount::{Amount, AmountError};
 pub use checkpoint::{AvailabilityStatus, ExecutionProofStatus, FinalityStatus};
 pub use context::{
