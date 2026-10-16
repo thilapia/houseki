@@ -8,6 +8,11 @@ rust-version = "1.99.1"
 publish = false
 
 [workspace.dependencies]
+# internal
+houseki-types = { path = "crates/houseki-types" }
+
+# cryptography
+ml-kem = { version = "=0.3.2", default-features = false, features = ["zeroize"] }
 
 # error handling
 thiserror = { version = "2.0.21" }

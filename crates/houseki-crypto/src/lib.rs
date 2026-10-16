@@ -1,14 +1,5 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Cryptographic types and reusable operations for Houseki.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod ml_kem_1024;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use ml_kem_1024::{MlKem1024EncapsulationKey, MlKem1024EncapsulationKeyError};

@@ -6,3 +6,11 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+# internal
+houseki-types = { workspace = true }
+
+# cryptography
+ml-kem.workspace = true
+
+# error handling
+thiserror.workspace = true
