@@ -4,6 +4,7 @@ mod commitment;
 mod encoded_ml_kem_1024_ciphertext;
 mod encrypted_note_envelope;
 mod nullifier;
+mod output;
 mod position;
 mod root;
 
@@ -13,5 +14,6 @@ pub use encoded_ml_kem_1024_ciphertext::{
 };
 pub use encrypted_note_envelope::{EncryptedNoteEnvelope, EncryptedNoteEnvelopeError};
 pub use nullifier::{Nullifier, NullifierError};
+pub use output::NoteOutput;
 pub use position::NotePosition;
 pub use root::{NoteRoot, NoteRootError};
