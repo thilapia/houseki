@@ -77,6 +77,9 @@
 //! [`PaymentOutputs`] preserves a nonempty ordered list of ordinary note outputs
 //! within the supplied output count limit, with the fee kept separate.
 //!
+//! [`PaymentBody`] assembles the declared payment context, inputs, outputs and
+//! public fee, deriving its shape from the lists and rechecking their count limits.
+//!
 //! [`EncodedMlKem1024PublicKey`] holds the complete public key bytes used by
 //! recipient addresses, leaving cryptographic validation to the consumer.
 //!
@@ -129,6 +132,7 @@ pub use note::{
     NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
-    PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError, PaymentOutputs,
-    PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext, TransactionKind,
+    PaymentBody, PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentInputsError,
+    PaymentOutputs, PaymentOutputsError, PaymentShape, PaymentShapeError, TransactionContext,
+    TransactionKind,
 };
