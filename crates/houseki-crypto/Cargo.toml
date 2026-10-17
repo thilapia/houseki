@@ -15,6 +15,9 @@ crypto-bigint.workspace = true
 ml-kem.workspace = true
 ml-dsa.workspace = true
 aes-gcm-siv.workspace = true
+# Enable cleanup features for the transitive encryption backends.
+aes.workspace = true
+polyval.workspace = true
 sha3.workspace = true
 sha2.workspace = true
 hkdf.workspace = true
@@ -24,7 +27,6 @@ zeroize.workspace = true
 p3-field.workspace = true
 p3-goldilocks.workspace = true
 p3-symmetric.workspace = true
-
 
 # error handling
 thiserror.workspace = true

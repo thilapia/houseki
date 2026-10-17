@@ -21,6 +21,7 @@ dependencies = [
  "cipher",
  "cpubits",
  "cpufeatures",
+ "zeroize",
 ]
 
 [[package]]
@@ -206,6 +207,7 @@ dependencies = [
 name = "houseki-crypto"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "aes-gcm-siv",
  "crypto-bigint",
  "getrandom",
@@ -216,6 +218,7 @@ dependencies = [
  "p3-field",
  "p3-goldilocks",
  "p3-symmetric",
+ "polyval",
  "sha2",
  "sha3",
  "thiserror",
@@ -556,6 +559,7 @@ dependencies = [
  "cpubits",
  "cpufeatures",
  "universal-hash",
+ "zeroize",
 ]
 
 [[package]]
