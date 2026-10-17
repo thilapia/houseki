@@ -13,6 +13,14 @@ mod encoding;
     not(test),
     expect(
         dead_code,
+        reason = "circuit note consumers follow in later increments"
+    )
+)]
+mod notes;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
         reason = "circuit hash consumers follow in later increments"
     )
 )]
@@ -49,6 +57,8 @@ pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 )]
 pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
+#[cfg(test)]
+pub(crate) use notes::RecipientPairAir;
 #[cfg_attr(
     not(test),
     expect(
