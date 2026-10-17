@@ -9,6 +9,7 @@ mod error;
 pub(crate) use air::FramingAir;
 pub(crate) use error::FramingError;
 
+use super::profile::RATE;
 #[cfg(any(test, feature = "prover"))]
 use crate::gadgets::assign_byte;
 use crate::gadgets::eval_byte;
@@ -23,9 +24,6 @@ use zeroize::Zeroizing;
 
 /// Bytes per packed word, keeping its integer value below the field modulus.
 const PACKED_BYTES: usize = 7;
-
-/// Words per additive sponge block in the fixed native application profile.
-const RATE: usize = 7;
 
 /// Trusted fixed metadata for an application hash input, independent of witness values.
 ///
