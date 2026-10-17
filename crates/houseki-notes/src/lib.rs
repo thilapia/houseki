@@ -15,6 +15,7 @@ mod encryption;
 mod format;
 mod opening;
 mod recipient;
+mod relation;
 
 pub use blinding::{NoteBlinding, NoteBlindingError};
 pub use encryption::{
@@ -25,3 +26,4 @@ pub use encryption::{
 pub use format::{NoteFormat, NoteFormatError};
 pub use opening::{NoteOpening, NoteOpeningError};
 pub use recipient::{NoteRecipient, NoteRecipientError};
+pub use relation::{WithdrawalOutputRelationError, check_withdrawal_output};
