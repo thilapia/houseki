@@ -78,14 +78,50 @@ pub(crate) enum AmountTotalError {
     Overflow,
 }
 
-/// Exact totals, independent carry vectors, capacity failure and private diagnostic behavior.
+/// Checks exact input equality with all output amounts plus the separate fee.
+///
+/// Each iterator occurrence is counted, so repeated amounts or output entries contribute
+/// independently and the fee is added exactly once after all output amounts.
+///
+/// Only borrowed amounts enter the guarded totals, leaving original storage with its owner.
+///
+/// Callers must bound the actual lists and check ordinary note positivity, correspondence,
+/// commitments and membership before treating arithmetic equality as part of a payment relation.
+///
+/// Empty lists and zero amounts remain valid arithmetic inputs without establishing note validity.
+///
+/// # Errors
+///
+/// Returns [`AmountTotalError::Overflow`] on a capacity failure without returning either total.
+///
+/// Inputs accumulate before outputs, and the fee is added only after both lists succeed.
+pub(crate) fn amounts_balance<'input, 'output>(
+    inputs: impl IntoIterator<Item = &'input Amount>,
+    outputs: impl IntoIterator<Item = &'output Amount>,
+    fee: &Amount,
+) -> Result<bool, AmountTotalError> {
+    let mut input_total = AmountTotal::zero();
+    for amount in inputs {
+        input_total.add_amount(amount)?;
+    }
+
+    let mut output_total = AmountTotal::zero();
+    for amount in outputs {
+        output_total.add_amount(amount)?;
+    }
+    output_total.add_amount(fee)?;
+
+    Ok(input_total.matches(&output_total))
+}
+
+/// Exact totals, conservation equations, capacity failure and private diagnostic behavior.
 #[cfg(test)]
 mod tests {
     use crypto_bigint::U256;
     use houseki_types::Amount;
     use zeroize::Zeroizing;
 
-    use super::{AmountTotal, AmountTotalError};
+    use super::{AmountTotal, AmountTotalError, amounts_balance};
 
     /// Seeds a protected partial total from a fixed public hexadecimal test vector.
     fn partial_total(hex: &str) -> AmountTotal {
@@ -244,5 +280,96 @@ mod tests {
             assert_eq!(format!("{total:?}"), "AmountTotal([REDACTED])");
             assert_eq!(format!("{total:#?}"), "AmountTotal([REDACTED])");
         }
+    }
+
+    /// Checks no change, ordinary change, multiple recipients and multiple input funding.
+    #[test]
+    fn conservation_accepts_balanced_variable_lists() {
+        for (inputs, outputs, fee) in [
+            (vec![10], vec![9], 1),
+            (vec![10], vec![4, 5], 1),
+            (vec![15], vec![3, 4, 6], 2),
+            (vec![4, 8, 9], vec![7, 11], 3),
+        ] {
+            let inputs: Vec<_> = inputs
+                .into_iter()
+                .map(|atoms| Amount::from_atoms(atoms).unwrap())
+                .collect();
+            let outputs: Vec<_> = outputs
+                .into_iter()
+                .map(|atoms| Amount::from_atoms(atoms).unwrap())
+                .collect();
+            let fee = Amount::from_atoms(fee).unwrap();
+
+            assert!(amounts_balance(&inputs, &outputs, &fee).unwrap());
+        }
+    }
+
+    /// Checks unequal totals in both directions and a nonzero fee included exactly once.
+    #[test]
+    fn conservation_rejects_missing_or_repeated_fee_value() {
+        let input = Amount::from_atoms(12).unwrap();
+        let output = Amount::from_atoms(10).unwrap();
+        for (fee, expected) in [(0, false), (1, false), (2, true), (3, false), (4, false)] {
+            let fee = Amount::from_atoms(fee).unwrap();
+
+            assert_eq!(
+                amounts_balance([&input], [&output], &fee).unwrap(),
+                expected
+            );
+        }
+
+        let fee = Amount::from_atoms(2).unwrap();
+        assert!(!amounts_balance([&output], [&input], &fee).unwrap());
+    }
+
+    /// Checks each repeated input and output occurrence contributes its full independent value.
+    #[test]
+    fn conservation_counts_repeated_entries_on_both_sides() {
+        let five = Amount::from_atoms(5).unwrap();
+        let ten = Amount::from_atoms(10).unwrap();
+        let zero = Amount::from_atoms(0).unwrap();
+
+        assert!(amounts_balance([&ten], [&five, &five], &zero).unwrap());
+        assert!(amounts_balance([&five, &five], [&ten], &zero).unwrap());
+        assert!(!amounts_balance([&ten], [&five], &zero).unwrap());
+        assert!(!amounts_balance([&five], [&ten], &zero).unwrap());
+        assert!(!amounts_balance([&ten], [&five, &five, &five], &zero).unwrap());
+        assert!(!amounts_balance([&five, &five, &five], [&ten], &zero).unwrap());
+    }
+
+    /// Checks totals above an individual amount cap while retaining every borrowed source value.
+    #[test]
+    fn conservation_handles_wide_totals_without_consuming_sources() {
+        let maximum = Amount::from_atoms(Amount::MAX_ATOMS).unwrap();
+        let half = Amount::from_atoms(Amount::MAX_ATOMS / 2).unwrap();
+        let one = Amount::from_atoms(1).unwrap();
+        let below_half = Amount::from_atoms(Amount::MAX_ATOMS / 2 - 1).unwrap();
+        let zero = Amount::from_atoms(0).unwrap();
+        let inputs = [&maximum, &maximum, &maximum];
+
+        assert!(amounts_balance(inputs, [&maximum, &half, &maximum, &half], &zero).unwrap());
+        assert!(amounts_balance(inputs, [&maximum, &half, &maximum, &below_half], &one).unwrap());
+        assert!(!amounts_balance(inputs, [&maximum, &half, &maximum, &half], &one).unwrap());
+        assert!(!amounts_balance(inputs, [&maximum, &half, &maximum, &below_half], &zero).unwrap());
+        assert_eq!(maximum.atoms(), Amount::MAX_ATOMS);
+        assert_eq!(half.atoms(), Amount::MAX_ATOMS / 2);
+        assert_eq!(below_half.atoms(), Amount::MAX_ATOMS / 2 - 1);
+        assert_eq!(one.atoms(), 1);
+    }
+
+    /// Checks arithmetic identity cases without claiming nonempty lists or positive ordinary notes.
+    #[test]
+    fn conservation_leaves_note_and_count_rules_to_its_consumer() {
+        let zero = Amount::from_atoms(0).unwrap();
+        let one = Amount::from_atoms(1).unwrap();
+        let empty: [&Amount; 0] = [];
+
+        assert!(amounts_balance(empty, empty, &zero).unwrap());
+        assert!(amounts_balance([&zero], [&zero], &zero).unwrap());
+        assert!(amounts_balance([&one], empty, &one).unwrap());
+        assert!(amounts_balance([&zero, &one], [&one, &zero], &zero).unwrap());
+        assert!(!amounts_balance(empty, empty, &one).unwrap());
+        assert!(!amounts_balance(empty, [&one], &zero).unwrap());
     }
 }
