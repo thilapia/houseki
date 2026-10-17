@@ -240,6 +240,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "houseki-proofs"
+version = "0.1.0"
+dependencies = [
+ "houseki-types",
+ "thiserror",
+]
+
+[[package]]
 name = "houseki-state"
 version = "0.1.0"
 dependencies = [
