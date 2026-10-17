@@ -9,6 +9,12 @@ pub(crate) use framing::Frame;
 /// Only registered roles can select a cryptographic domain.
 #[derive(Clone, Copy)]
 pub(crate) enum Domain {
+    /// Binds the actual complete canonical body and fixed operation tag to transaction identity.
+    TransactionIdentity,
+
+    /// Binds a network, fixed withdrawal signature scheme and complete public authority key.
+    RewardAccountIdentity,
+
     /// Binds a spending secret to its network for ownership commitment composition.
     SpendingKeyCommitment,
 
@@ -44,6 +50,8 @@ impl Domain {
     /// Returns the exact ASCII label encoded in this domain's transcript.
     fn label(&self) -> &'static [u8] {
         match self {
+            Self::TransactionIdentity => b"houseki/v1/transaction/id",
+            Self::RewardAccountIdentity => b"houseki/v1/reward/account",
             Self::SpendingKeyCommitment => b"houseki/v1/ownership/spend-key",
             Self::NullifierKeyCommitment => b"houseki/v1/ownership/nullifier-key",
             Self::OwnershipCommitment => b"houseki/v1/ownership/commitment",
