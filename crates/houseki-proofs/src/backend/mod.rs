@@ -34,6 +34,8 @@ mod random;
 #[cfg(test)]
 mod recipient_hash_proof;
 #[cfg(test)]
+mod recipient_pair_proof;
+#[cfg(test)]
 mod square_air;
 #[cfg(any(test, feature = "prover"))]
 mod trace;
