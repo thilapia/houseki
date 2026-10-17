@@ -11,6 +11,10 @@ mod word;
 
 #[cfg(test)]
 pub(crate) use row_air::ExtractionRowAir;
+#[cfg(test)]
+pub(super) use samples::eval as eval_samples;
+#[cfg(test)]
+pub(super) use word::{carry, eval as eval_word};
 
 use super::profile::SAMPLES;
 use p3_air::AirBuilder;

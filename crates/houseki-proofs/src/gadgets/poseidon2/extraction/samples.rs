@@ -9,7 +9,7 @@ use p3_air::AirBuilder;
 use p3_goldilocks::Goldilocks;
 
 /// Constrains every sample's eight bytes, bits and canonicality helpers.
-pub(super) fn eval<AB: AirBuilder<F = Goldilocks>>(
+pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
     values: &[AB::Var; SAMPLES],
     encodings: &[[AB::Var; ENCODING]; SAMPLES],

@@ -4,6 +4,8 @@ mod extraction;
 #[cfg(test)]
 mod framed_sponge_air;
 mod framing;
+#[cfg(test)]
+mod hash_air;
 mod linear;
 mod permutation;
 #[cfg(test)]
@@ -20,5 +22,7 @@ pub(crate) use framed_sponge_air::FramedSpongeAir;
 pub(crate) use framing::Frame;
 #[cfg(test)]
 pub(crate) use framing::FramingAir;
+#[cfg(test)]
+pub(crate) use hash_air::HashAir;
 #[cfg(test)]
 pub(crate) use permutation_air::PermutationAir;

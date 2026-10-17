@@ -5,6 +5,8 @@ mod addition_proof;
 #[cfg(test)]
 mod amount_proof;
 #[cfg(test)]
+mod application_hash_proof;
+#[cfg(test)]
 mod byte_proof;
 #[cfg(test)]
 mod bytes_proof;

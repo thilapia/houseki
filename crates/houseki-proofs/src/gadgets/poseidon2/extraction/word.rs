@@ -16,7 +16,7 @@ use p3_goldilocks::Goldilocks;
 use zeroize::Zeroizing;
 
 /// Reconstructs a signed carry from its independently constrained biased bits.
-pub(super) fn carry<R: PrimeCharacteristicRing + From<Goldilocks>>(
+pub(in crate::gadgets::poseidon2) fn carry<R: PrimeCharacteristicRing + From<Goldilocks>>(
     bits: &[impl Copy + Into<R>; CARRY_BITS],
 ) -> R {
     let mut result = R::from(Goldilocks::from_i64(-BIAS));
@@ -37,7 +37,7 @@ pub(super) fn carry<R: PrimeCharacteristicRing + From<Goldilocks>>(
 ///
 /// Returns the ranged outgoing carry for the next word, including the carry above bit 511
 /// which the complete extraction intentionally discards after constraining it.
-pub(super) fn eval<AB: AirBuilder<F = Goldilocks>>(
+pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
     encodings: &[[AB::Var; ENCODING]; SAMPLES],
     column: usize,
