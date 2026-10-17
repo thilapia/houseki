@@ -3,7 +3,7 @@
 mod opening;
 mod recipient_key;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "prover"))]
 pub(crate) use opening::Input as OpeningInput;
 #[cfg_attr(
     not(test),

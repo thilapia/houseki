@@ -1,7 +1,10 @@
 //! Guarded canonical opening fields shared by both relation families.
 
 use super::{part, write};
-use crate::backend::{BackendError, trace::Trace};
+use crate::{
+    backend::{BackendError, trace::Trace},
+    gadgets::OpeningInput,
+};
 use houseki_notes::NoteOpening;
 use p3_goldilocks::Goldilocks;
 use zeroize::Zeroizing;
@@ -37,6 +40,16 @@ impl OpeningFields {
         write(&mut cells.values_mut()[1724..], blinding.as_slice());
 
         Ok(Self { cells })
+    }
+
+    /// Borrows the guarded fields for the shared constrained opening assignment.
+    pub(crate) fn input(&self) -> OpeningInput<'_> {
+        OpeningInput::new(
+            self.version(),
+            self.recipient(),
+            self.amount(),
+            self.blinding(),
+        )
     }
 
     /// Borrows all version bytes without narrowing the declared identifier.

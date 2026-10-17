@@ -49,7 +49,17 @@ mod tests {
     fn opening(atoms: u128, spending: &SpendingKey, nullifier: &NullifierKey) -> NoteOpening {
         let network = NetworkId::from_bytes([7; 64]);
         let mut key = [0; 1568];
-        key[1536..].fill(91);
+        for (index, pair) in key[..1536].as_chunks_mut::<3>().0.iter_mut().enumerate() {
+            let first = (index * 19 % 3329) as u16;
+            let second = (3328 - index * 7 % 3329) as u16;
+            pair.copy_from_slice(&[
+                first as u8,
+                ((first >> 8) | (second << 4)) as u8,
+                (second >> 4) as u8,
+            ]);
+        }
+
+        key[1536..].fill(255);
 
         let descriptor = RecipientDescriptor::new(
             AddressContext::new(network, AddressFormatVersion::new(1), CryptoSuite::V1.id()),
@@ -91,6 +101,38 @@ mod tests {
             assert_eq!(bytes(fields.recipient()), opening.recipient().to_bytes());
             assert_eq!(bytes(fields.version()), 1_u32.to_le_bytes());
             assert_eq!(opening.amount().atoms(), amount);
+        }
+    }
+
+    /// Actual native owners with varied canonical coefficients satisfy the complete shared relation.
+    #[test]
+    fn native_openings_satisfy_the_complete_shared_constraints() {
+        let spending = SpendingKey::from_bytes(&[17; 32]);
+        let nullifier = NullifierKey::from_bytes(&[29; 32]);
+        let air = crate::gadgets::OpeningAir::new();
+        for amount in [1, 1 << 64, Amount::MAX_ATOMS] {
+            let native = opening(amount, &spending, &nullifier);
+            let fields = OpeningFields::new(&native).unwrap();
+            let mut trace = Trace::new(
+                128,
+                crate::gadgets::Opening::WIDTH,
+                128 * crate::gadgets::Opening::WIDTH,
+            )
+            .unwrap();
+            air.opening
+                .assign(fields.input(), trace.values_mut())
+                .unwrap();
+
+            let mut public = vec![Goldilocks::from_u8(7); 144];
+            public[64..80].copy_from_slice(&amount.to_le_bytes().map(Goldilocks::from_u8));
+            public[80..].copy_from_slice(
+                &native
+                    .commitment()
+                    .unwrap()
+                    .as_bytes()
+                    .map(Goldilocks::from_u8),
+            );
+            assert!((0..128).all(|phase| air.valid_row(trace.values(), &public, phase)));
         }
     }
 
