@@ -2,15 +2,19 @@
 
 /// The reported reason an eligible occurrence left the ledger unchanged.
 ///
-/// Execution checks the occurrence against the fixed checkpoint context and
-/// the state produced by earlier accepted occurrences. These reasons describe
-/// state failures after eligibility checks, so they do not include malformed
-/// payloads, invalid proofs or invalid required authorizations. Local storage
-/// failures require recovery and cannot be reported as a rejection reason.
+/// Execution checks the occurrence against the fixed checkpoint context and the state produced
+/// by earlier accepted occurrences.
 ///
-/// This type names state failures without performing the checks. Its variant
-/// order defines neither check precedence nor wire codes. Those contracts must
-/// be specified before reasons are committed to canonical receipts.
+/// These reasons describe state failures after eligibility checks, so they do not include
+/// malformed payloads, invalid proofs or invalid required authorizations.
+///
+/// Local storage failures require recovery and cannot be reported as a rejection reason.
+///
+/// This type names state failures without performing the checks.
+///
+/// Its variant order defines neither check precedence nor wire codes.
+///
+/// Those contracts must be specified before reasons are committed to canonical receipts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExecutionRejectionReason {
     /// The declared network, protocol version or proof profile is not allowed
@@ -46,8 +50,9 @@ pub enum ExecutionRejectionReason {
     /// withdrawal could not advance it without wrapping.
     NonceExhausted,
 
-    /// A proposed state change exceeds an arithmetic bound, account balance
-    /// bound or note tree capacity. This refers to protocol bounds rather than
-    /// the node's available memory or storage.
+    /// A proposed state change exceeds an arithmetic bound, account balance bound or note tree
+    /// capacity.
+    ///
+    /// This refers to protocol bounds rather than the node's available memory or storage.
     StateBoundsExceeded,
 }

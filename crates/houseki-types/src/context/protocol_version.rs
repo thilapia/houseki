@@ -2,15 +2,19 @@
 
 /// Identifies the protocol rules expected by a transaction or execution context.
 ///
-/// A protocol version is separate from a node software release, note format or
-/// proof profile. Keeping it in its own type prevents those identifiers from
-/// being used interchangeably.
+/// A protocol version is separate from a node software release, note format or proof profile.
 ///
-/// Every `u32` value is representable, including zero, but constructing a value
-/// does not establish that its version is supported or active. Execution must
-/// check it against the protocol rules selected for the current checkpoint.
+/// Keeping it in its own type prevents those identifiers from being used interchangeably.
+///
+/// Every `u32` value is representable, including zero, but constructing a value does not
+/// establish that its version is supported or active.
+///
+/// Execution must check it against the protocol rules selected for the current checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ProtocolVersion(u32);
+pub struct ProtocolVersion(
+    /// Numeric declared protocol rule identifier.
+    u32,
+);
 
 impl ProtocolVersion {
     /// Constructs a protocol version identifier without checking support.

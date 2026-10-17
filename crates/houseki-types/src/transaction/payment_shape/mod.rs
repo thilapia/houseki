@@ -6,18 +6,27 @@ pub use error::PaymentShapeError;
 
 /// The numbers of real inputs and ordinary note outputs in a payment.
 ///
-/// Both counts must be at least one. Outputs include recipient notes and any
-/// optional change, while the separate public fee never contributes to the
-/// output count. A payment without change can therefore have one output.
+/// Both counts must be at least one.
 ///
-/// Counts use `usize` to describe list lengths in memory and do not define a
-/// wire representation. A transaction body must derive them from its actual
-/// lists and enforce the active size and work limits. Constructing a shape
-/// checks only the minimum counts, without establishing proof support or
+/// Outputs include recipient notes and any optional change, while the separate public fee never
+/// contributes to the output count.
+///
+/// A payment without change can therefore have one output.
+///
+/// Counts use `usize` to describe list lengths in memory and do not define a wire
+/// representation.
+///
+/// A transaction body must derive them from its actual lists and enforce the active size and
+/// work limits.
+///
+/// Constructing a shape checks only the minimum counts, without establishing proof support or
 /// transaction validity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PaymentShape {
+    /// Positive number of real payment inputs.
     input_count: usize,
+
+    /// Positive number of ordinary note outputs, excluding the public fee.
     output_count: usize,
 }
 
@@ -54,10 +63,12 @@ impl PaymentShape {
     }
 }
 
+/// Construction, conversion and rejection properties of [`PaymentShape`].
 #[cfg(test)]
 mod tests {
     use super::{PaymentShape, PaymentShapeError};
 
+    /// Checks that construction accepts variable counts without requiring change.
     #[test]
     fn construction_accepts_variable_counts_without_requiring_change() {
         for (inputs, outputs) in [(1, 1), (1, 2), (3, 1), (2, 4), (usize::MAX, usize::MAX)] {
@@ -68,6 +79,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rejects payments without inputs.
     #[test]
     fn construction_rejects_payments_without_inputs() {
         for outputs in [0, 1, usize::MAX] {
@@ -78,6 +90,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rejects payments without note outputs.
     #[test]
     fn construction_rejects_payments_without_note_outputs() {
         for inputs in [1, usize::MAX] {

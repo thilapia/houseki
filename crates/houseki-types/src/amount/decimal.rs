@@ -5,14 +5,16 @@ use core::{fmt, str::FromStr};
 use super::{Amount, AmountError};
 
 impl FromStr for Amount {
+    /// Error returned when decimal amount text cannot be parsed exactly.
     type Err = AmountError;
 
     /// Parses an exact coin value from an unsigned decimal string.
     ///
-    /// The whole part must contain ASCII digits and may be followed by a decimal
-    /// point and 1 to 20 fractional digits. Leading whole zeroes and trailing
-    /// fractional zeroes are accepted, while signs, whitespace, exponents and
-    /// digit separators are rejected.
+    /// The whole part must contain ASCII digits and may be followed by a decimal point and 1 to
+    /// 20 fractional digits.
+    ///
+    /// Leading whole zeroes and trailing fractional zeroes are accepted, while signs,
+    /// whitespace, exponents and digit separators are rejected.
     ///
     /// Values are never rounded, and the limit of 20 fractional digits applies
     /// even when the extra digits are zero.

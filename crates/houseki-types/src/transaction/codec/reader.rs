@@ -21,11 +21,13 @@ impl<'a> Reader<'a> {
         limits: BodyCodecLimits,
     ) -> Result<Self, BodyCodecError> {
         super::bound_body(bytes.len(), limits)?;
+
         let mut reader = Self { bytes };
         let version = u32::from_le_bytes(reader.array()?);
         if version != 1 {
             return Err(BodyCodecError::UnsupportedVersion { version });
         }
+
         let actual = u32::from_le_bytes(reader.array()?);
         if actual != kind {
             return Err(BodyCodecError::UnexpectedKind {
@@ -33,6 +35,7 @@ impl<'a> Reader<'a> {
                 expected: kind,
             });
         }
+
         Ok(reader)
     }
 
@@ -40,6 +43,7 @@ impl<'a> Reader<'a> {
     fn take(&mut self, length: usize) -> Result<&'a [u8], BodyCodecError> {
         let field = self.bytes.get(..length).ok_or(BodyCodecError::Truncated)?;
         self.bytes = &self.bytes[length..];
+
         Ok(field)
     }
 
@@ -59,6 +63,7 @@ impl<'a> Reader<'a> {
         let schedule = FeeScheduleId::new(u32::from_le_bytes(self.array()?));
         let start = CheckpointSequence::new(u64::from_le_bytes(self.array()?));
         let end = CheckpointSequence::new(u64::from_le_bytes(self.array()?));
+
         Ok(TransactionContext::new(
             network,
             protocol,
@@ -87,6 +92,7 @@ impl<'a> Reader<'a> {
             PaymentShape::new(1, count)?
         };
         limits.payment_counts().validate_shape(shape)?;
+
         Ok(count)
     }
 
@@ -104,6 +110,7 @@ impl<'a> Reader<'a> {
         if needed > self.bytes.len() {
             return Err(BodyCodecError::Truncated);
         }
+
         Ok(())
     }
 
@@ -114,12 +121,14 @@ impl<'a> Reader<'a> {
         let length = usize::try_from(u64::from_le_bytes(self.array()?))
             .map_err(|_| BodyCodecError::LengthOverflow)?;
         super::bound_payload(length, limits)?;
+
         let bytes = self.take(length)?;
         let mut payload = reserve(length)?;
         payload.extend_from_slice(bytes);
         let envelope =
             EncryptedNoteEnvelope::new(encapsulation, payload, limits.max_payload_bytes())
                 .expect("payload length checked before allocation");
+
         Ok(NoteOutput::new(commitment, envelope))
     }
 

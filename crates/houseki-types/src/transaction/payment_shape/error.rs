@@ -1,3 +1,5 @@
+//! Errors when constructing a [`PaymentShape`](super::PaymentShape).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`PaymentShape`](super::PaymentShape).

@@ -75,6 +75,7 @@ impl MlDsa87VerificationKey {
             crate::domain::Domain::RewardAccountIdentity,
             &[network.as_bytes(), &1_u32.to_le_bytes(), encoded.as_bytes()],
         )?;
+
         Ok(RewardAccountId::from_bytes(digest))
     }
 }
@@ -88,6 +89,7 @@ fn identifier(kind: u32, bytes: &[u8]) -> Result<TransactionId, BodyHashError> {
         frame.part(bytes)?;
         frame.finish()
     })?;
+
     Ok(TransactionId::from_bytes(digest))
 }
 

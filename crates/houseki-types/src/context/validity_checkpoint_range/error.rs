@@ -1,3 +1,5 @@
+//! Errors when constructing a [`ValidityCheckpointRange`](super::ValidityCheckpointRange).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`ValidityCheckpointRange`](super::ValidityCheckpointRange).

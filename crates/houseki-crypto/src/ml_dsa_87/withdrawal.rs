@@ -76,11 +76,13 @@ impl MlDsa87SigningKey {
     ) -> Result<EncodedMlDsa87Signature, WithdrawalSignatureError> {
         match_authority(&self.verification_key(), body)?;
         let message = message(body, limits)?;
+
         let signature = self
             .0
             .expanded_key()
             .sign_randomized(&message, CONTEXT, rng)
             .map_err(|_| WithdrawalSignatureError::RandomnessUnavailable)?;
+
         Ok(EncodedMlDsa87Signature::from_bytes(
             signature.encode().into(),
         ))
@@ -106,12 +108,14 @@ impl MlDsa87VerificationKey {
     ) -> Result<(), WithdrawalSignatureError> {
         match_authority(self, body)?;
         let message = message(body, limits)?;
+
         let signature =
             ml_dsa::Signature::<ml_dsa::MlDsa87>::try_from(signature.as_bytes().as_slice())
                 .map_err(|_| WithdrawalSignatureError::InvalidSignature)?;
         if !self.0.verify_with_context(&message, CONTEXT, &signature) {
             return Err(WithdrawalSignatureError::InvalidSignature);
         }
+
         Ok(())
     }
 }
@@ -124,6 +128,7 @@ fn match_authority(
     if &key.to_encoded() != body.withdrawal_public_key() {
         return Err(WithdrawalSignatureError::AuthorityMismatch);
     }
+
     Ok(())
 }
 
@@ -139,15 +144,18 @@ fn message(
         .len()
         .checked_add(overhead)
         .ok_or(BodyCodecError::LengthOverflow)?;
+
     let mut message = Vec::new();
     message
         .try_reserve_exact(length)
         .map_err(|_| BodyCodecError::AllocationFailed)?;
+
     let mut sink = |bytes: &[u8]| message.extend_from_slice(bytes);
     let mut frame = crate::domain::Frame::new(domain, 2, &mut sink);
     frame.part(&2_u32.to_le_bytes())?;
     frame.part(&encoded)?;
     frame.finish()?;
+
     Ok(message)
 }
 

@@ -1,4 +1,5 @@
 //! Fixed public input profile from Plonky3 0.8.0 at a21e3ed42905040ad49c519e402f018381c12d0c.
+//!
 //! No caller-selected parameters.
 
 use std::sync::OnceLock;

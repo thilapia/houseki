@@ -9,11 +9,13 @@ use super::PaymentShape;
 /// Inclusive maximum input and ordinary note output counts for payments.
 ///
 /// Both maxima must be at least one so that the limits can admit a payment.
-/// Output counts include recipient notes and optional change, with the public
-/// fee remaining separate as defined by [`PaymentShape`].
 ///
-/// Callers supply the limits from the applicable protocol context. This type
-/// assigns no default or network policy and uses `usize` for counts in memory.
+/// Output counts include recipient notes and optional change, with the public fee remaining
+/// separate as defined by [`PaymentShape`].
+///
+/// Callers supply the limits from the applicable protocol context.
+///
+/// This type assigns no default or network policy and uses `usize` for counts in memory.
 ///
 /// Passing its check establishes only that the shape fits these two maxima.
 ///
@@ -21,7 +23,10 @@ use super::PaymentShape;
 /// work and proof support requirements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PaymentCountLimits {
+    /// Inclusive positive maximum for real payment inputs.
     max_input_count: usize,
+
+    /// Inclusive positive maximum for ordinary note outputs, excluding the fee.
     max_output_count: usize,
 }
 
@@ -85,10 +90,12 @@ impl PaymentCountLimits {
     }
 }
 
+/// Construction, conversion and rejection properties of [`PaymentCountLimits`].
 #[cfg(test)]
 mod tests {
     use super::{PaymentCountLimits, PaymentCountLimitsError, PaymentShape};
 
+    /// Checks that construction rejects limits that cannot admit a payment.
     #[test]
     fn construction_rejects_limits_that_cannot_admit_a_payment() {
         for outputs in [0, 1, usize::MAX] {
@@ -105,6 +112,7 @@ mod tests {
         }
     }
 
+    /// Checks that validation accepts shapes at and below both limits.
     #[test]
     fn validation_accepts_shapes_at_and_below_both_limits() {
         let limits = PaymentCountLimits::new(3, 4).unwrap();
@@ -116,6 +124,7 @@ mod tests {
         }
     }
 
+    /// Checks that validation reports excess inputs before outputs.
     #[test]
     fn validation_reports_excess_inputs_before_outputs() {
         let limits = PaymentCountLimits::new(3, 4).unwrap();
@@ -131,6 +140,7 @@ mod tests {
         }
     }
 
+    /// Checks that validation reports excess note outputs.
     #[test]
     fn validation_reports_excess_note_outputs() {
         let limits = PaymentCountLimits::new(3, 4).unwrap();
@@ -146,16 +156,20 @@ mod tests {
         }
     }
 
+    /// Checks that maximum native counts can be checked in const contexts.
     #[test]
     fn maximum_native_counts_can_be_checked_in_const_contexts() {
+        /// Largest representable positive count limits constructed at compile time.
         const LIMITS: PaymentCountLimits = match PaymentCountLimits::new(usize::MAX, usize::MAX) {
             Ok(limits) => limits,
             Err(_) => panic!("positive limits are representable"),
         };
+        /// Largest representable nonempty payment shape constructed at compile time.
         const SHAPE: PaymentShape = match PaymentShape::new(usize::MAX, usize::MAX) {
             Ok(shape) => shape,
             Err(_) => panic!("positive counts are representable"),
         };
+        /// Compile time validation of the maximum shape against its matching limits.
         const RESULT: Result<(), PaymentCountLimitsError> = LIMITS.validate_shape(SHAPE);
 
         assert_eq!(LIMITS.max_input_count(), usize::MAX);

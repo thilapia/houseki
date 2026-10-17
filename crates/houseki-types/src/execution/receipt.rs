@@ -4,31 +4,48 @@ use crate::{ExecutionOutcome, VertexId};
 
 /// The reported state outcome of a transaction occurrence within a checkpoint.
 ///
-/// The vertex identifier and zero based transaction index refer to the same
-/// payload position as an [`Occurrence`](crate::Occurrence). They distinguish
-/// copies of a transaction in different vertices or payload positions, which
-/// can have different outcomes. The index is local to the vertex and does not
-/// specify canonical execution order.
+/// The vertex identifier and zero based transaction index refer to the same payload position as
+/// an [`Occurrence`](crate::Occurrence).
 ///
-/// The containing checkpoint's ordered receipt list supplies execution position
-/// and checkpoint context. Consumers must bind each receipt to the matching
-/// authenticated occurrence at that position and account for every occurrence,
-/// including rejections. This record alone is not a globally unique execution
-/// reference and carries no checkpoint membership evidence.
+/// They distinguish copies of a transaction in different vertices or payload positions, which
+/// can have different outcomes.
 ///
-/// Acceptance reports an atomic state transition. Rejection carries a state
-/// failure and reports that all effects, including fees, were left unapplied.
-/// Invalid cryptography is handled before state execution, and local storage
-/// failures require recovery rather than a different canonical receipt.
+/// The index is local to the vertex and does not specify canonical execution order.
 ///
-/// Construction preserves the declared fields without checking index bounds,
-/// occurrence binding or execution. Every index value is representable. Wire
-/// encoding, receipt commitments and rejection check precedence remain to be
-/// specified. This value proves neither execution nor finality or note recovery.
+/// The containing checkpoint's ordered receipt list supplies execution position and checkpoint
+/// context.
+///
+/// Consumers must bind each receipt to the matching authenticated occurrence at that position
+/// and account for every occurrence, including rejections.
+///
+/// This record alone is not a globally unique execution reference and carries no checkpoint
+/// membership evidence.
+///
+/// Acceptance reports an atomic state transition.
+///
+/// Rejection carries a state failure and reports that all effects, including fees, were left
+/// unapplied.
+///
+/// Invalid cryptography is handled before state execution, and local storage failures require
+/// recovery rather than a different canonical receipt.
+///
+/// Construction preserves the declared fields without checking index bounds, occurrence binding
+/// or execution.
+///
+/// Every index value is representable.
+///
+/// Wire encoding, receipt commitments and rejection check precedence remain to be specified.
+///
+/// This value proves neither execution nor finality or note recovery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Receipt {
+    /// Declared vertex containing the reported occurrence.
     vertex_id: VertexId,
+
+    /// Zero based transaction position within that vertex payload.
     transaction_index: u64,
+
+    /// Reported state execution outcome without verification evidence.
     outcome: ExecutionOutcome,
 }
 

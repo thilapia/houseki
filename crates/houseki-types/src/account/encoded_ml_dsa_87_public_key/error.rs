@@ -1,3 +1,5 @@
+//! Errors when constructing an [`EncodedMlDsa87PublicKey`](super::EncodedMlDsa87PublicKey).
+
 use thiserror::Error;
 
 /// Errors when constructing an [`EncodedMlDsa87PublicKey`](super::EncodedMlDsa87PublicKey).

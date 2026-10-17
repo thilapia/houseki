@@ -1,3 +1,5 @@
+//! Errors when constructing [`PaymentInputs`](super::PaymentInputs).
+
 use thiserror::Error;
 
 /// Errors when constructing [`PaymentInputs`](super::PaymentInputs).
@@ -12,6 +14,7 @@ pub enum PaymentInputsError {
     InputCountExceedsLimit {
         /// The number of supplied input nullifiers.
         actual: usize,
+
         /// The supplied inclusive maximum input count.
         maximum: usize,
     },
@@ -21,6 +24,7 @@ pub enum PaymentInputsError {
     DuplicateNullifier {
         /// The zero based index of the first occurrence.
         first_index: usize,
+
         /// The zero based index of the first repeated occurrence.
         duplicate_index: usize,
     },

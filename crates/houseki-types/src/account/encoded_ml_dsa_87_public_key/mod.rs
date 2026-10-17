@@ -7,14 +7,19 @@ pub use error::EncodedMlDsa87PublicKeyError;
 /// The complete encoded bytes of an ML-DSA-87 public verification key.
 ///
 /// This value holds exactly 2592 bytes without interpreting or changing them.
+///
 /// Construction establishes the length only and accepts every byte pattern.
 ///
-/// A withdrawal consumer must check that the key matches the reward account's
-/// immutable authority and verify the signature over the complete body and its
-/// context outside proofs. Storing these public bytes does not establish private
-/// key possession or authorize a withdrawal.
+/// A withdrawal consumer must check that the key matches the reward account's immutable
+/// authority and verify the signature over the complete body and its context outside proofs.
+///
+/// Storing these public bytes does not establish private key possession or authorize a
+/// withdrawal.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EncodedMlDsa87PublicKey([u8; 2592]);
+pub struct EncodedMlDsa87PublicKey(
+    /// Complete encoded ML-DSA-87 public key bytes.
+    [u8; 2592],
+);
 
 impl EncodedMlDsa87PublicKey {
     /// The encoded byte length of an ML-DSA-87 public verification key.
@@ -37,15 +42,17 @@ impl EncodedMlDsa87PublicKey {
 }
 
 impl TryFrom<&[u8]> for EncodedMlDsa87PublicKey {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = EncodedMlDsa87PublicKeyError;
 
     /// Copies a complete encoded key from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`EncodedMlDsa87PublicKeyError::InvalidByteLength`] if the
-    /// slice does not contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing
-    /// bytes are rejected rather than ignored.
+    /// Returns [`EncodedMlDsa87PublicKeyError::InvalidByteLength`] if the slice does not contain
+    /// exactly [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -57,10 +64,12 @@ impl TryFrom<&[u8]> for EncodedMlDsa87PublicKey {
     }
 }
 
+/// Construction, conversion and rejection properties of [`EncodedMlDsa87PublicKey`].
 #[cfg(test)]
 mod tests {
     use super::{EncodedMlDsa87PublicKey, EncodedMlDsa87PublicKeyError};
 
+    /// Checks that slice conversion preserves all bytes in order.
     #[test]
     fn slice_conversion_preserves_all_bytes_in_order() {
         let bytes = std::array::from_fn::<_, 2592, _>(|index| (index % 251) as u8);
@@ -70,6 +79,7 @@ mod tests {
         assert_eq!(key.into_bytes(), bytes);
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 2591, 2593, 5184] {
@@ -83,6 +93,7 @@ mod tests {
         }
     }
 
+    /// Checks that encoded storage accepts all byte patterns without authorizing withdrawals.
     #[test]
     fn encoded_storage_accepts_all_byte_patterns_without_authorizing_withdrawals() {
         for bytes in [[0; 2592], [u8::MAX; 2592]] {

@@ -4,20 +4,31 @@ use crate::{FeeScheduleId, NetworkId, ProofProfileId, ProtocolVersion, ValidityC
 
 /// The network, rule identifiers and validity window declared by a transaction.
 ///
-/// Payments and reward withdrawals carry these values as part of their bodies,
-/// binding them into the transaction's authorization and expected proof
-/// statement. The operation kind and its specific fields belong to the body.
+/// Payments and reward withdrawals carry these values as part of their bodies, binding them into
+/// the transaction's authorization and expected proof statement.
 ///
-/// Construction preserves the supplied values without checking that their
-/// combination is supported or active. Execution must match the intended
-/// network, resolve allowed protocol rules, proof profiles and fee schedules,
-/// and check the validity window against the current checkpoint.
+/// The operation kind and its specific fields belong to the body.
+///
+/// Construction preserves the supplied values without checking that their combination is
+/// supported or active.
+///
+/// Execution must match the intended network, resolve allowed protocol rules, proof profiles and
+/// fee schedules, and check the validity window against the current checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TransactionContext {
+    /// Declared network for transaction authorization and execution.
     network_id: NetworkId,
+
+    /// Declared protocol rules without an activation or support claim.
     protocol_version: ProtocolVersion,
+
+    /// Declared proof configuration for verifier dispatch.
     proof_profile_id: ProofProfileId,
+
+    /// Declared schedule used to determine the required public fee.
     fee_schedule_id: FeeScheduleId,
+
+    /// Inclusive checkpoint window declared for transaction execution.
     validity_checkpoint_range: ValidityCheckpointRange,
 }
 

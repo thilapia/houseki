@@ -67,6 +67,7 @@ pub fn note_tree_parent(
     if level >= 64 {
         return Err(NoteTreeHashError::InvalidLevel { level });
     }
+
     Ok(poseidon2(
         Domain::NoteTreeNode,
         &[network.as_bytes(), &level.to_le_bytes(), left, right],
@@ -94,6 +95,7 @@ pub fn note_tree_root(
             top,
         ],
     )?;
+
     Ok(NoteRoot::from_bytes(digest))
 }
 
@@ -122,6 +124,7 @@ pub fn note_membership_root(
         Domain::NoteTreeLeaf,
         &[network.as_bytes(), commitment.as_bytes()],
     )?;
+
     for (level, sibling) in siblings.iter().enumerate() {
         let orientation = Choice::from_u8_lsb((position_bytes[level / 8] >> (level % 8)) & 1);
         let mut left = Zeroizing::new([0; 64]);
@@ -130,6 +133,7 @@ pub fn note_membership_root(
             left[index] = current[index].ct_select(&sibling[index], orientation);
             right[index] = sibling[index].ct_select(&current[index], orientation);
         }
+
         let level = u32::try_from(level).expect("fixed depth tree level fits u32");
         current = poseidon2_secret(
             Domain::NoteTreeNode,
@@ -141,6 +145,7 @@ pub fn note_membership_root(
             ],
         )?;
     }
+
     let digest = poseidon2_secret(
         Domain::NoteTreeRoot,
         &[
@@ -150,6 +155,7 @@ pub fn note_membership_root(
             &current[..],
         ],
     )?;
+
     Ok(NoteRoot::from_bytes(*digest))
 }
 

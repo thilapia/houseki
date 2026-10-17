@@ -8,22 +8,31 @@ use crate::Amount;
 
 /// A payment's declared context, note inputs, ordinary note outputs and public fee.
 ///
-/// The input and output wrappers preserve nonempty ordered lists, with distinct
-/// input nullifiers. Construction derives the shape from those lists and checks
-/// both counts against one supplied limit set, even if the wrappers were built
-/// under different limits. The body exposes no mutable list access and its kind
-/// is always [`TransactionKind::Payment`].
+/// The input and output wrappers preserve nonempty ordered lists, with distinct input
+/// nullifiers.
 ///
-/// The public fee is mandatory and separate from ordinary note outputs. It does
-/// not increase the output count, and optional change needs no special field.
-/// Every [`Amount`] is representable as a declared fee. Execution must check the
-/// exact fee required by the active schedule and determine its beneficiary from
-/// the including validator. The body contains no beneficiary choice.
+/// Construction derives the shape from those lists and checks both counts against one supplied
+/// limit set, even if the wrappers were built under different limits.
 ///
-/// Callers must supply the applicable count limits, enforce bounds before
-/// decoding allocations and check active payload, total byte and work limits
-/// separately. Construction does not verify context support, proof validity,
-/// conservation, anchor eligibility, unspentness or encrypted note recovery.
+/// The body exposes no mutable list access and its kind is always [`TransactionKind::Payment`].
+///
+/// The public fee is mandatory and separate from ordinary note outputs.
+///
+/// It does not increase the output count, and optional change needs no special field.
+///
+/// Every [`Amount`] is representable as a declared fee.
+///
+/// Execution must check the exact fee required by the active schedule and determine its
+/// beneficiary from the including validator.
+///
+/// The body contains no beneficiary choice.
+///
+/// Callers must supply the applicable count limits, enforce bounds before decoding allocations
+/// and check active payload, total byte and work limits separately.
+///
+/// Construction does not verify context support, proof validity, conservation, anchor
+/// eligibility, unspentness or encrypted note recovery.
+///
 /// Consumers must recheck limits if the applicable protocol context changes.
 ///
 /// Authorization and the expected proof statement must bind the payment kind,
@@ -36,9 +45,16 @@ use crate::Amount;
 /// payment class.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentBody {
+    /// Declared network, rule identifiers and validity window.
     context: TransactionContext,
+
+    /// Declared anchor and nonempty ordered distinct nullifiers.
     inputs: PaymentInputs,
+
+    /// Nonempty ordered ordinary note outputs, including any change.
     outputs: PaymentOutputs,
+
+    /// Declared public fee, separate from ordinary note outputs.
     public_fee: Amount,
 }
 
@@ -48,9 +64,11 @@ impl PaymentBody {
     /// # Errors
     ///
     /// Returns [`PaymentCountLimitsError::InputCountExceedsLimit`] or
-    /// [`PaymentCountLimitsError::OutputCountExceedsLimit`] when a list exceeds
-    /// its maximum, checking inputs first. This does not define execution check
-    /// priority or establish that these are the active protocol limits.
+    /// [`PaymentCountLimitsError::OutputCountExceedsLimit`] when a list exceeds its maximum,
+    /// checking inputs first.
+    ///
+    /// This does not define execution check priority or establish that these are the active
+    /// protocol limits.
     pub fn new(
         context: TransactionContext,
         inputs: PaymentInputs,
@@ -106,6 +124,7 @@ impl PaymentBody {
     }
 }
 
+/// Construction, conversion and rejection properties of [`PaymentBody`].
 #[cfg(test)]
 mod tests {
     use super::{
@@ -118,6 +137,7 @@ mod tests {
         ProtocolVersion, ValidityCheckpointRange,
     };
 
+    /// Builds a complete declared context for constructor boundary fixtures.
     fn context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes([7; 64]),
@@ -129,6 +149,7 @@ mod tests {
         )
     }
 
+    /// Builds ordered input markers and repeated ordinary outputs at selected counts.
     fn lists(input_count: usize, output_count: usize) -> (PaymentInputs, PaymentOutputs) {
         let limits = PaymentCountLimits::new(input_count, output_count).unwrap();
         let nullifiers = (0..input_count)
@@ -150,6 +171,7 @@ mod tests {
         (inputs, outputs)
     }
 
+    /// Checks that construction binds shape to lists and preserves all declared fields.
     #[test]
     fn construction_binds_shape_to_lists_and_preserves_all_declared_fields() {
         let (inputs, outputs) = lists(3, 2);
@@ -173,6 +195,7 @@ mod tests {
         assert_eq!(body.into_parts(), (context, inputs, outputs, fee));
     }
 
+    /// Checks that a single output remains valid regardless of the declared fee.
     #[test]
     fn a_single_output_remains_valid_regardless_of_the_declared_fee() {
         for atoms in [0, 1, Amount::MAX_ATOMS] {
@@ -191,6 +214,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rechecks input limits before output limits.
     #[test]
     fn construction_rechecks_input_limits_before_output_limits() {
         for maximum_outputs in [1, 2] {
@@ -213,6 +237,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rechecks output limits after inputs fit.
     #[test]
     fn construction_rechecks_output_limits_after_inputs_fit() {
         let (inputs, outputs) = lists(1, 3);

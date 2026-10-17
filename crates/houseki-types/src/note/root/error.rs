@@ -1,3 +1,5 @@
+//! Errors when constructing a [`NoteRoot`](super::NoteRoot).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`NoteRoot`](super::NoteRoot).

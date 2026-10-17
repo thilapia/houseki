@@ -51,6 +51,7 @@ impl PaymentEncryptionCore {
     /// # Errors
     ///
     /// Rejects an empty output list first with [`PaymentEncryptionCoreError::EmptyOutputs`].
+    ///
     /// Then checks input and output maxima in that order, returning
     /// [`PaymentEncryptionCoreError::CountLimitExceeded`] on failure.
     pub fn new(

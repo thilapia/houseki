@@ -1,3 +1,5 @@
+//! Errors when constructing [`EncryptedNoteEnvelope`](super::EncryptedNoteEnvelope).
+
 use thiserror::Error;
 
 /// Errors when constructing [`EncryptedNoteEnvelope`](super::EncryptedNoteEnvelope).
@@ -8,6 +10,7 @@ pub enum EncryptedNoteEnvelopeError {
     PayloadLengthExceedsLimit {
         /// The number of supplied payload bytes.
         actual: usize,
+
         /// The supplied inclusive maximum payload length in bytes.
         maximum: usize,
     },

@@ -1,3 +1,5 @@
+//! Errors when constructing a [`RewardAccountId`](super::RewardAccountId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`RewardAccountId`](super::RewardAccountId).

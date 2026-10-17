@@ -1,3 +1,5 @@
+//! Errors when constructing a [`TransactionId`](super::TransactionId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`TransactionId`](super::TransactionId).

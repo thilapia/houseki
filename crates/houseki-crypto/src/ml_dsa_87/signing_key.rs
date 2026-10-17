@@ -65,6 +65,7 @@ impl MlDsa87SigningKey {
     ) -> Result<Self, MlDsa87SigningKeyError> {
         let seed = secret_bytes::<32, _>(rng)
             .map_err(|_| MlDsa87SigningKeyError::RandomnessUnavailable)?;
+
         Ok(Self::from_seed(&seed))
     }
 }

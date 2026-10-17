@@ -1,3 +1,5 @@
+//! Errors when constructing a [`Nullifier`](super::Nullifier).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`Nullifier`](super::Nullifier).

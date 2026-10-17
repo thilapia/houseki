@@ -47,6 +47,7 @@ impl NoteRecipient {
     pub fn to_address(&self) -> Result<String, CryptoFramingError> {
         let bytes = self.to_bytes();
         let checksum = recipient_descriptor_checksum(&bytes)?;
+
         let mut text = String::with_capacity(2298);
         text.push_str("houseki1:");
         text.push_str(&Base64UrlUnpadded::encode_string(&bytes));
@@ -55,6 +56,7 @@ impl NoteRecipient {
             text.push(char::from(b"0123456789abcdef"[usize::from(byte >> 4)]));
             text.push(char::from(b"0123456789abcdef"[usize::from(byte & 15)]));
         }
+
         Ok(text)
     }
 
@@ -74,6 +76,7 @@ impl NoteRecipient {
         {
             return Err(NoteAddressError::InvalidText);
         }
+
         let mut bytes = [0; 1704];
         Base64UrlUnpadded::decode(&text[9..2281], &mut bytes)
             .map_err(|_| NoteAddressError::InvalidText)?;
@@ -83,15 +86,18 @@ impl NoteRecipient {
         {
             return Err(NoteAddressError::InvalidText);
         }
+
         let mut checksum = [0; 8];
         for (index, byte) in checksum.iter_mut().enumerate() {
             let start = 2282 + index * 2;
             *byte = u8::from_str_radix(&text[start..start + 2], 16)
                 .map_err(|_| NoteAddressError::InvalidText)?;
         }
+
         if checksum != recipient_descriptor_checksum(&bytes)? {
             return Err(NoteAddressError::ChecksumMismatch);
         }
+
         Ok(Self::from_bytes(&bytes, expected_network)?)
     }
 }

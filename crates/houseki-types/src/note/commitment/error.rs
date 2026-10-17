@@ -1,3 +1,5 @@
+//! Errors when constructing a [`NoteCommitment`](super::NoteCommitment).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`NoteCommitment`](super::NoteCommitment).

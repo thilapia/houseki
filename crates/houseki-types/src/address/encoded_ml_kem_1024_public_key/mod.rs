@@ -7,15 +7,22 @@ pub use error::EncodedMlKem1024PublicKeyError;
 /// The complete encoded bytes of an ML-KEM-1024 public encapsulation key.
 ///
 /// This value holds exactly 1568 bytes without interpreting or changing them.
-/// Construction establishes the length only, so arbitrary byte patterns can
-/// be represented even when they do not encode a valid key.
 ///
-/// Before encapsulation, the cryptographic consumer must validate the key
-/// under the selected suite. Address validation must also check its network,
-/// format and recipient context. This type contains public material and does
-/// not establish ownership, recipient identity or possession of a private key.
+/// Construction establishes the length only, so arbitrary byte patterns can be represented even
+/// when they do not encode a valid key.
+///
+/// Before encapsulation, the cryptographic consumer must validate the key under the selected
+/// suite.
+///
+/// Address validation must also check its network, format and recipient context.
+///
+/// This type contains public material and does not establish ownership, recipient identity or
+/// possession of a private key.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EncodedMlKem1024PublicKey([u8; 1568]);
+pub struct EncodedMlKem1024PublicKey(
+    /// Complete encoded ML-KEM-1024 encapsulation public key bytes.
+    [u8; 1568],
+);
 
 impl EncodedMlKem1024PublicKey {
     /// The encoded byte length of an ML-KEM-1024 public encapsulation key.
@@ -38,15 +45,17 @@ impl EncodedMlKem1024PublicKey {
 }
 
 impl TryFrom<&[u8]> for EncodedMlKem1024PublicKey {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = EncodedMlKem1024PublicKeyError;
 
     /// Copies a complete encoded key from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`EncodedMlKem1024PublicKeyError::InvalidByteLength`] if the
-    /// slice does not contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing
-    /// bytes are rejected rather than ignored.
+    /// Returns [`EncodedMlKem1024PublicKeyError::InvalidByteLength`] if the slice does not
+    /// contain exactly [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -58,10 +67,12 @@ impl TryFrom<&[u8]> for EncodedMlKem1024PublicKey {
     }
 }
 
+/// Construction, conversion and rejection properties of [`EncodedMlKem1024PublicKey`].
 #[cfg(test)]
 mod tests {
     use super::{EncodedMlKem1024PublicKey, EncodedMlKem1024PublicKeyError};
 
+    /// Checks that slice conversion preserves all bytes in order.
     #[test]
     fn slice_conversion_preserves_all_bytes_in_order() {
         let bytes = std::array::from_fn::<_, 1568, _>(|index| (index % 251) as u8);
@@ -72,6 +83,7 @@ mod tests {
         assert_eq!(key.into_bytes(), bytes);
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 1567, 1569, 3136] {
@@ -85,6 +97,7 @@ mod tests {
         }
     }
 
+    /// Checks that encoded storage preserves bytes without claiming key validity.
     #[test]
     fn encoded_storage_preserves_bytes_without_claiming_key_validity() {
         for bytes in [[0; 1568], [u8::MAX; 1568]] {

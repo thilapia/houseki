@@ -1,3 +1,5 @@
+//! Errors when constructing an [`OwnershipCommitment`](super::OwnershipCommitment).
+
 use thiserror::Error;
 
 /// Errors when constructing an [`OwnershipCommitment`](super::OwnershipCommitment).

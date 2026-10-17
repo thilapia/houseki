@@ -1,3 +1,5 @@
+//! Errors when constructing an [`EncodedMlKem1024PublicKey`](super::EncodedMlKem1024PublicKey).
+
 use thiserror::Error;
 
 /// Errors when constructing an [`EncodedMlKem1024PublicKey`](super::EncodedMlKem1024PublicKey).

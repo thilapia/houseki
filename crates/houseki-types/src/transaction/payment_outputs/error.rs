@@ -1,3 +1,5 @@
+//! Errors when constructing [`PaymentOutputs`](super::PaymentOutputs).
+
 use thiserror::Error;
 
 /// Errors when constructing [`PaymentOutputs`](super::PaymentOutputs).
@@ -12,6 +14,7 @@ pub enum PaymentOutputsError {
     OutputCountExceedsLimit {
         /// The number of supplied ordinary note outputs.
         actual: usize,
+
         /// The supplied inclusive maximum output count.
         maximum: usize,
     },

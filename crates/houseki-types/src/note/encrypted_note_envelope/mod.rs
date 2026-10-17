@@ -8,27 +8,38 @@ use super::EncodedMlKem1024Ciphertext;
 
 /// An ML-KEM-1024 encapsulation and an opaque encrypted note payload.
 ///
-/// The payload holds the suite defined encoding of the encrypted note and its
-/// authentication material, including any transmitted nonce. This type preserves
-/// those bytes without choosing a KDF, authenticated encryption algorithm,
+/// The payload holds the suite defined encoding of the encrypted note and its authentication
+/// material, including any transmitted nonce.
+///
+/// This type preserves those bytes without choosing a KDF, authenticated encryption algorithm,
 /// nonce or tag layout, padding scheme or wire encoding.
 ///
-/// Construction checks only the payload length against a supplied inclusive
-/// maximum. Empty payloads are representable because minimum lengths and framing
-/// belong to the suite. Even a nonempty payload within the limit may be malformed
-/// or unrecoverable. Consumers must resolve an allowed suite from the applicable
-/// protocol context, validate its format and perform authenticated note recovery.
+/// Construction checks only the payload length against a supplied inclusive maximum.
 ///
-/// The maximum applies to payload bytes alone, excluding the fixed encapsulation
-/// and any future framing. Callers must supply the active limit, enforce decoding
-/// bounds before allocation and check total body size separately. A change in
-/// limits requires checking the payload length again.
+/// Empty payloads are representable because minimum lengths and framing belong to the suite.
+///
+/// Even a nonempty payload within the limit may be malformed or unrecoverable.
+///
+/// Consumers must resolve an allowed suite from the applicable protocol context, validate its
+/// format and perform authenticated note recovery.
+///
+/// The maximum applies to payload bytes alone, excluding the fixed encapsulation and any future
+/// framing.
+///
+/// Callers must supply the active limit, enforce decoding bounds before allocation and check
+/// total body size separately.
+///
+/// A change in limits requires checking the payload length again.
 ///
 /// Transaction authorization must bind the complete envelope and its context.
+///
 /// Storing these bytes does not prove correct encryption or recipient delivery.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EncryptedNoteEnvelope {
+    /// Complete encoded encapsulation used for recipient key establishment.
     encapsulation: EncodedMlKem1024Ciphertext,
+
+    /// Opaque encrypted payload retained under the supplied byte limit.
     payload: Vec<u8>,
 }
 
@@ -37,9 +48,11 @@ impl EncryptedNoteEnvelope {
     ///
     /// # Errors
     ///
-    /// Returns [`EncryptedNoteEnvelopeError::PayloadLengthExceedsLimit`] if the
-    /// payload is longer than `max_payload_bytes`. A zero maximum permits only
-    /// an empty payload and does not establish a usable encryption format.
+    /// Returns [`EncryptedNoteEnvelopeError::PayloadLengthExceedsLimit`] if the payload is
+    /// longer than `max_payload_bytes`.
+    ///
+    /// A zero maximum permits only an empty payload and does not establish a usable encryption
+    /// format.
     pub fn new(
         encapsulation: EncodedMlKem1024Ciphertext,
         payload: Vec<u8>,
@@ -79,10 +92,12 @@ impl EncryptedNoteEnvelope {
     }
 }
 
+/// Construction, conversion and rejection properties of [`EncryptedNoteEnvelope`].
 #[cfg(test)]
 mod tests {
     use super::{EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope, EncryptedNoteEnvelopeError};
 
+    /// Checks that construction preserves complete bytes at the payload limit.
     #[test]
     fn construction_preserves_complete_bytes_at_the_payload_limit() {
         let bytes = std::array::from_fn(|index| (index % 251) as u8);
@@ -98,6 +113,7 @@ mod tests {
         assert_eq!(envelope.into_parts(), (encapsulation, payload));
     }
 
+    /// Checks that construction rejects payloads above the supplied limit.
     #[test]
     fn construction_rejects_payloads_above_the_supplied_limit() {
         for (actual, maximum) in [(1, 0), (2, 1), (257, 256)] {
@@ -116,6 +132,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction leaves payload format validation to the suite.
     #[test]
     fn construction_leaves_payload_format_validation_to_the_suite() {
         for (payload, maximum) in [

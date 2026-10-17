@@ -35,6 +35,7 @@ pub(super) fn output_len(
     let length = output.envelope().payload_len();
     super::bound_payload(length, limits)?;
     u64::try_from(length).map_err(|_| BodyCodecError::LengthOverflow)?;
+
     1640_usize
         .checked_add(length)
         .ok_or(BodyCodecError::LengthOverflow)
@@ -45,9 +46,11 @@ pub(super) fn output(bytes: &mut Vec<u8>, output: &NoteOutput) -> Result<(), Bod
     let envelope = output.envelope();
     let length =
         u64::try_from(envelope.payload_len()).map_err(|_| BodyCodecError::LengthOverflow)?;
+
     bytes.extend_from_slice(output.commitment().as_bytes());
     bytes.extend_from_slice(envelope.encapsulation().as_bytes());
     bytes.extend_from_slice(&length.to_le_bytes());
     bytes.extend_from_slice(envelope.payload());
+
     Ok(())
 }

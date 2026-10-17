@@ -6,25 +6,36 @@ pub use error::OwnershipCommitmentError;
 
 /// The 64 byte digest representation of a recipient ownership commitment.
 ///
-/// The proposed recipient descriptor carries this value alongside its address
-/// context and full encapsulation public key. This container follows the
-/// existing Poseidon2 and 512 effective digest bit direction without selecting
-/// the exact ownership construction. The committed fields, secret opening
-/// relation and encryption key context binding remain to be specified.
+/// The proposed recipient descriptor carries this value alongside its address context and full
+/// encapsulation public key.
 ///
-/// Construction preserves every byte pattern without deriving the commitment
-/// or establishing that anyone can open it. The complete profile must define
-/// the field, permutation parameters, capacity, domain framing and canonical
-/// output conversion. Storing 64 bytes alone does not establish effective
-/// digest width or a security level.
+/// This container follows the existing Poseidon2 and 512 effective digest bit direction without
+/// selecting the exact ownership construction.
 ///
-/// Note and proof consumers must bind the ownership information to the note's
-/// prescribed spending and nullifier capabilities. This public value is not a
-/// secret nullifier key, evidence of spending authority or proof of successful
-/// note recovery. Its relationship to the advertised encryption key cannot be
-/// inferred from storing the two values together.
+/// The committed fields, secret opening relation and encryption key context binding remain to be
+/// specified.
+///
+/// Construction preserves every byte pattern without deriving the commitment or establishing
+/// that anyone can open it.
+///
+/// The complete profile must define the field, permutation parameters, capacity, domain framing
+/// and canonical output conversion.
+///
+/// Storing 64 bytes alone does not establish effective digest width or a security level.
+///
+/// Note and proof consumers must bind the ownership information to the note's prescribed
+/// spending and nullifier capabilities.
+///
+/// This public value is not a secret nullifier key, evidence of spending authority or proof of
+/// successful note recovery.
+///
+/// Its relationship to the advertised encryption key cannot be inferred from storing the two
+/// values together.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct OwnershipCommitment([u8; 64]);
+pub struct OwnershipCommitment(
+    /// Complete declared ownership digest without an opening claim.
+    [u8; 64],
+);
 
 impl OwnershipCommitment {
     /// The byte length of the encoded ownership commitment.
@@ -47,15 +58,17 @@ impl OwnershipCommitment {
 }
 
 impl TryFrom<&[u8]> for OwnershipCommitment {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = OwnershipCommitmentError;
 
     /// Copies a complete commitment from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`OwnershipCommitmentError::InvalidByteLength`] if the slice does
-    /// not contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing bytes are
-    /// rejected rather than ignored.
+    /// Returns [`OwnershipCommitmentError::InvalidByteLength`] if the slice does not contain
+    /// exactly [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -67,10 +80,12 @@ impl TryFrom<&[u8]> for OwnershipCommitment {
     }
 }
 
+/// Construction, conversion and rejection properties of [`OwnershipCommitment`].
 #[cfg(test)]
 mod tests {
     use super::{OwnershipCommitment, OwnershipCommitmentError};
 
+    /// Checks that slice conversion preserves complete unverified digests in order.
     #[test]
     fn slice_conversion_preserves_complete_unverified_digests_in_order() {
         let patterned = std::array::from_fn::<_, 64, _>(|index| index as u8 ^ 0xa5);
@@ -84,6 +99,7 @@ mod tests {
         }
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 32, 63, 65, 128] {

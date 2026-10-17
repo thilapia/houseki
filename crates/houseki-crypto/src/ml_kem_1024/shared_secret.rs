@@ -22,8 +22,10 @@ impl MlKem1024SharedSecret {
     /// Consumes the secret to derive a 32 byte key with HKDF-HMAC-SHA512.
     ///
     /// The suite supplies framed salt and info.
+    ///
     /// The returned extraction key is explicitly cleared, and the derived key remains in
     /// zeroizing storage.
+    ///
     /// Backend expansion blocks and HMAC temporaries remain outside this cleanup guarantee.
     pub(crate) fn derive_key(self, salt: &[u8], info: &[u8]) -> Zeroizing<[u8; 32]> {
         let (prk, hkdf) = hkdf::Hkdf::<sha2::Sha512>::extract(Some(salt), &self.0);

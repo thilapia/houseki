@@ -110,10 +110,12 @@ pub fn check_payment(
     if outputs.len() != body.outputs().output_count() {
         return Err(PaymentRelationError::OutputCountMismatch);
     }
+
     if body.context().network_id() != anchor.network_id() || body.inputs().anchor() != anchor.root()
     {
         return Err(PaymentRelationError::AnchorMismatch);
     }
+
     let mut seen = std::collections::HashSet::new();
     seen.try_reserve(body.inputs().input_count())
         .map_err(|_| PaymentRelationError::AllocationFailed)?;
@@ -122,6 +124,7 @@ pub fn check_payment(
             return Err(PaymentRelationError::DuplicateNullifier);
         }
     }
+
     for (input_index, (marker, witness)) in
         body.inputs().nullifiers().iter().zip(inputs).enumerate()
     {
@@ -132,6 +135,7 @@ pub fn check_payment(
             }
         })?;
     }
+
     for (output_index, (output, opening)) in
         body.outputs().outputs().iter().zip(outputs).enumerate()
     {
@@ -145,6 +149,7 @@ pub fn check_payment(
             return Err(PaymentRelationError::OutputCommitmentMismatch { output_index });
         }
     }
+
     let balanced = crate::accumulation::amounts_balance(
         inputs.iter().map(|input| input.opening.amount()),
         outputs.iter().map(|opening| opening.amount()),
@@ -154,6 +159,7 @@ pub fn check_payment(
     if !balanced {
         return Err(PaymentRelationError::ConservationMismatch);
     }
+
     Ok(())
 }
 
@@ -257,11 +263,14 @@ mod tests {
         let nullifier = NullifierKey::from_bytes(&[0x59; 32]);
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(&spending, &nullifier, &key);
+
         let input = opening(&recipient, Amount::MAX_ATOMS, 0xa5);
         let output = opening(&recipient, Amount::MAX_ATOMS, 0x5a);
+
         let mut tree = NoteTree::new(context().network_id()).unwrap();
         let first = tree.append(input.commitment().unwrap()).unwrap();
         let second = tree.append(input.commitment().unwrap()).unwrap();
+
         let first_path = tree.witness(&first).unwrap();
         let second_path = tree.witness(&second).unwrap();
         let anchor = tree.anchor();
@@ -273,8 +282,10 @@ mod tests {
             SpendWitness::new(&input, &spending, &nullifier, &first_path),
             SpendWitness::new(&input, &spending, &nullifier, &second_path),
         ];
+
         let repeated = body(&anchor, markers.clone(), &[&output, &output], 0);
         check_payment(&repeated, &anchor, &inputs, &[&output, &output], limits()).unwrap();
+
         let reversed = [
             SpendWitness::new(&input, &spending, &nullifier, &second_path),
             SpendWitness::new(&input, &spending, &nullifier, &first_path),
@@ -283,13 +294,16 @@ mod tests {
             check_payment(&repeated, &anchor, &reversed, &[&output, &output], limits()),
             Err(PaymentRelationError::Spend { input_index: 0, .. })
         ));
+
         let fee = body(&anchor, markers.clone(), &[&output], Amount::MAX_ATOMS);
         check_payment(&fee, &anchor, &inputs, &[&output], limits()).unwrap();
+
         let missing = body(&anchor, markers.clone(), &[&output], 0);
         assert!(matches!(
             check_payment(&missing, &anchor, &inputs, &[&output], limits()),
             Err(PaymentRelationError::ConservationMismatch)
         ));
+
         let extra_fee = body(&anchor, markers, &[&output, &output], 1);
         assert!(matches!(
             check_payment(&extra_fee, &anchor, &inputs, &[&output, &output], limits()),
@@ -304,15 +318,18 @@ mod tests {
         let nullifier = NullifierKey::from_bytes(&[0x59; 32]);
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(&spending, &nullifier, &key);
+
         let input = opening(&recipient, 23, 0xa5);
         let first_output = opening(&recipient, 18, 0x5a);
         let second_output = opening(&recipient, 2, 0x5b);
+
         let mut tree = NoteTree::new(context().network_id()).unwrap();
         let position = tree.append(input.commitment().unwrap()).unwrap();
         let path = tree.witness(&position).unwrap();
         let anchor = tree.anchor();
         let marker = derive_nullifier(&input, &nullifier, &position).unwrap();
         let inputs = [SpendWitness::new(&input, &spending, &nullifier, &path)];
+
         let body = body(&anchor, vec![marker], &[&first_output, &second_output], 3);
         check_payment(
             &body,
@@ -322,6 +339,7 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         assert!(matches!(
             check_payment(
                 &body,
@@ -346,6 +364,7 @@ mod tests {
             ),
             Err(PaymentRelationError::OutputCommitmentMismatch { output_index: 0 })
         ));
+
         let other_network = NetworkId::from_bytes([6; 64]);
         let other_recipient = NoteRecipient::validate(
             &RecipientDescriptor::new(
@@ -368,6 +387,7 @@ mod tests {
             check_payment(&other_body, &anchor, &inputs, &[&other_output], limits()),
             Err(PaymentRelationError::OutputNetworkMismatch { output_index: 0 })
         ));
+
         let tight = PaymentCountLimits::new(1, 1).unwrap();
         assert!(matches!(
             check_payment(
@@ -379,6 +399,7 @@ mod tests {
             ),
             Err(PaymentRelationError::Counts(_))
         ));
+
         let wrong = NoteTreeAnchor::new(
             anchor.network_id(),
             anchor.count(),
@@ -394,6 +415,7 @@ mod tests {
             ),
             Err(PaymentRelationError::AnchorMismatch)
         ));
+
         let changed = self::body(
             &anchor,
             vec![Nullifier::from_bytes([0; 64])],
@@ -422,10 +444,12 @@ mod tests {
         let alice =
             NoteRecipient::from_address(&alice.to_address().unwrap(), context().network_id())
                 .unwrap();
+
         let bob_spending = SpendingKey::from_bytes(&[0xb7; 32]);
         let bob_nullifier = NullifierKey::from_bytes(&[0x69; 32]);
         let bob_kem = MlKem1024DecapsulationKey::from_seed(&[12; 64]);
         let bob = recipient(&bob_spending, &bob_nullifier, &bob_kem);
+
         let incoming = opening(&alice, 23, 0xa5);
         let authority = MlDsa87SigningKey::from_seed(&[0x79; 32]);
         let public = authority.verification_key();
@@ -456,20 +480,24 @@ mod tests {
             bytes_limits,
         )
         .unwrap();
+
         let signature = authority
             .sign_reward_withdrawal(&withdrawal, bytes_limits)
             .unwrap();
         public
             .verify_reward_withdrawal(&withdrawal, &signature, bytes_limits)
             .unwrap();
+
         let recovered = recover_withdrawal_output(&withdrawal, &alice, &alice_kem, 84).unwrap();
         check_withdrawal_output(&withdrawal, &recovered).unwrap();
+
         let mut tree = NoteTree::new(context().network_id()).unwrap();
         let original_position = tree.append(recovered.commitment().unwrap()).unwrap();
         let anchor = tree.anchor();
         let membership = tree.witness(&original_position).unwrap();
         let marker =
             derive_nullifier(&recovered, &alice_nullifier, membership.original_position()).unwrap();
+
         let recipient_note = opening(&bob, 18, 0x5a);
         let change = opening(&alice, 2, 0x5b);
         let core = PaymentEncryptionCore::new(
@@ -504,6 +532,7 @@ mod tests {
             &alice_nullifier,
             &membership,
         )];
+
         check_payment(
             &payment,
             &anchor,
@@ -512,6 +541,7 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         let bob_received =
             recover_payment_output(&payment, 0, &bob, &bob_kem, limits(), 84).unwrap();
         let bob_position = tree
@@ -519,6 +549,7 @@ mod tests {
             .unwrap();
         tree.append(payment.outputs().outputs()[1].commitment())
             .unwrap();
+
         let bob_membership = tree.witness(&bob_position).unwrap();
         let bob_marker = derive_nullifier(
             &bob_received,
@@ -538,6 +569,7 @@ mod tests {
         )
         .unwrap();
         assert_ne!(marker, bob_marker);
+
         let (context, inputs, outputs, _) = payment.clone().into_parts();
         let changed = PaymentBody::new(
             context,

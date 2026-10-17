@@ -8,15 +8,21 @@ use super::CheckpointSequence;
 
 /// A transaction validity window that includes both endpoint checkpoints.
 ///
-/// The start must be no later than the end. Equal endpoints restrict the window
-/// to one checkpoint, and either endpoint can use any representable sequence.
+/// The start must be no later than the end.
 ///
-/// Membership checks only whether a sequence lies within these bounds. Execution
-/// remains responsible for selecting the current checkpoint and checking the
+/// Equal endpoints restrict the window to one checkpoint, and either endpoint can use any
+/// representable sequence.
+///
+/// Membership checks only whether a sequence lies within these bounds.
+///
+/// Execution remains responsible for selecting the current checkpoint and checking the
 /// transaction's other requirements, including its anchor and proof.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ValidityCheckpointRange {
+    /// Inclusive first checkpoint sequence at which the transaction may execute.
     start: CheckpointSequence,
+
+    /// Inclusive last checkpoint sequence, never before the start.
     end: CheckpointSequence,
 }
 
@@ -54,10 +60,12 @@ impl ValidityCheckpointRange {
     }
 }
 
+/// Construction, conversion and rejection properties of [`ValidityCheckpointRange`].
 #[cfg(test)]
 mod tests {
     use super::{CheckpointSequence, ValidityCheckpointRange, ValidityCheckpointRangeError};
 
+    /// Checks that construction rejects reversed bounds.
     #[test]
     fn construction_rejects_reversed_bounds() {
         for (start, end) in [(1, 0), (u64::MAX, 0), (u64::MAX, u64::MAX - 1)] {
@@ -71,6 +79,7 @@ mod tests {
         }
     }
 
+    /// Checks that membership includes both endpoints and rejects outside sequences.
     #[test]
     fn membership_includes_both_endpoints_and_rejects_outside_sequences() {
         let range =
@@ -82,6 +91,7 @@ mod tests {
         }
     }
 
+    /// Checks that equal endpoints restrict validity to one checkpoint.
     #[test]
     fn equal_endpoints_restrict_validity_to_one_checkpoint() {
         for value in [0, 42, u64::MAX] {
@@ -101,6 +111,7 @@ mod tests {
         }
     }
 
+    /// Checks that full sequence range includes the maximum without overflow.
     #[test]
     fn full_sequence_range_includes_the_maximum_without_overflow() {
         let range = ValidityCheckpointRange::new(
@@ -114,8 +125,10 @@ mod tests {
         }
     }
 
+    /// Checks that validity can be checked in const contexts.
     #[test]
     fn validity_can_be_checked_in_const_contexts() {
+        /// Inclusive checkpoint fixture constructed at compile time.
         const RANGE: ValidityCheckpointRange = match ValidityCheckpointRange::new(
             CheckpointSequence::new(7),
             CheckpointSequence::new(9),
@@ -123,9 +136,13 @@ mod tests {
             Ok(range) => range,
             Err(_) => panic!("ordered bounds are valid"),
         };
+        /// Compile time first sequence of the validity fixture.
         const START: u64 = RANGE.start().value();
+        /// Compile time last sequence of the validity fixture.
         const END: u64 = RANGE.end().value();
+        /// Compile time membership result for a sequence inside the fixture.
         const INCLUDED: bool = RANGE.contains(CheckpointSequence::new(8));
+        /// Compile time membership result for a sequence outside the fixture.
         const EXCLUDED: bool = RANGE.contains(CheckpointSequence::new(10));
 
         assert_eq!((START, END, INCLUDED, EXCLUDED), (7, 9, true, false));

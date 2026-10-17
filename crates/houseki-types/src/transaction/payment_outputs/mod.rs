@@ -9,23 +9,33 @@ use crate::NoteOutput;
 
 /// A nonempty ordered list of ordinary note outputs within a supplied count limit.
 ///
-/// Recipient notes and optional change share this list. The public fee is a
-/// separate field of the payment body and never contributes to the output count.
-/// Construction preserves every entry in order, including repeated commitments
-/// or identical outputs. Each accepted output creates its own note instance at
-/// its assigned original insertion position and must be funded separately.
+/// Recipient notes and optional change share this list.
 ///
-/// Callers must supply the applicable protocol limits and enforce decoding
-/// bounds before allocating output lists or payloads. Construction checks the
-/// actual list length only. Consumers must also check active payload and total
-/// body byte limits, work limits and proof support, and recheck the count if
-/// applicable limits change.
+/// The public fee is a separate field of the payment body and never contributes to the output
+/// count.
 ///
-/// The containing body must bind the complete ordered outputs into authorization
-/// and the expected proof statement. This type does not verify conservation,
-/// validate encrypted recovery or assign insertion positions or a wire encoding.
+/// Construction preserves every entry in order, including repeated commitments or identical
+/// outputs.
+///
+/// Each accepted output creates its own note instance at its assigned original insertion
+/// position and must be funded separately.
+///
+/// Callers must supply the applicable protocol limits and enforce decoding bounds before
+/// allocating output lists or payloads.
+///
+/// Construction checks the actual list length only.
+///
+/// Consumers must also check active payload and total body byte limits, work limits and proof
+/// support, and recheck the count if applicable limits change.
+///
+/// The containing body must bind the complete ordered outputs into authorization and the
+/// expected proof statement.
+///
+/// This type does not verify conservation, validate encrypted recovery or assign insertion
+/// positions or a wire encoding.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentOutputs {
+    /// Nonempty ordered ordinary note outputs with multiplicity preserved.
     outputs: Vec<NoteOutput>,
 }
 
@@ -70,11 +80,13 @@ impl PaymentOutputs {
     }
 }
 
+/// Construction, conversion and rejection properties of [`PaymentOutputs`].
 #[cfg(test)]
 mod tests {
     use super::{PaymentCountLimits, PaymentOutputs, PaymentOutputsError};
     use crate::{EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope, NoteCommitment, NoteOutput};
 
+    /// Builds one declared output with opaque envelope bytes for constructor fixtures.
     fn output(commitment_byte: u8, payload: Vec<u8>) -> NoteOutput {
         let payload_len = payload.len();
         let envelope = EncryptedNoteEnvelope::new(
@@ -86,6 +98,7 @@ mod tests {
         NoteOutput::new(NoteCommitment::from_bytes([commitment_byte; 64]), envelope)
     }
 
+    /// Checks that construction preserves order and multiplicity at the output limit.
     #[test]
     fn construction_preserves_order_and_multiplicity_at_the_output_limit() {
         let first = output(3, vec![8, 0, 4]);
@@ -99,6 +112,7 @@ mod tests {
         assert_eq!(outputs.into_outputs(), list);
     }
 
+    /// Checks that construction accepts a single note without a fee or change output.
     #[test]
     fn construction_accepts_a_single_note_without_a_fee_or_change_output() {
         for maximum in [1, 2, usize::MAX] {
@@ -110,6 +124,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rejects empty outputs.
     #[test]
     fn construction_rejects_empty_outputs() {
         let result = PaymentOutputs::new(vec![], PaymentCountLimits::new(1, 1).unwrap());
@@ -117,6 +132,7 @@ mod tests {
         assert!(matches!(result, Err(PaymentOutputsError::EmptyOutputs)));
     }
 
+    /// Checks that construction rejects excess outputs with the actual count.
     #[test]
     fn construction_rejects_excess_outputs_with_the_actual_count() {
         for (actual, maximum) in [(2, 1), (4, 3)] {

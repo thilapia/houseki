@@ -5,25 +5,38 @@ use crate::Amount;
 
 /// A declared reward account state with its withdrawal authority, balance and nonce.
 ///
-/// The authority is an encoded ML-DSA-87 public key that remains fixed throughout
-/// the account's lifetime. The balance is bounded by [`Amount`], and the next
-/// nonce identifies the withdrawal counter expected by execution. An exhausted
-/// nonce remains representable so that existing account state can be retained.
+/// The authority is an encoded ML-DSA-87 public key that remains fixed throughout the account's
+/// lifetime.
 ///
-/// Construction preserves supplied values without registering an account or
-/// authenticating its state. Consumers must derive and check the corresponding
-/// [`super::RewardAccountId`] under the intended network and selected profile.
+/// The balance is bounded by [`Amount`], and the next nonce identifies the withdrawal counter
+/// expected by execution.
+///
+/// An exhausted nonce remains representable so that existing account state can be retained.
+///
+/// Construction preserves supplied values without registering an account or authenticating its
+/// state.
+///
+/// Consumers must derive and check the corresponding [`super::RewardAccountId`] under the
+/// intended network and selected profile.
+///
 /// The identifier is kept separately from this record, as the state lookup key.
 ///
-/// State transitions must preserve the authority. Withdrawal execution must
-/// check signatures and gross affordability, then update balances and nonces
-/// atomically with note insertion and fee credit. This record provides no
-/// mutation operations, initial nonce policy, wire encoding or evidence that
-/// a withdrawal is authorized.
+/// State transitions must preserve the authority.
+///
+/// Withdrawal execution must check signatures and gross affordability, then update balances and
+/// nonces atomically with note insertion and fee credit.
+///
+/// This record provides no mutation operations, initial nonce policy, wire encoding or evidence
+/// that a withdrawal is authorized.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RewardAccount {
+    /// Encoded immutable public authority for reward withdrawals.
     withdrawal_authority: EncodedMlDsa87PublicKey,
+
+    /// Declared public reward balance within the amount cap.
     balance: Amount,
+
+    /// Counter expected for the next accepted withdrawal, including exhaustion.
     next_nonce: WithdrawalNonce,
 }
 

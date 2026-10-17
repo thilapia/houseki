@@ -3,21 +3,34 @@
 /// The original leaf position of a note commitment in the note tree.
 ///
 /// Execution assigns this position when it appends an accepted note output.
-/// The position remains fixed as the tree grows and the wallet updates its
-/// spending anchor or membership path. It identifies the created note instance
-/// independently of the position of any later transaction that spends it.
 ///
-/// Nullifier derivation uses this original position together with the note's
-/// bound nullifier key and commitment. The spending proof must establish that
-/// the position used for derivation matches the proven membership path.
+/// The position remains fixed as the tree grows and the wallet updates its spending anchor or
+/// membership path.
+///
+/// It identifies the created note instance independently of the position of any later
+/// transaction that spends it.
+///
+/// Nullifier derivation uses this original position together with the note's bound nullifier key
+/// and commitment.
+///
+/// The spending proof must establish that the position used for derivation matches the proven
+/// membership path.
+///
 /// Constructing this value does not establish membership, finality or unspentness.
 ///
-/// Positions are zero based and every `u64` value is representable. The tree
-/// implementation must enforce its capacity separately. Numeric advancement
-/// does not allocate a leaf, and returns no successor when the representation
-/// is exhausted. Wire encoding and proof field encoding remain separate contracts.
+/// Positions are zero based and every `u64` value is representable.
+///
+/// The tree implementation must enforce its capacity separately.
+///
+/// Numeric advancement does not allocate a leaf, and returns no successor when the
+/// representation is exhausted.
+///
+/// Wire encoding and proof field encoding remain separate contracts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NotePosition(u64);
+pub struct NotePosition(
+    /// Original insertion index without a membership claim.
+    u64,
+);
 
 impl NotePosition {
     /// Constructs a note position from its numeric value.
@@ -31,6 +44,7 @@ impl NotePosition {
     }
 
     /// Returns the next numeric position, or `None` at representation exhaustion.
+    ///
     /// The returned position may still exceed the note tree's capacity.
     pub const fn checked_next(self) -> Option<Self> {
         match self.0.checked_add(1) {
@@ -47,10 +61,12 @@ impl zeroize::Zeroize for NotePosition {
     }
 }
 
+/// Construction, conversion and rejection properties of [`NotePosition`].
 #[cfg(test)]
 mod tests {
     use super::NotePosition;
 
+    /// Checks that advancement preserves position across integer boundaries.
     #[test]
     fn advancement_preserves_position_across_integer_boundaries() {
         for (current, expected) in [
@@ -67,8 +83,10 @@ mod tests {
         }
     }
 
+    /// Checks that advancement rejects exhaustion without reusing a position.
     #[test]
     fn advancement_rejects_exhaustion_without_reusing_a_position() {
+        /// Compile time rejection of advancement beyond the final insertion position.
         const NEXT: Option<NotePosition> = NotePosition::new(u64::MAX).checked_next();
 
         assert_eq!(NEXT, None);

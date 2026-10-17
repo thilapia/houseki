@@ -22,6 +22,7 @@ fn bound_body(actual: usize, limits: BodyCodecLimits) -> Result<usize, BodyCodec
             maximum: limits.max_body_bytes(),
         });
     }
+
     Ok(actual)
 }
 
@@ -33,6 +34,7 @@ fn bound_payload(actual: usize, limits: BodyCodecLimits) -> Result<(), BodyCodec
             maximum: limits.max_payload_bytes(),
         });
     }
+
     Ok(())
 }
 
@@ -42,6 +44,7 @@ fn reserve<T>(length: usize) -> Result<Vec<T>, BodyCodecError> {
     values
         .try_reserve_exact(length)
         .map_err(|_| BodyCodecError::AllocationFailed)?;
+
     Ok(values)
 }
 
@@ -55,6 +58,7 @@ impl PaymentBody {
         limits.payment_counts().validate_shape(self.shape())?;
         u64::try_from(self.inputs().input_count()).map_err(|_| BodyCodecError::LengthOverflow)?;
         u64::try_from(self.outputs().output_count()).map_err(|_| BodyCodecError::LengthOverflow)?;
+
         let mut length = self
             .inputs()
             .input_count()
@@ -66,6 +70,7 @@ impl PaymentBody {
                 .checked_add(writer::output_len(output, limits)?)
                 .ok_or(BodyCodecError::LengthOverflow)?;
         }
+
         bound_body(length, limits)
     }
 
@@ -78,6 +83,7 @@ impl PaymentBody {
     /// Rechecks active bounds before allocating and returns no bytes on reservation failure.
     pub fn to_bytes(&self, limits: BodyCodecLimits) -> Result<Vec<u8>, BodyCodecError> {
         let mut bytes = reserve(self.encoded_len(limits)?)?;
+
         writer::header(&mut bytes, 1, self.context());
         bytes.extend_from_slice(self.inputs().anchor().as_bytes());
         bytes.extend_from_slice(
@@ -88,6 +94,7 @@ impl PaymentBody {
         for nullifier in self.inputs().nullifiers() {
             bytes.extend_from_slice(nullifier.as_bytes());
         }
+
         bytes.extend_from_slice(&self.public_fee().atoms().to_le_bytes());
         bytes.extend_from_slice(
             &u64::try_from(self.outputs().output_count())
@@ -97,6 +104,7 @@ impl PaymentBody {
         for output in self.outputs().outputs() {
             writer::output(&mut bytes, output)?;
         }
+
         Ok(bytes)
     }
 
@@ -114,6 +122,7 @@ impl PaymentBody {
         let mut reader = reader::Reader::new(bytes, 1, limits)?;
         let context = reader.context()?;
         let anchor = NoteRoot::from_bytes(reader.array()?);
+
         let count = reader.count(true, limits)?;
         reader.require_list(count, 64, 24 + 1640)?;
         let mut nullifiers = reserve(count)?;
@@ -121,6 +130,7 @@ impl PaymentBody {
             nullifiers.push(Nullifier::from_bytes(reader.array()?));
         }
         let inputs = PaymentInputs::new(anchor, nullifiers, limits.payment_counts())?;
+
         let fee = reader.amount()?;
         let count = reader.count(false, limits)?;
         reader.require_list(count, 1640, 0)?;
@@ -129,6 +139,7 @@ impl PaymentBody {
             outputs.push(reader.output(limits)?);
         }
         reader.finish()?;
+
         Ok(Self::new(
             context,
             inputs,
@@ -149,6 +160,7 @@ impl RewardWithdrawalBody {
         let length = 2796_usize
             .checked_add(writer::output_len(self.output(), limits)?)
             .ok_or(BodyCodecError::LengthOverflow)?;
+
         bound_body(length, limits)
     }
 
@@ -161,6 +173,7 @@ impl RewardWithdrawalBody {
     /// Rechecks byte bounds before allocating and returns no bytes on reservation failure.
     pub fn to_bytes(&self, limits: BodyCodecLimits) -> Result<Vec<u8>, BodyCodecError> {
         let mut bytes = reserve(self.encoded_len(limits)?)?;
+
         writer::header(&mut bytes, 2, self.context());
         bytes.extend_from_slice(self.reward_account_id().as_bytes());
         bytes.extend_from_slice(self.withdrawal_public_key().as_bytes());
@@ -168,6 +181,7 @@ impl RewardWithdrawalBody {
         bytes.extend_from_slice(&self.public_amount().atoms().to_le_bytes());
         bytes.extend_from_slice(&self.public_fee().atoms().to_le_bytes());
         writer::output(&mut bytes, self.output())?;
+
         Ok(bytes)
     }
 
@@ -190,6 +204,7 @@ impl RewardWithdrawalBody {
         let fee = reader.amount()?;
         let output = reader.output(limits)?;
         reader.finish()?;
+
         Ok(Self::new(
             context, account, authority, nonce, amount, fee, output,
         )?)

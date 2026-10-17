@@ -1,3 +1,5 @@
+//! Errors when constructing a [`CheckpointId`](super::CheckpointId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`CheckpointId`](super::CheckpointId).

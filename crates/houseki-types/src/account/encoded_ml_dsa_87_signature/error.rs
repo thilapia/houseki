@@ -1,3 +1,5 @@
+//! Errors when constructing an [`EncodedMlDsa87Signature`](super::EncodedMlDsa87Signature).
+
 use thiserror::Error;
 
 /// Errors when constructing an [`EncodedMlDsa87Signature`](super::EncodedMlDsa87Signature).

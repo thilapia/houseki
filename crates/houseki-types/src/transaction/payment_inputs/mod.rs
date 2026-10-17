@@ -10,23 +10,34 @@ use std::collections::HashMap;
 
 /// A declared note tree anchor and a nonempty list of distinct input nullifiers.
 ///
-/// Construction preserves input order and checks the actual list length against
-/// the supplied input limit. It rejects duplicates rather than sorting or
-/// removing them, so the list remains suitable for binding to the payment body
-/// and its proof statement. Output limits are checked with the payment's outputs.
+/// Construction preserves input order and checks the actual list length against the supplied
+/// input limit.
 ///
-/// Callers must supply the applicable protocol limits and enforce decoding
-/// bounds before allocating the input vector. This type validates an existing
-/// vector and assigns no network limit or wire encoding. Consumers must recheck
-/// the count if the applicable limits change.
+/// It rejects duplicates rather than sorting or removing them, so the list remains suitable for
+/// binding to the payment body and its proof statement.
 ///
-/// The anchor is declared data, not evidence of finality or eligibility. Proof
-/// verification must bind each nullifier to an authorized note and its original
-/// position under this anchor. Execution separately checks the allowed anchor
-/// history and evolving spent set, then applies all effects atomically.
+/// Output limits are checked with the payment's outputs.
+///
+/// Callers must supply the applicable protocol limits and enforce decoding bounds before
+/// allocating the input vector.
+///
+/// This type validates an existing vector and assigns no network limit or wire encoding.
+///
+/// Consumers must recheck the count if the applicable limits change.
+///
+/// The anchor is declared data, not evidence of finality or eligibility.
+///
+/// Proof verification must bind each nullifier to an authorized note and its original position
+/// under this anchor.
+///
+/// Execution separately checks the allowed anchor history and evolving spent set, then applies
+/// all effects atomically.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentInputs {
+    /// Declared note tree root against which input membership is proved.
     anchor: NoteRoot,
+
+    /// Nonempty ordered distinct spend markers under the supplied count limit.
     nullifiers: Vec<Nullifier>,
 }
 
@@ -37,8 +48,9 @@ impl PaymentInputs {
     ///
     /// Returns [`PaymentInputsError::EmptyInputs`] for an empty list or
     /// [`PaymentInputsError::InputCountExceedsLimit`] for an excessive count.
-    /// Count checks run before duplicate detection, which reports the first
-    /// repeated slot in input order as [`PaymentInputsError::DuplicateNullifier`].
+    ///
+    /// Count checks run before duplicate detection, which reports the first repeated slot in
+    /// input order as [`PaymentInputsError::DuplicateNullifier`].
     pub fn new(
         anchor: NoteRoot,
         nullifiers: Vec<Nullifier>,
@@ -89,11 +101,13 @@ impl PaymentInputs {
     }
 }
 
+/// Construction, conversion and rejection properties of [`PaymentInputs`].
 #[cfg(test)]
 mod tests {
     use super::{PaymentCountLimits, PaymentInputs, PaymentInputsError};
     use crate::{NoteRoot, Nullifier};
 
+    /// Checks that construction preserves anchor and input order at the limit.
     #[test]
     fn construction_preserves_anchor_and_input_order_at_the_limit() {
         let anchor = NoteRoot::from_bytes([42; 64]);
@@ -111,6 +125,7 @@ mod tests {
         assert_eq!(inputs.into_parts(), (anchor, nullifiers));
     }
 
+    /// Checks that construction accepts one input and distinct full digest values.
     #[test]
     fn construction_accepts_one_input_and_distinct_full_digest_values() {
         let anchor = NoteRoot::from_bytes([0; 64]);
@@ -124,6 +139,7 @@ mod tests {
         assert!(PaymentInputs::new(anchor, vec![first, second], limits).is_ok());
     }
 
+    /// Checks that construction rejects empty inputs.
     #[test]
     fn construction_rejects_empty_inputs() {
         let result = PaymentInputs::new(
@@ -135,6 +151,7 @@ mod tests {
         assert!(matches!(result, Err(PaymentInputsError::EmptyInputs)));
     }
 
+    /// Checks that construction rejects excess inputs before checking duplicates.
     #[test]
     fn construction_rejects_excess_inputs_before_checking_duplicates() {
         let result = PaymentInputs::new(
@@ -152,6 +169,7 @@ mod tests {
         ));
     }
 
+    /// Checks that construction reports the first repeated slot in input order.
     #[test]
     fn construction_reports_the_first_repeated_slot_in_input_order() {
         let a = Nullifier::from_bytes([1; 64]);

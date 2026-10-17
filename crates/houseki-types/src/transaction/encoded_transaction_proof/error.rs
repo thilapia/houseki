@@ -1,3 +1,5 @@
+//! Errors when constructing [`EncodedTransactionProof`](super::EncodedTransactionProof).
+
 use thiserror::Error;
 
 /// Errors when constructing [`EncodedTransactionProof`](super::EncodedTransactionProof).
@@ -8,6 +10,7 @@ pub enum EncodedTransactionProofError {
     ByteLengthExceedsLimit {
         /// The number of supplied proof bytes.
         actual: usize,
+
         /// The supplied inclusive maximum proof length in bytes.
         maximum: usize,
     },

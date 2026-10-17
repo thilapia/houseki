@@ -6,22 +6,32 @@ pub use error::RewardAccountIdError;
 
 /// The 64 byte digest representation of a Poseidon2 reward account identifier.
 ///
-/// Derivation binds the network, signature scheme and immutable withdrawal
-/// public key under a dedicated reward account domain. This value stores the
-/// resulting bytes without computing the identifier or verifying that binding.
+/// Derivation binds the network, signature scheme and immutable withdrawal public key under a
+/// dedicated reward account domain.
+///
+/// This value stores the resulting bytes without computing the identifier or verifying that
+/// binding.
+///
 /// Every byte pattern is representable, including unverified digests.
 ///
-/// The hash profile must define the field, permutation parameters, sponge
-/// capacity, domain framing, canonical input encoding and output conversion.
-/// This representation follows the existing 512 effective digest bit direction,
-/// which storing 64 bytes alone does not establish.
+/// The hash profile must define the field, permutation parameters, sponge capacity, domain
+/// framing, canonical input encoding and output conversion.
 ///
-/// Consumers must authenticate the account state and verify authority binding
-/// under the selected profile. Poseidon2 allows that binding to be proved
-/// without SHA3 computation, but this container performs no proof verification.
+/// This representation follows the existing 512 effective digest bit direction, which storing 64
+/// bytes alone does not establish.
+///
+/// Consumers must authenticate the account state and verify authority binding under the selected
+/// profile.
+///
+/// Poseidon2 allows that binding to be proved without SHA3 computation, but this container
+/// performs no proof verification.
+///
 /// Withdrawal signature verification remains a separate check outside proofs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RewardAccountId([u8; 64]);
+pub struct RewardAccountId(
+    /// Complete declared reward account digest without derivation evidence.
+    [u8; 64],
+);
 
 impl RewardAccountId {
     /// The byte length of the encoded reward account identifier.
@@ -44,15 +54,17 @@ impl RewardAccountId {
 }
 
 impl TryFrom<&[u8]> for RewardAccountId {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = RewardAccountIdError;
 
     /// Copies a complete identifier from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`RewardAccountIdError::InvalidByteLength`] if the slice does not
-    /// contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing bytes are rejected
-    /// rather than ignored.
+    /// Returns [`RewardAccountIdError::InvalidByteLength`] if the slice does not contain exactly
+    /// [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -64,10 +76,12 @@ impl TryFrom<&[u8]> for RewardAccountId {
     }
 }
 
+/// Construction, conversion and rejection properties of [`RewardAccountId`].
 #[cfg(test)]
 mod tests {
     use super::{RewardAccountId, RewardAccountIdError};
 
+    /// Checks that slice conversion preserves complete unverified digests in order.
     #[test]
     fn slice_conversion_preserves_complete_unverified_digests_in_order() {
         let patterned = std::array::from_fn::<_, 64, _>(|index| index as u8 ^ 0xa5);
@@ -81,6 +95,7 @@ mod tests {
         }
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 32, 63, 65, 128] {

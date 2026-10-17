@@ -2,14 +2,21 @@
 
 /// A numeric position in the ordered sequence of checkpoints.
 ///
-/// Transaction validity uses checkpoint progression independently of wall time
-/// and validator epochs. This value identifies a position but does not establish
-/// that the corresponding checkpoint exists or has been finalized.
+/// Transaction validity uses checkpoint progression independently of wall time and validator
+/// epochs.
 ///
-/// Every `u64` value is representable, including zero. Advancement is checked so
-/// that exhausting the counter cannot wrap back to an earlier checkpoint.
+/// This value identifies a position but does not establish that the corresponding checkpoint
+/// exists or has been finalized.
+///
+/// Every `u64` value is representable, including zero.
+///
+/// Advancement is checked so that exhausting the counter cannot wrap back to an earlier
+/// checkpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CheckpointSequence(u64);
+pub struct CheckpointSequence(
+    /// Numeric checkpoint position without finality evidence.
+    u64,
+);
 
 impl CheckpointSequence {
     /// Constructs a checkpoint sequence from its numeric value.
@@ -31,10 +38,12 @@ impl CheckpointSequence {
     }
 }
 
+/// Construction, conversion and rejection properties of [`CheckpointSequence`].
 #[cfg(test)]
 mod tests {
     use super::CheckpointSequence;
 
+    /// Checks that advancement preserves sequence across integer boundaries.
     #[test]
     fn advancement_preserves_sequence_across_integer_boundaries() {
         for (current, expected) in [
@@ -49,6 +58,7 @@ mod tests {
         }
     }
 
+    /// Checks that advancement rejects an exhausted counter.
     #[test]
     fn advancement_rejects_an_exhausted_counter() {
         assert_eq!(CheckpointSequence::new(u64::MAX).checked_next(), None);

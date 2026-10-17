@@ -1,3 +1,5 @@
+//! Errors when constructing or operating on an [`Amount`](super::Amount).
+
 use thiserror::Error;
 
 /// Errors when constructing or operating on an [`Amount`](super::Amount).

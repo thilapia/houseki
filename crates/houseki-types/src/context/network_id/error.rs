@@ -1,3 +1,5 @@
+//! Errors when constructing a [`NetworkId`](super::NetworkId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`NetworkId`](super::NetworkId).

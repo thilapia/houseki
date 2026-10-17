@@ -7,23 +7,33 @@ pub use error::CheckpointIdError;
 /// The 64 byte digest representation of a Poseidon2 checkpoint identifier.
 ///
 /// This value identifies a checkpoint independently of its numeric
-/// [`CheckpointSequence`](crate::CheckpointSequence). The dedicated domain,
-/// committed checkpoint fields and canonical encoding remain to be specified.
-/// Construction stores the complete digest without computing it or checking
-/// that it matches a checkpoint. Every byte pattern is representable.
+/// [`CheckpointSequence`](crate::CheckpointSequence).
 ///
-/// The hash profile must define the field, permutation parameters, sponge
-/// capacity, domain framing and output conversion to meet the selected
-/// 512 effective digest bit requirement. Storing 64 bytes alone establishes
-/// neither that width nor a valid field encoding.
+/// The dedicated domain, committed checkpoint fields and canonical encoding remain to be
+/// specified.
 ///
-/// Poseidon2 supports proving identifier derivation inside a circuit without
-/// SHA3 computation. Consumers must still bind the checkpoint statement and
-/// previous checkpoint to authenticated state and verify the required proofs
-/// and certificates. This container establishes no continuity, execution
-/// validity, consensus finality or data availability.
+/// Construction stores the complete digest without computing it or checking that it matches a
+/// checkpoint.
+///
+/// Every byte pattern is representable.
+///
+/// The hash profile must define the field, permutation parameters, sponge capacity, domain
+/// framing and output conversion to meet the selected 512 effective digest bit requirement.
+///
+/// Storing 64 bytes alone establishes neither that width nor a valid field encoding.
+///
+/// Poseidon2 supports proving identifier derivation inside a circuit without SHA3 computation.
+///
+/// Consumers must still bind the checkpoint statement and previous checkpoint to authenticated
+/// state and verify the required proofs and certificates.
+///
+/// This container establishes no continuity, execution validity, consensus finality or data
+/// availability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CheckpointId([u8; 64]);
+pub struct CheckpointId(
+    /// Complete declared checkpoint digest without execution or finality evidence.
+    [u8; 64],
+);
 
 impl CheckpointId {
     /// The byte length of the encoded checkpoint identifier.
@@ -46,15 +56,17 @@ impl CheckpointId {
 }
 
 impl TryFrom<&[u8]> for CheckpointId {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = CheckpointIdError;
 
     /// Copies a complete identifier from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`CheckpointIdError::InvalidByteLength`] if the slice does not
-    /// contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing bytes are rejected
-    /// rather than ignored.
+    /// Returns [`CheckpointIdError::InvalidByteLength`] if the slice does not contain exactly
+    /// [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -66,10 +78,12 @@ impl TryFrom<&[u8]> for CheckpointId {
     }
 }
 
+/// Construction, conversion and rejection properties of [`CheckpointId`].
 #[cfg(test)]
 mod tests {
     use super::{CheckpointId, CheckpointIdError};
 
+    /// Checks that slice conversion preserves complete unverified digests in order.
     #[test]
     fn slice_conversion_preserves_complete_unverified_digests_in_order() {
         let patterned = std::array::from_fn::<_, 64, _>(|index| index as u8 ^ 0xa5);
@@ -82,6 +96,7 @@ mod tests {
         }
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 32, 63, 65, 128] {

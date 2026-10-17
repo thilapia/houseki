@@ -4,19 +4,26 @@ use crate::{CommitteeId, Epoch};
 
 /// An epoch paired with the identifier of its declared committee snapshot.
 ///
-/// The snapshot identifies the validator identities, consensus signing keys,
-/// voting weights and reward mappings used to interpret an occurrence's author.
-/// Keeping its identifier alongside the epoch names the exact snapshot without
-/// assuming that an epoch number alone determines all committee data.
+/// The snapshot identifies the validator identities, consensus signing keys, voting weights and
+/// reward mappings used to interpret an occurrence's author.
 ///
-/// Construction preserves both values without checking that the snapshot is
-/// authorized for that epoch. Consumers must resolve and authenticate it under
-/// the intended network's state and transition rules before using its keys,
-/// weights or reward mappings. This context carries no snapshot or verification
-/// evidence and establishes neither author eligibility nor consensus finality.
+/// Keeping its identifier alongside the epoch names the exact snapshot without assuming that an
+/// epoch number alone determines all committee data.
+///
+/// Construction preserves both values without checking that the snapshot is authorized for that
+/// epoch.
+///
+/// Consumers must resolve and authenticate it under the intended network's state and transition
+/// rules before using its keys, weights or reward mappings.
+///
+/// This context carries no snapshot or verification evidence and establishes neither author
+/// eligibility nor consensus finality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CommitteeContext {
+    /// Declared epoch in which the committee snapshot is used.
     epoch: Epoch,
+
+    /// Declared digest of the exact committee snapshot.
     committee_id: CommitteeId,
 }
 

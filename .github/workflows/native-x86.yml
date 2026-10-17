@@ -76,9 +76,9 @@ jobs:
       - name: Lint the locked workspace
         run: cargo clippy --workspace --all-targets --locked -- -D warnings 2>&1 | tee validation-logs/clippy.log
 
-      - name: Check crypto, notes and state documentation coverage
+      - name: Check workspace documentation coverage
         run: |
-          cargo clippy -p houseki-crypto -p houseki-notes -p houseki-state --all-targets --no-deps --locked -- \
+          cargo clippy --workspace --all-targets --no-deps --locked -- \
             -D warnings -D missing_docs -D clippy::missing_docs_in_private_items \
             2>&1 | tee validation-logs/documentation-lints.log
 

@@ -1,3 +1,5 @@
+//! Errors when constructing an [`EncodedMlKem1024Ciphertext`](super::EncodedMlKem1024Ciphertext).
+
 use thiserror::Error;
 
 /// Errors when constructing an [`EncodedMlKem1024Ciphertext`](super::EncodedMlKem1024Ciphertext).

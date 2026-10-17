@@ -58,12 +58,15 @@ pub fn check_withdrawal_output(
     if opening.recipient().context().network_id() != body.context().network_id() {
         return Err(WithdrawalOutputRelationError::NetworkMismatch);
     }
+
     if opening.commitment()? != body.output().commitment() {
         return Err(WithdrawalOutputRelationError::CommitmentMismatch);
     }
+
     if opening.amount() != &body.public_amount() {
         return Err(WithdrawalOutputRelationError::AmountMismatch);
     }
+
     Ok(())
 }
 

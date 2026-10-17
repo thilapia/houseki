@@ -6,24 +6,32 @@ pub use error::ValidatorIdError;
 
 /// The 64 byte digest representation of a stable Poseidon2 validator identifier.
 ///
-/// Derivation binds immutable registration data under a dedicated validator
-/// domain. The identifier remains unchanged when the consensus signing key
-/// changes. The exact committed fields, domain and canonical encoding remain
-/// to be specified. Construction stores the complete digest without computing
-/// it or verifying registration, and every byte pattern is representable.
+/// Derivation binds immutable registration data under a dedicated validator domain.
 ///
-/// The hash profile must define the field, permutation parameters, sponge
-/// capacity, domain framing and output conversion to meet the selected
-/// 512 effective digest bit requirement. Storing 64 bytes alone establishes
-/// neither that width nor a valid field encoding.
+/// The identifier remains unchanged when the consensus signing key changes.
 ///
-/// Poseidon2 supports proving registration binding inside a circuit without
-/// SHA3 computation. Consumers must authenticate the validator state and use
-/// the signing key authorized for the relevant committee context. This value
-/// establishes no key ownership, committee membership, voting weight or reward
+/// The exact committed fields, domain and canonical encoding remain to be specified.
+///
+/// Construction stores the complete digest without computing it or verifying registration, and
+/// every byte pattern is representable.
+///
+/// The hash profile must define the field, permutation parameters, sponge capacity, domain
+/// framing and output conversion to meet the selected 512 effective digest bit requirement.
+///
+/// Storing 64 bytes alone establishes neither that width nor a valid field encoding.
+///
+/// Poseidon2 supports proving registration binding inside a circuit without SHA3 computation.
+///
+/// Consumers must authenticate the validator state and use the signing key authorized for the
+/// relevant committee context.
+///
+/// This value establishes no key ownership, committee membership, voting weight or reward
 /// destination, and it does not authorize a key change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ValidatorId([u8; 64]);
+pub struct ValidatorId(
+    /// Complete declared stable validator digest without registration evidence.
+    [u8; 64],
+);
 
 impl ValidatorId {
     /// The byte length of the encoded validator identifier.
@@ -46,15 +54,17 @@ impl ValidatorId {
 }
 
 impl TryFrom<&[u8]> for ValidatorId {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = ValidatorIdError;
 
     /// Copies a complete identifier from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`ValidatorIdError::InvalidByteLength`] if the slice does not
-    /// contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing bytes are rejected
-    /// rather than ignored.
+    /// Returns [`ValidatorIdError::InvalidByteLength`] if the slice does not contain exactly
+    /// [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -66,10 +76,12 @@ impl TryFrom<&[u8]> for ValidatorId {
     }
 }
 
+/// Construction, conversion and rejection properties of [`ValidatorId`].
 #[cfg(test)]
 mod tests {
     use super::{ValidatorId, ValidatorIdError};
 
+    /// Checks that slice conversion preserves complete unverified digests in order.
     #[test]
     fn slice_conversion_preserves_complete_unverified_digests_in_order() {
         let patterned = std::array::from_fn::<_, 64, _>(|index| index as u8 ^ 0xa5);
@@ -82,6 +94,7 @@ mod tests {
         }
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 32, 63, 65, 128] {

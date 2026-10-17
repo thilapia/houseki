@@ -1,3 +1,5 @@
+//! Errors when constructing a [`RewardWithdrawalBody`](super::RewardWithdrawalBody).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`RewardWithdrawalBody`](super::RewardWithdrawalBody).

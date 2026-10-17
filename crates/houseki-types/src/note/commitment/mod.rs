@@ -6,22 +6,32 @@ pub use error::NoteCommitmentError;
 
 /// The 64 byte digest representation of a Poseidon2 note commitment.
 ///
-/// The note hash profile must provide 512 effective digest bits. This value
-/// stores the resulting bytes without computing the commitment or validating
-/// its relationship to a note opening. Every byte pattern is representable,
-/// and construction checks neither membership nor spending authority.
+/// The note hash profile must provide 512 effective digest bits.
 ///
-/// The selected field, permutation parameters, sponge capacity, domain framing
-/// and conversion of field outputs to digest bytes remain to be specified.
-/// Serializing field elements into 64 bytes does not by itself meet the
-/// effective width requirement or establish a security level.
+/// This value stores the resulting bytes without computing the commitment or validating its
+/// relationship to a note opening.
 ///
-/// Equal commitments do not identify the same inserted note instance. Nullifier
-/// derivation also binds the original [`super::NotePosition`] and the note's
-/// prescribed nullifier key. Consumers must verify the opening, membership
-/// and position binding under the selected note rules.
+/// Every byte pattern is representable, and construction checks neither membership nor spending
+/// authority.
+///
+/// The selected field, permutation parameters, sponge capacity, domain framing and conversion of
+/// field outputs to digest bytes remain to be specified.
+///
+/// Serializing field elements into 64 bytes does not by itself meet the effective width
+/// requirement or establish a security level.
+///
+/// Equal commitments do not identify the same inserted note instance.
+///
+/// Nullifier derivation also binds the original [`super::NotePosition`] and the note's
+/// prescribed nullifier key.
+///
+/// Consumers must verify the opening, membership and position binding under the selected note
+/// rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NoteCommitment([u8; 64]);
+pub struct NoteCommitment(
+    /// Complete declared note digest without an opening or membership claim.
+    [u8; 64],
+);
 
 impl NoteCommitment {
     /// The byte length of the encoded note commitment digest.
@@ -44,15 +54,17 @@ impl NoteCommitment {
 }
 
 impl TryFrom<&[u8]> for NoteCommitment {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = NoteCommitmentError;
 
     /// Copies a complete commitment from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`NoteCommitmentError::InvalidByteLength`] if the slice does not
-    /// contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing bytes are rejected
-    /// rather than ignored.
+    /// Returns [`NoteCommitmentError::InvalidByteLength`] if the slice does not contain exactly
+    /// [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -64,10 +76,12 @@ impl TryFrom<&[u8]> for NoteCommitment {
     }
 }
 
+/// Construction, conversion and rejection properties of [`NoteCommitment`].
 #[cfg(test)]
 mod tests {
     use super::{NoteCommitment, NoteCommitmentError};
 
+    /// Checks that slice conversion preserves complete unverified digests in order.
     #[test]
     fn slice_conversion_preserves_complete_unverified_digests_in_order() {
         let patterned = std::array::from_fn::<_, 64, _>(|index| index as u8 ^ 0xa5);
@@ -81,6 +95,7 @@ mod tests {
         }
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 32, 63, 65, 128] {

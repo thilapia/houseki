@@ -1,3 +1,5 @@
+//! Errors when constructing or checking [`PaymentCountLimits`](super::PaymentCountLimits).
+
 use thiserror::Error;
 
 /// Errors when constructing or checking [`PaymentCountLimits`](super::PaymentCountLimits).
@@ -16,6 +18,7 @@ pub enum PaymentCountLimitsError {
     InputCountExceedsLimit {
         /// The input count in the shape.
         actual: usize,
+
         /// The inclusive input maximum.
         maximum: usize,
     },
@@ -25,6 +28,7 @@ pub enum PaymentCountLimitsError {
     OutputCountExceedsLimit {
         /// The ordinary note output count in the shape.
         actual: usize,
+
         /// The inclusive ordinary note output maximum.
         maximum: usize,
     },

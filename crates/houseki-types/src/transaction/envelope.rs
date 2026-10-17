@@ -4,22 +4,31 @@ use super::{PaymentEnvelope, RewardWithdrawalEnvelope, TransactionKind};
 
 /// A declared payment or reward withdrawal with its required authorization data.
 ///
-/// Each variant carries the complete envelope for its operation. Payments carry
-/// an encoded proof, while reward withdrawals also require an encoded ML-DSA-87
-/// signature. There is no optional signature field or independent kind tag that
-/// could disagree with the body. Consumers can match the variant to borrow or
-/// take ownership of the corresponding envelope.
+/// Each variant carries the complete envelope for its operation.
 ///
-/// Both payloads are boxed to keep the common enum compact without reserving
-/// space for the withdrawal's large encoded key and signature in every value.
+/// Payments carry an encoded proof, while reward withdrawals also require an encoded ML-DSA-87
+/// signature.
+///
+/// There is no optional signature field or independent kind tag that could disagree with the
+/// body.
+///
+/// Consumers can match the variant to borrow or take ownership of the corresponding envelope.
+///
+/// Both payloads are boxed to keep the common enum compact without reserving space for the
+/// withdrawal's large encoded key and signature in every value.
+///
 /// This is an in-memory representation choice and assigns no wire layout.
 ///
-/// Construction and conversion preserve unverified data. Consumers must apply
-/// the selected operation's context, size, proof and authorization checks before
-/// admission, then enforce its state rules during execution. Equality includes
-/// authorization bytes, while the semantic transaction identifier excludes them.
-/// This type assigns no wire tags, computes no identifier and establishes no
-/// eligibility, execution or finality.
+/// Construction and conversion preserve unverified data.
+///
+/// Consumers must apply the selected operation's context, size, proof and authorization checks
+/// before admission, then enforce its state rules during execution.
+///
+/// Equality includes authorization bytes, while the semantic transaction identifier excludes
+/// them.
+///
+/// This type assigns no wire tags, computes no identifier and establishes no eligibility,
+/// execution or finality.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TransactionEnvelope {
     /// A private payment with its encoded authorization proof.

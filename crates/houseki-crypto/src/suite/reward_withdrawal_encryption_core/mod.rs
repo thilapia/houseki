@@ -55,6 +55,7 @@ impl RewardWithdrawalEncryptionCore {
     ///
     /// Returns [`RewardWithdrawalEncryptionCoreError::ZeroPublicAmount`] when the withdrawal
     /// amount is zero, regardless of the fee.
+    ///
     /// No other authority or execution checks are performed here.
     pub fn new(
         context: TransactionContext,

@@ -77,6 +77,7 @@ impl NoteTree {
     pub fn new(network: NetworkId) -> Result<Self, NoteTreeError> {
         let mut empty = [[0; 64]; 65];
         empty[0] = note_tree_empty_leaf(network)?;
+
         for level in 0..64 {
             empty[level + 1] = note_tree_parent(
                 network,
@@ -85,8 +86,10 @@ impl NoteTree {
                 &empty[level],
             )?;
         }
+
         let count = NoteCount::new(0).expect("empty count fits capacity");
         let root = note_tree_root(network, count, &empty[64])?;
+
         Ok(Self {
             network,
             count,
@@ -113,12 +116,15 @@ impl NoteTree {
             .count
             .checked_next()
             .expect("append position establishes remaining capacity");
+
         self.nodes
             .try_reserve(65)
             .map_err(|_| NoteTreeError::AllocationFailed)?;
+
         let mut changed = [[0; 64]; 65];
         changed[0] = note_tree_leaf(self.network, &commitment)?;
         let mut index = position.value();
+
         for level in 0..64 {
             let height = u8::try_from(level).expect("fixed height fits u8");
             let sibling = self
@@ -143,8 +149,10 @@ impl NoteTree {
             );
             index >>= 1;
         }
+
         self.count = count;
         self.root = root;
+
         Ok(position)
     }
 
@@ -159,8 +167,10 @@ impl NoteTree {
         if u128::from(position.value()) >= self.count.value() {
             return Err(NoteTreeError::PositionNotOccupied);
         }
+
         let mut siblings = Zeroizing::new([[0; 64]; 64]);
         let mut index = Zeroizing::new(position.value());
+
         for (height, sibling) in siblings.iter_mut().enumerate() {
             let node = self
                 .nodes
@@ -172,6 +182,7 @@ impl NoteTree {
             sibling.copy_from_slice(node);
             *index >>= 1;
         }
+
         Ok(NoteMembershipWitness {
             position: Zeroizing::new(*position),
             siblings,
@@ -204,6 +215,7 @@ mod tests {
             tree.witness(&NotePosition::new(0)),
             Err(NoteTreeError::PositionNotOccupied)
         ));
+
         let first = tree.append(commitment).unwrap();
         assert_eq!(first.value(), 0);
         assert_eq!(tree.anchor().count().value(), 1);
@@ -211,9 +223,11 @@ mod tests {
             hex(tree.anchor().root().as_bytes()),
             "a8d550d23bfb1703ec81bd155e5a233c72ccbf1261b45b2999ef38853c4b583af1c8e8a098ef4d26123840a50c1b17818a97ba852af7f987bb8e8b0839dc90f4"
         );
+
         let old_anchor = tree.anchor();
         let old_witness = tree.witness(&first).unwrap();
         old_witness.verify(&old_anchor, &commitment).unwrap();
+
         let second = tree.append(commitment).unwrap();
         assert_eq!(second.value(), 1);
         assert_eq!(tree.anchor().count().value(), 2);
@@ -232,6 +246,7 @@ mod tests {
             Err(NoteMembershipError::RootMismatch)
         ));
         old_witness.verify(&old_anchor, &commitment).unwrap();
+
         for byte in 12..20 {
             let commitment = NoteCommitment::from_bytes([byte; 64]);
             let position = tree.append(commitment).unwrap();
@@ -240,6 +255,7 @@ mod tests {
                 .verify(&tree.anchor(), &commitment)
                 .unwrap();
         }
+
         tree.witness(&first)
             .unwrap()
             .verify(&tree.anchor(), &commitment)
@@ -253,6 +269,7 @@ mod tests {
         tree.count = NoteCount::new(NoteCount::CAPACITY).unwrap();
         let anchor = tree.anchor();
         let nodes = tree.nodes.len();
+
         assert!(matches!(
             tree.append(NoteCommitment::from_bytes([11; 64])),
             Err(NoteTreeError::Full)

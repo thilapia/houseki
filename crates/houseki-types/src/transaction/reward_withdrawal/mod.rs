@@ -9,23 +9,34 @@ use crate::{Amount, EncodedMlDsa87PublicKey, NoteOutput, RewardAccountId, Withdr
 
 /// A reward withdrawal's declared source, public amounts and single note output.
 ///
-/// Construction requires a positive public withdrawal amount. The body carries
-/// exactly one ordinary note output and a separate mandatory public fee, with
-/// its kind fixed to [`TransactionKind::RewardWithdrawal`]. The output proof
-/// must establish that the note contains the declared public amount, while the
-/// ML-DSA-87 signature authorizes the source debit. Neither is stored here.
+/// Construction requires a positive public withdrawal amount.
 ///
-/// Every [`Amount`] is representable as a fee. Construction does not compute
-/// the gross debit or check affordability. Execution must check the exact fee,
-/// compute amount plus fee with checked arithmetic and require the source to
-/// cover that full debit even when it also receives the fee. The including
-/// validator determines the fee beneficiary, which is not chosen by this body.
+/// The body carries exactly one ordinary note output and a separate mandatory public fee, with
+/// its kind fixed to [`TransactionKind::RewardWithdrawal`].
+///
+/// The output proof must establish that the note contains the declared public amount, while the
+/// ML-DSA-87 signature authorizes the source debit.
+///
+/// Neither is stored here.
+///
+/// Every [`Amount`] is representable as a fee.
+///
+/// Construction does not compute the gross debit or check affordability.
+///
+/// Execution must check the exact fee, compute amount plus fee with checked arithmetic and
+/// require the source to cover that full debit even when it also receives the fee.
+///
+/// The including validator determines the fee beneficiary, which is not chosen by this body.
 ///
 /// The declared key and account identifier are not authenticated by construction.
-/// Consumers must check their binding and the account's immutable authority,
-/// match the nonce, reject exhaustion and verify the complete body and context
-/// against the signature and expected proof statement. State changes must be
-/// atomic. An exhausted nonce remains representable for execution to reject.
+///
+/// Consumers must check their binding and the account's immutable authority, match the nonce,
+/// reject exhaustion and verify the complete body and context against the signature and expected
+/// proof statement.
+///
+/// State changes must be atomic.
+///
+/// An exhausted nonce remains representable for execution to reject.
 ///
 /// Consumers also enforce active byte and work limits, context support and note
 /// recovery rules.
@@ -36,12 +47,25 @@ use crate::{Amount, EncodedMlDsa87PublicKey, NoteOutput, RewardAccountId, Withdr
 /// evidence of execution or finality.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RewardWithdrawalBody {
+    /// Declared network, rule identifiers and validity window.
     context: TransactionContext,
+
+    /// Declared source reward account without an authenticated state claim.
     reward_account_id: RewardAccountId,
+
+    /// Complete encoded source authority to be checked against account state.
     withdrawal_public_key: EncodedMlDsa87PublicKey,
+
+    /// Declared source counter to be checked and advanced by execution.
     nonce: WithdrawalNonce,
+
+    /// Positive public amount committed to the single ordinary output note.
     public_amount: Amount,
+
+    /// Separate public fee included in the gross account debit.
     public_fee: Amount,
+
+    /// Single declared ordinary note output for the withdrawn amount.
     output: NoteOutput,
 }
 
@@ -50,9 +74,10 @@ impl RewardWithdrawalBody {
     ///
     /// # Errors
     ///
-    /// Returns [`RewardWithdrawalBodyError::ZeroPublicAmount`] when the amount
-    /// is zero, regardless of the fee. Other execution and authorization checks
-    /// belong to consumers.
+    /// Returns [`RewardWithdrawalBodyError::ZeroPublicAmount`] when the amount is zero,
+    /// regardless of the fee.
+    ///
+    /// Other execution and authorization checks belong to consumers.
     pub fn new(
         context: TransactionContext,
         reward_account_id: RewardAccountId,
@@ -141,6 +166,7 @@ impl RewardWithdrawalBody {
     }
 }
 
+/// Construction, conversion and rejection properties of [`RewardWithdrawalBody`].
 #[cfg(test)]
 mod tests {
     use super::{RewardWithdrawalBody, RewardWithdrawalBodyError};
@@ -151,6 +177,7 @@ mod tests {
         ValidityCheckpointRange, WithdrawalNonce,
     };
 
+    /// Builds a complete declared context for constructor boundary fixtures.
     fn context() -> TransactionContext {
         TransactionContext::new(
             NetworkId::from_bytes([1; 64]),
@@ -162,6 +189,7 @@ mod tests {
         )
     }
 
+    /// Builds one declared output with opaque envelope bytes for constructor fixtures.
     fn output() -> NoteOutput {
         NoteOutput::new(
             NoteCommitment::from_bytes([9; 64]),
@@ -174,6 +202,7 @@ mod tests {
         )
     }
 
+    /// Checks that zero withdrawal is rejected even when the fee is positive.
     #[test]
     fn zero_withdrawal_is_rejected_even_when_the_fee_is_positive() {
         for fee in [0, 1, Amount::MAX_ATOMS] {
@@ -194,6 +223,7 @@ mod tests {
         }
     }
 
+    /// Checks that positive withdrawal preserves the complete declared body.
     #[test]
     fn positive_withdrawal_preserves_the_complete_declared_body() {
         let context = context();
@@ -228,6 +258,7 @@ mod tests {
         );
     }
 
+    /// Checks that positive boundaries leave gross debit and nonce checks to execution.
     #[test]
     fn positive_boundaries_leave_gross_debit_and_nonce_checks_to_execution() {
         for (amount, fee) in [(1, 0), (Amount::MAX_ATOMS, 0), (1, Amount::MAX_ATOMS)] {

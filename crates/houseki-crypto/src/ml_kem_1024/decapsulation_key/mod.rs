@@ -39,6 +39,7 @@ impl MlKem1024DecapsulationKey {
     ///
     /// Returns [`MlKem1024DecapsulationKeyError::RandomnessUnavailable`] if the source cannot
     /// supply all 64 seed bytes.
+    ///
     /// No key is returned on failure.
     pub fn generate() -> Result<Self, MlKem1024DecapsulationKeyError> {
         Self::generate_with_rng(&mut SysRng)
@@ -48,9 +49,11 @@ impl MlKem1024DecapsulationKey {
     ///
     /// The seed consists of d followed by z, each originally sampled independently as 32
     /// uniformly random bytes with a 256 bit security strength.
+    ///
     /// Because every 64 byte value can be expanded, import cannot establish entropy or
     /// provenance and must not be used with a password, public matrix seed or expanded key
     /// encoding.
+    ///
     /// Use [`Self::generate`] to obtain a fresh key with the required randomness.
     ///
     /// The key retains no reference to the borrowed seed, whose storage remains the caller's

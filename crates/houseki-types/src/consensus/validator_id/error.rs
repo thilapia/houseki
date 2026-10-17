@@ -1,3 +1,5 @@
+//! Errors when constructing a [`ValidatorId`](super::ValidatorId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`ValidatorId`](super::ValidatorId).

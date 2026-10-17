@@ -75,6 +75,7 @@ impl TryFrom<CryptoSuiteId> for CryptoSuite {
     ///
     /// Returns [`CryptoSuiteError::Unsupported`] for every unrecognized identifier, including
     /// zero.
+    ///
     /// This does not check protocol activation.
     fn try_from(id: CryptoSuiteId) -> Result<Self, Self::Error> {
         match id.value() {

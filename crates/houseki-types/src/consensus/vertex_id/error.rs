@@ -1,3 +1,5 @@
+//! Errors when constructing a [`VertexId`](super::VertexId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`VertexId`](super::VertexId).

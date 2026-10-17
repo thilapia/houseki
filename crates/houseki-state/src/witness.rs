@@ -76,6 +76,7 @@ impl NoteMembershipWitness {
         if u128::from(self.position.value()) >= anchor.count().value() {
             return Err(NoteMembershipError::PositionNotOccupied);
         }
+
         let root = note_membership_root(
             anchor.network_id(),
             anchor.count(),
@@ -83,9 +84,11 @@ impl NoteMembershipWitness {
             &self.position,
             &self.siblings,
         )?;
+
         if root != anchor.root() {
             return Err(NoteMembershipError::RootMismatch);
         }
+
         Ok(())
     }
 }
@@ -115,6 +118,7 @@ mod tests {
         let anchor = tree.anchor();
         let witness = tree.witness(&position).unwrap();
         witness.verify(&anchor, &commitment).unwrap();
+
         for level in 0..64 {
             let mut changed = Zeroizing::new(*witness.siblings);
             changed[level][63] ^= 1;
@@ -128,11 +132,13 @@ mod tests {
             witness.verify(&anchor, &NoteCommitment::from_bytes([10; 64])),
             Err(NoteMembershipError::RootMismatch)
         ));
+
         let changed = NoteMembershipWitness::from_parts(&NotePosition::new(1), &witness.siblings);
         assert!(matches!(
             changed.verify(&anchor, &commitment),
             Err(NoteMembershipError::RootMismatch)
         ));
+
         for position in [2, 1_u64 << 32, u64::MAX] {
             let changed =
                 NoteMembershipWitness::from_parts(&NotePosition::new(position), &witness.siblings);
@@ -141,11 +147,13 @@ mod tests {
                 Err(NoteMembershipError::PositionNotOccupied)
             ));
         }
+
         let changed = NoteTreeAnchor::new(network, NoteCount::new(1).unwrap(), anchor.root());
         assert!(matches!(
             witness.verify(&changed, &commitment),
             Err(NoteMembershipError::RootMismatch)
         ));
+
         let changed = NoteTreeAnchor::new(
             NetworkId::from_bytes([6; 64]),
             anchor.count(),
@@ -155,6 +163,7 @@ mod tests {
             witness.verify(&changed, &commitment),
             Err(NoteMembershipError::RootMismatch)
         ));
+
         assert_eq!(witness.original_position(), &position);
         witness.verify(&anchor, &commitment).unwrap();
     }
@@ -165,8 +174,10 @@ mod tests {
         let mut position = NotePosition::new(u64::MAX);
         let mut siblings = [[0xff; 64]; 64];
         let witness = NoteMembershipWitness::from_parts(&position, &siblings);
+
         position = NotePosition::new(0);
         siblings.fill([0; 64]);
+
         assert_eq!(witness.original_position().value(), u64::MAX);
         assert_eq!(&*witness.siblings, &[[0xff; 64]; 64]);
         assert_eq!(format!("{witness:?}"), "NoteMembershipWitness([REDACTED])");

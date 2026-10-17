@@ -4,22 +4,32 @@ use super::{EncryptedNoteEnvelope, NoteCommitment};
 
 /// A note commitment paired with its encrypted recovery envelope.
 ///
-/// Payments use the same output representation for recipient notes and optional
-/// change. Reward withdrawals also create a note output. The pair contains no
-/// public recipient identifier, plaintext amount or change marker.
+/// Payments use the same output representation for recipient notes and optional change.
 ///
-/// Construction preserves the supplied values without establishing that the
-/// envelope decrypts to an opening of this commitment. Recipients must recover
-/// and validate the note, including recomputing its commitment under the allowed
-/// rules. A valid transaction proof does not establish successful delivery.
+/// Reward withdrawals also create a note output.
 ///
-/// The containing body determines output order and must bind the commitment,
-/// complete envelope and output context into authorization. Consumers enforce
-/// active count and byte limits and the supported proof relation. This type
-/// assigns no wire encoding or future note insertion position.
+/// The pair contains no public recipient identifier, plaintext amount or change marker.
+///
+/// Construction preserves the supplied values without establishing that the envelope decrypts to
+/// an opening of this commitment.
+///
+/// Recipients must recover and validate the note, including recomputing its commitment under the
+/// allowed rules.
+///
+/// A valid transaction proof does not establish successful delivery.
+///
+/// The containing body determines output order and must bind the commitment, complete envelope
+/// and output context into authorization.
+///
+/// Consumers enforce active count and byte limits and the supported proof relation.
+///
+/// This type assigns no wire encoding or future note insertion position.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NoteOutput {
+    /// Declared commitment to the output note opening.
     commitment: NoteCommitment,
+
+    /// Encrypted recovery material without proof of successful delivery.
     envelope: EncryptedNoteEnvelope,
 }
 

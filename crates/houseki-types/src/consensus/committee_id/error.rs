@@ -1,3 +1,5 @@
+//! Errors when constructing a [`CommitteeId`](super::CommitteeId).
+
 use thiserror::Error;
 
 /// Errors when constructing a [`CommitteeId`](super::CommitteeId).

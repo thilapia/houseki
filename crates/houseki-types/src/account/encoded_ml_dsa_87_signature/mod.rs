@@ -7,15 +7,20 @@ pub use error::EncodedMlDsa87SignatureError;
 /// The complete encoded bytes of an ML-DSA-87 signature.
 ///
 /// This value holds exactly 4627 bytes without interpreting or changing them.
-/// Construction establishes the length only, so arbitrary byte patterns can
-/// be represented even when they do not encode a valid signature.
 ///
-/// A withdrawal consumer must verify the signature outside proofs against the
-/// reward account's immutable authority and the complete body and its context.
-/// Storing these bytes does not establish canonical encoding, bind a message or
-/// authorize a withdrawal.
+/// Construction establishes the length only, so arbitrary byte patterns can be represented even
+/// when they do not encode a valid signature.
+///
+/// A withdrawal consumer must verify the signature outside proofs against the reward account's
+/// immutable authority and the complete body and its context.
+///
+/// Storing these bytes does not establish canonical encoding, bind a message or authorize a
+/// withdrawal.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EncodedMlDsa87Signature([u8; 4627]);
+pub struct EncodedMlDsa87Signature(
+    /// Complete encoded ML-DSA-87 signature bytes.
+    [u8; 4627],
+);
 
 impl EncodedMlDsa87Signature {
     /// The encoded byte length of an ML-DSA-87 signature.
@@ -38,15 +43,17 @@ impl EncodedMlDsa87Signature {
 }
 
 impl TryFrom<&[u8]> for EncodedMlDsa87Signature {
+    /// Error returned when the supplied slice has an invalid encoded length.
     type Error = EncodedMlDsa87SignatureError;
 
     /// Copies a complete encoded signature from a slice, checking only its length.
     ///
     /// # Errors
     ///
-    /// Returns [`EncodedMlDsa87SignatureError::InvalidByteLength`] if the
-    /// slice does not contain exactly [`Self::BYTE_LENGTH`] bytes. Trailing
-    /// bytes are rejected rather than ignored.
+    /// Returns [`EncodedMlDsa87SignatureError::InvalidByteLength`] if the slice does not contain
+    /// exactly [`Self::BYTE_LENGTH`] bytes.
+    ///
+    /// Trailing bytes are rejected rather than ignored.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let bytes = bytes
             .try_into()
@@ -58,10 +65,12 @@ impl TryFrom<&[u8]> for EncodedMlDsa87Signature {
     }
 }
 
+/// Construction, conversion and rejection properties of [`EncodedMlDsa87Signature`].
 #[cfg(test)]
 mod tests {
     use super::{EncodedMlDsa87Signature, EncodedMlDsa87SignatureError};
 
+    /// Checks that slice conversion preserves all bytes in order.
     #[test]
     fn slice_conversion_preserves_all_bytes_in_order() {
         let bytes = std::array::from_fn::<_, 4627, _>(|index| (index % 251) as u8);
@@ -71,6 +80,7 @@ mod tests {
         assert_eq!(signature.into_bytes(), bytes);
     }
 
+    /// Checks that slice conversion rejects truncation and trailing bytes.
     #[test]
     fn slice_conversion_rejects_truncation_and_trailing_bytes() {
         for length in [0, 1, 4626, 4628, 9254] {
@@ -84,6 +94,7 @@ mod tests {
         }
     }
 
+    /// Checks that encoded storage preserves unverified byte patterns.
     #[test]
     fn encoded_storage_preserves_unverified_byte_patterns() {
         for bytes in [[0; 4627], [u8::MAX; 4627]] {

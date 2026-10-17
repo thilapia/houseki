@@ -102,20 +102,24 @@ pub fn check_spend(
 ) -> Result<(), SpendRelationError> {
     let opening = witness.opening;
     let recipient = opening.recipient();
+
     match (opening.format(), recipient.suite()) {
         (crate::NoteFormat::V1, houseki_crypto::CryptoSuite::V1) => {}
     }
     if recipient.context().network_id() != anchor.network_id() {
         return Err(SpendRelationError::NetworkMismatch);
     }
+
     let ownership = witness
         .spending_key
         .ownership_commitment(anchor.network_id(), witness.nullifier_key)?;
     if ownership != recipient.ownership_commitment() {
         return Err(SpendRelationError::OwnershipMismatch);
     }
+
     let commitment = opening.commitment()?;
     witness.membership.verify(anchor, &commitment)?;
+
     let nullifier = crate::derive_nullifier(
         opening,
         witness.nullifier_key,
@@ -124,6 +128,7 @@ pub fn check_spend(
     if nullifier != expected_nullifier {
         return Err(SpendRelationError::NullifierMismatch);
     }
+
     Ok(())
 }
 

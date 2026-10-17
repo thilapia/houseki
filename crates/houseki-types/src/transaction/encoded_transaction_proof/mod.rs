@@ -6,36 +6,51 @@ pub use error::EncodedTransactionProofError;
 
 /// An owned encoded transaction proof checked against a supplied byte limit.
 ///
-/// This value preserves opaque proof bytes without depending on a proof backend
-/// or selecting an encoding. The verifier must resolve the allowed proof profile
-/// from the transaction context, apply its decoding rules and verify the proper
-/// relation against the statement derived from the actual body and kind.
+/// This value preserves opaque proof bytes without depending on a proof backend or selecting an
+/// encoding.
 ///
-/// Construction checks only the inclusive maximum byte length. Empty bytes are
-/// representable because minimum lengths and proof structure belong to the
-/// profile. Neither successful construction nor byte equality establishes proof
-/// validity, authorization or eligibility for execution.
+/// The verifier must resolve the allowed proof profile from the transaction context, apply its
+/// decoding rules and verify the proper relation against the statement derived from the actual
+/// body and kind.
 ///
-/// Callers must supply the applicable limit and enforce decoding bounds before
-/// allocating proof bytes or decoded backend structures. They must also enforce
-/// verification work limits and total envelope size separately. A change in
-/// limits requires a new length check. No default network limit or outer wire
-/// framing is assigned here.
+/// Construction checks only the inclusive maximum byte length.
 ///
-/// These bytes belong to the transaction envelope and are excluded from the
-/// semantic transaction identifier. They do not replace any required public
-/// account signatures or the separate checkpoint execution proof package.
+/// Empty bytes are representable because minimum lengths and proof structure belong to the
+/// profile.
+///
+/// Neither successful construction nor byte equality establishes proof validity, authorization
+/// or eligibility for execution.
+///
+/// Callers must supply the applicable limit and enforce decoding bounds before allocating proof
+/// bytes or decoded backend structures.
+///
+/// They must also enforce verification work limits and total envelope size separately.
+///
+/// A change in limits requires a new length check.
+///
+/// No default network limit or outer wire framing is assigned here.
+///
+/// These bytes belong to the transaction envelope and are excluded from the semantic transaction
+/// identifier.
+///
+/// They do not replace any required public account signatures or the separate checkpoint
+/// execution proof package.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EncodedTransactionProof(Vec<u8>);
+pub struct EncodedTransactionProof(
+    /// Opaque encoded proof bytes under a supplied inclusive limit.
+    Vec<u8>,
+);
 
 impl EncodedTransactionProof {
     /// Stores opaque proof bytes under an inclusive byte limit.
     ///
     /// # Errors
     ///
-    /// Returns [`EncodedTransactionProofError::ByteLengthExceedsLimit`] if the
-    /// supplied bytes exceed `max_proof_bytes`. A zero maximum permits only an
-    /// empty value, without establishing that it is a valid proof encoding.
+    /// Returns [`EncodedTransactionProofError::ByteLengthExceedsLimit`] if the supplied bytes
+    /// exceed `max_proof_bytes`.
+    ///
+    /// A zero maximum permits only an empty value, without establishing that it is a valid proof
+    /// encoding.
     pub fn new(
         bytes: Vec<u8>,
         max_proof_bytes: usize,
@@ -66,10 +81,12 @@ impl EncodedTransactionProof {
     }
 }
 
+/// Construction, conversion and rejection properties of [`EncodedTransactionProof`].
 #[cfg(test)]
 mod tests {
     use super::{EncodedTransactionProof, EncodedTransactionProofError};
 
+    /// Checks that construction preserves every byte at the inclusive limit.
     #[test]
     fn construction_preserves_every_byte_at_the_inclusive_limit() {
         let bytes: Vec<u8> = (0..=u8::MAX).rev().collect();
@@ -80,6 +97,7 @@ mod tests {
         assert_eq!(proof.into_bytes(), bytes);
     }
 
+    /// Checks that construction rejects proofs above the supplied limit.
     #[test]
     fn construction_rejects_proofs_above_the_supplied_limit() {
         for (actual, maximum) in [(1, 0), (2, 1), (257, 256)] {
@@ -94,6 +112,7 @@ mod tests {
         }
     }
 
+    /// Checks that encoded storage leaves format and validity checks to the profile.
     #[test]
     fn encoded_storage_leaves_format_and_validity_checks_to_the_profile() {
         for (bytes, maximum) in [

@@ -9,18 +9,22 @@ use zeroize::Zeroize;
 
 /// An exact amount from zero through [`Self::MAX_ATOMS`], stored as atoms.
 ///
-/// Each coin contains [`Self::ATOMS_PER_COIN`] atoms, providing 20 decimal places
-/// without floating point arithmetic. Parsing and display use coin units, while
-/// construction and arithmetic operate on the underlying atom count.
+/// Each coin contains [`Self::ATOMS_PER_COIN`] atoms, providing 20 decimal places without
+/// floating point arithmetic.
 ///
-/// The bound applies to individual amounts, so conservation calculations may
-/// need checked `u128` intermediates for totals that exceed it. The ledger remains
-/// responsible for enforcing the global supply limit across all amounts.
+/// Parsing and display use coin units, while construction and arithmetic operate on the
+/// underlying atom count.
 ///
-/// Decimal input must contain ASCII whole digits and may include a decimal point
-/// followed by 1 to 20 fractional digits. Leading whole zeroes and trailing
-/// fractional zeroes are accepted and normalized when displayed, while signs,
-/// whitespace, exponents and digit separators are rejected.
+/// The bound applies to individual amounts, so conservation calculations may need checked `u128`
+/// intermediates for totals that exceed it.
+///
+/// The ledger remains responsible for enforcing the global supply limit across all amounts.
+///
+/// Decimal input must contain ASCII whole digits and may include a decimal point followed by 1
+/// to 20 fractional digits.
+///
+/// Leading whole zeroes and trailing fractional zeroes are accepted and normalized when
+/// displayed, while signs, whitespace, exponents and digit separators are rejected.
 ///
 /// [`Zeroize::zeroize`] clears the stored atom count to zero, allowing private owners to use
 /// [`zeroize::Zeroizing`] while retaining the bounded representation.
@@ -28,7 +32,10 @@ use zeroize::Zeroize;
 /// The value remains copyable and is not cleared automatically, so callers remain responsible
 /// for independent copies, diagnostics and storage outside a guarded owner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Amount(u128);
+pub struct Amount(
+    /// Exact atom count within the individual amount cap.
+    u128,
+);
 
 impl Amount {
     /// Number of fractional decimal places in one coin.
@@ -119,6 +126,7 @@ impl Zeroize for Amount {
 }
 
 impl TryFrom<&[u8]> for Amount {
+    /// Error returned when the slice has an invalid length or exceeds the amount cap.
     type Error = AmountError;
 
     /// Decodes an amount from a slice containing exactly 16 little-endian bytes.
@@ -138,6 +146,7 @@ impl TryFrom<&[u8]> for Amount {
     }
 }
 
+/// Construction, conversion and rejection properties of [`Amount`].
 #[cfg(test)]
 mod tests {
     use zeroize::{Zeroize, Zeroizing};
@@ -177,6 +186,7 @@ mod tests {
         assert_eq!(original.atoms(), Amount::MAX_ATOMS);
     }
 
+    /// Checks that construction accepts the monetary range.
     #[test]
     fn construction_accepts_the_monetary_range() {
         for atoms in [0, 1, 10_u128.pow(20), 10_u128.pow(29)] {
@@ -184,6 +194,7 @@ mod tests {
         }
     }
 
+    /// Checks that construction rejects values above the exact cap.
     #[test]
     fn construction_rejects_values_above_the_exact_cap() {
         for atoms in [10_u128.pow(29) + 1, (1_u128 << 97) - 1, u128::MAX] {
@@ -194,19 +205,24 @@ mod tests {
         }
     }
 
+    /// Checks that construction checks the cap in const contexts.
     #[test]
     fn construction_checks_the_cap_in_const_contexts() {
+        /// Smallest positive amount constructed at compile time.
         const ONE_ATOM: Amount = match Amount::from_atoms(1) {
             Ok(amount) => amount,
             Err(_) => panic!("one atom is valid"),
         };
+        /// Compile time atom count of the smallest positive amount.
         const ATOMS: u128 = ONE_ATOM.atoms();
+        /// Compile time rejection of an amount above the exact cap.
         const TOO_LARGE: Result<Amount, AmountError> = Amount::from_atoms(10_u128.pow(29) + 1);
 
         assert_eq!(ATOMS, 1);
         assert!(matches!(TOO_LARGE, Err(AmountError::ValueExceedsMaximum)));
     }
 
+    /// Checks that addition preserves valid sums across carries.
     #[test]
     fn addition_preserves_valid_sums_across_carries() {
         for (left, right, expected) in [
@@ -223,6 +239,7 @@ mod tests {
         }
     }
 
+    /// Checks that addition rejects sums above the cap.
     #[test]
     fn addition_rejects_sums_above_the_cap() {
         let maximum = Amount::from_atoms(10_u128.pow(29)).unwrap();
@@ -234,6 +251,7 @@ mod tests {
         }
     }
 
+    /// Checks that subtraction preserves valid differences across borrows.
     #[test]
     fn subtraction_preserves_valid_differences_across_borrows() {
         for (left, right, expected) in [
@@ -250,6 +268,7 @@ mod tests {
         }
     }
 
+    /// Checks that subtraction rejects negative results.
     #[test]
     fn subtraction_rejects_negative_results() {
         for (left, right) in [(0, 1), (10_u128.pow(29) - 1, 10_u128.pow(29))] {
@@ -262,6 +281,7 @@ mod tests {
         }
     }
 
+    /// Checks that decimal conversion preserves exact atoms and normalizes display.
     #[test]
     fn decimal_conversion_preserves_exact_atoms_and_normalizes_display() {
         for (input, expected_atoms, expected_display) in [
@@ -293,6 +313,7 @@ mod tests {
         }
     }
 
+    /// Checks that decimal parsing rejects malformed or ambiguous text.
     #[test]
     fn decimal_parsing_rejects_malformed_or_ambiguous_text() {
         for input in [
@@ -306,6 +327,7 @@ mod tests {
         }
     }
 
+    /// Checks that decimal parsing rejects excess precision without rounding.
     #[test]
     fn decimal_parsing_rejects_excess_precision_without_rounding() {
         for input in ["0.000000000000000000001", "1.000000000000000000000"] {
@@ -316,6 +338,7 @@ mod tests {
         }
     }
 
+    /// Checks that decimal parsing rejects values above the cap.
     #[test]
     fn decimal_parsing_rejects_values_above_the_cap() {
         for input in ["1000000001", "1000000000.00000000000000000001"] {
@@ -326,6 +349,7 @@ mod tests {
         }
     }
 
+    /// Checks that decimal parsing reports integer overflow without panicking.
     #[test]
     fn decimal_parsing_reports_integer_overflow_without_panicking() {
         for input in [
@@ -340,6 +364,7 @@ mod tests {
         }
     }
 
+    /// Checks that byte encoding matches little endian fixtures.
     #[test]
     fn byte_encoding_matches_little_endian_fixtures() {
         for (atoms, bytes) in [
@@ -357,6 +382,7 @@ mod tests {
         }
     }
 
+    /// Checks that byte decoding enforces the exact cap.
     #[test]
     fn byte_decoding_enforces_the_exact_cap() {
         let maximum_bytes = 10_u128.pow(29).to_le_bytes();
@@ -377,6 +403,7 @@ mod tests {
         }
     }
 
+    /// Checks that byte decoding rejects truncated and trailing bytes.
     #[test]
     fn byte_decoding_rejects_truncated_and_trailing_bytes() {
         for length in [0, 1, 15, 17, 32] {
@@ -388,12 +415,15 @@ mod tests {
         }
     }
 
+    /// Checks that byte encoding is available in const contexts.
     #[test]
     fn byte_encoding_is_available_in_const_contexts() {
+        /// Zero amount decoded at compile time.
         const ZERO: Amount = match Amount::from_le_bytes([0; 16]) {
             Ok(amount) => amount,
             Err(_) => panic!("zero is valid"),
         };
+        /// Canonical zero amount bytes produced at compile time.
         const BYTES: [u8; 16] = ZERO.to_le_bytes();
         assert_eq!(BYTES, [0; 16]);
     }
