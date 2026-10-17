@@ -3,7 +3,7 @@
 mod encoding;
 
 #[cfg(test)]
-pub(crate) use encoding::{ByteAir, BytesAir};
+pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 #[cfg(any(test, feature = "prover"))]
 #[cfg_attr(
     not(test),
@@ -12,7 +12,7 @@ pub(crate) use encoding::{ByteAir, BytesAir};
         reason = "circuit trace builders follow in later increments"
     )
 )]
-pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes};
+pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
 #[cfg_attr(
     not(test),
     expect(
@@ -20,4 +20,4 @@ pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes};
         reason = "circuit consumers follow in later increments"
     )
 )]
-pub(crate) use encoding::{eval_byte, eval_bytes};
+pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
