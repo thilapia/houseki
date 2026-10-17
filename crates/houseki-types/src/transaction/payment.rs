@@ -28,8 +28,12 @@ use crate::Amount;
 ///
 /// Authorization and the expected proof statement must bind the payment kind,
 /// context, anchor, actual counts, ordered effects and complete encrypted
-/// envelopes. This type carries no proof and assigns no wire encoding,
-/// transaction identifier or additional payment class.
+/// envelopes.
+///
+/// The V1 canonical codec preserves these effects under explicit active limits.
+///
+/// This type carries no proof and establishes no transaction identifier or additional
+/// payment class.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PaymentBody {
     context: TransactionContext,

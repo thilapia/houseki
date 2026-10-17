@@ -204,9 +204,9 @@ pub use note::{
     NoteRoot, NoteRootError, Nullifier, NullifierError,
 };
 pub use transaction::{
-    EncodedTransactionProof, EncodedTransactionProofError, PaymentBody, PaymentCountLimits,
-    PaymentCountLimitsError, PaymentEnvelope, PaymentInputs, PaymentInputsError, PaymentOutputs,
-    PaymentOutputsError, PaymentShape, PaymentShapeError, RewardWithdrawalBody,
-    RewardWithdrawalBodyError, RewardWithdrawalEnvelope, TransactionContext, TransactionEnvelope,
-    TransactionId, TransactionIdError, TransactionKind,
+    BodyCodecError, BodyCodecLimits, EncodedTransactionProof, EncodedTransactionProofError,
+    PaymentBody, PaymentCountLimits, PaymentCountLimitsError, PaymentEnvelope, PaymentInputs,
+    PaymentInputsError, PaymentOutputs, PaymentOutputsError, PaymentShape, PaymentShapeError,
+    RewardWithdrawalBody, RewardWithdrawalBodyError, RewardWithdrawalEnvelope, TransactionContext,
+    TransactionEnvelope, TransactionId, TransactionIdError, TransactionKind,
 };

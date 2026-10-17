@@ -1,5 +1,6 @@
 //! Shared values for transaction bodies and envelopes.
 
+mod codec;
 mod context;
 mod encoded_transaction_proof;
 mod envelope;
@@ -14,6 +15,7 @@ mod payment_shape;
 mod reward_withdrawal;
 mod reward_withdrawal_envelope;
 
+pub use codec::{BodyCodecError, BodyCodecLimits};
 pub use context::TransactionContext;
 pub use encoded_transaction_proof::{EncodedTransactionProof, EncodedTransactionProofError};
 pub use envelope::TransactionEnvelope;

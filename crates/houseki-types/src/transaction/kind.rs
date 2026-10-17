@@ -7,8 +7,12 @@
 /// a transaction cannot be reinterpreted as a different operation.
 ///
 /// These variants describe the payment and reward withdrawal flows currently
-/// modeled by the protocol. They do not assign wire tags or establish that a
-/// transaction is valid or supported under the active protocol rules.
+/// modeled by the protocol.
+///
+/// The V1 canonical body codec maps payment to tag 1 and withdrawal to tag 2 explicitly,
+/// independently of this enum's memory representation.
+///
+/// A kind establishes neither transaction validity nor active protocol support.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransactionKind {
     /// Spends private notes to create one or more ordinary note outputs and pay

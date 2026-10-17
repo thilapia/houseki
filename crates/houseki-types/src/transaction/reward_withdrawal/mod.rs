@@ -28,8 +28,12 @@ use crate::{Amount, EncodedMlDsa87PublicKey, NoteOutput, RewardAccountId, Withdr
 /// atomic. An exhausted nonce remains representable for execution to reject.
 ///
 /// Consumers also enforce active byte and work limits, context support and note
-/// recovery rules. This type provides no wire encoding, signature transcript,
-/// transaction identifier derivation or evidence of execution or finality.
+/// recovery rules.
+///
+/// The V1 canonical codec preserves the complete body under explicit active limits.
+///
+/// Construction provides no signature transcript, transaction identifier derivation or
+/// evidence of execution or finality.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RewardWithdrawalBody {
     context: TransactionContext,
