@@ -1,12 +1,14 @@
 //! Authentication, guarded canonical parsing and commitment agreement for received notes.
 
 use houseki_crypto::{
-    MlKem1024DecapsulationKey, NoteDecryptionError, NoteEncryptionContext,
+    CryptoSuite, MlKem1024DecapsulationKey, NoteDecryptionError, NoteEncryptionContext,
     NoteEncryptionContextError, PaymentEncryptionCoreError,
 };
-use houseki_types::{PaymentBody, PaymentCountLimits};
+use houseki_types::{NetworkId, NoteOutput, PaymentBody, PaymentCountLimits, RewardWithdrawalBody};
 
-use super::{NoteContextError, NoteRecoveryError, payment_encryption_core};
+use super::{
+    NoteContextError, NoteRecoveryError, payment_encryption_core, withdrawal_encryption_core,
+};
 use crate::{NoteOpening, NoteRecipient};
 
 /// Authenticates and validates one payment output before returning its protected opening.
@@ -79,23 +81,91 @@ pub fn recover_payment_output(
         })?;
 
     let core = payment_encryption_core(body, limits, max_payload_bytes)?;
-    if recipient.context().network_id() != core.context().network_id() {
-        return Err(NoteRecoveryError::NetworkMismatch);
-    }
     // Projection preserves every output in order, including this already checked position.
-    if core.outputs()[index].1 != recipient.suite() {
-        return Err(NoteDecryptionError::AuthenticationFailed.into());
-    }
-
+    match_recipient_context(
+        core.context().network_id(),
+        core.outputs()[index].1,
+        recipient,
+    )?;
     let context =
         NoteEncryptionContext::for_payment(&core, output_index, recipient.kem_public_key())?;
+    recover_matched_opening(&context, output, recipient, key, max_payload_bytes)
+}
+
+/// Authenticates and validates the sole withdrawal output and its public amount agreement.
+///
+/// Complete body projection checks the public payload before recipient network and suite checks.
+///
+/// The reconstructed withdrawal context binds the complete source account, authority key, nonce,
+/// positive public amount, separate fee and output commitment, and selects output zero.
+///
+/// Crypto authenticates the envelope before private parsing, with plaintext retained in guarded
+/// storage through canonical decoding and commitment matching.
+///
+/// The protected opening is returned only after its borrowed amount equals the public amount.
+///
+/// The inclusive `max_payload_bytes` bound covers the complete payload, excluding encapsulation.
+///
+/// The body and key remain borrowed, while failures and unwinding drop guarded private owners.
+///
+/// This operation does not verify source authority, a withdrawal signature, account balance,
+/// nonce eligibility, fee policy, proof validity, insertion or finality.
+///
+/// # Errors
+///
+/// Preserves safe projection, context, decryption and commitment framing sources.
+///
+/// Recipient suite or key disagreement and failed authentication retain the grouped crypto
+/// authentication error, while malformed authenticated records share a fixed parsing error.
+///
+/// Commitment matching precedes public amount equality, with disagreements returning fixed
+/// errors without private values or a partial opening.
+pub fn recover_withdrawal_output(
+    body: &RewardWithdrawalBody,
+    recipient: &NoteRecipient,
+    key: &MlKem1024DecapsulationKey,
+    max_payload_bytes: usize,
+) -> Result<NoteOpening, NoteRecoveryError> {
+    let core = withdrawal_encryption_core(body, max_payload_bytes)?;
+    match_recipient_context(core.context().network_id(), core.output().1, recipient)?;
+    let context = NoteEncryptionContext::for_reward_withdrawal(&core, recipient.kem_public_key())?;
+    let opening =
+        recover_matched_opening(&context, body.output(), recipient, key, max_payload_bytes)?;
+    if opening.amount() != &core.public_amount() {
+        return Err(NoteRecoveryError::WithdrawalAmountMismatch);
+    }
+    Ok(opening)
+}
+
+/// Requires the recipient network and groups expected suite disagreement with authentication.
+fn match_recipient_context(
+    network: NetworkId,
+    suite: CryptoSuite,
+    recipient: &NoteRecipient,
+) -> Result<(), NoteRecoveryError> {
+    if recipient.context().network_id() != network {
+        return Err(NoteRecoveryError::NetworkMismatch);
+    }
+    if suite != recipient.suite() {
+        return Err(NoteDecryptionError::AuthenticationFailed.into());
+    }
+    Ok(())
+}
+
+/// Keeps authenticated bytes guarded through private decoding and output commitment matching.
+fn recover_matched_opening(
+    context: &NoteEncryptionContext,
+    output: &NoteOutput,
+    recipient: &NoteRecipient,
+    key: &MlKem1024DecapsulationKey,
+    max_payload_bytes: usize,
+) -> Result<NoteOpening, NoteRecoveryError> {
     let plaintext = context.open(output.envelope(), key, max_payload_bytes)?;
     let opening = NoteOpening::decode_plaintext(&plaintext, recipient)
         .map_err(|_| NoteRecoveryError::InvalidPlaintext)?;
     if opening.commitment()? != output.commitment() {
         return Err(NoteRecoveryError::CommitmentMismatch);
     }
-
     Ok(opening)
 }
 
@@ -107,20 +177,22 @@ mod tests {
     use houseki_crypto::{
         CryptoSuite, CryptoSuiteError, MlKem1024DecapsulationKey, NoteDecryptionError,
         NoteEncryptionContext, NoteEncryptionContextError, NotePayloadError, PaymentEncryptionCore,
-        PaymentEncryptionCoreError,
+        PaymentEncryptionCoreError, RewardWithdrawalEncryptionCore,
     };
     use houseki_types::{
-        AddressContext, AddressFormatVersion, Amount, CheckpointSequence,
+        AddressContext, AddressFormatVersion, Amount, CheckpointSequence, EncodedMlDsa87PublicKey,
         EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope, FeeScheduleId, NetworkId,
         NoteCommitment, NoteOutput, NoteRoot, Nullifier, OwnershipCommitment, PaymentBody,
         PaymentCountLimits, PaymentCountLimitsError, PaymentInputs, PaymentOutputs, ProofProfileId,
-        ProtocolVersion, RecipientDescriptor, TransactionContext, ValidityCheckpointRange,
+        ProtocolVersion, RecipientDescriptor, RewardAccountId, RewardWithdrawalBody,
+        TransactionContext, ValidityCheckpointRange, WithdrawalNonce,
     };
     use zeroize::Zeroizing;
 
     use crate::{
         NoteBlinding, NoteContextError, NoteFormat, NoteOpening, NoteRecipient, NoteRecoveryError,
-        encrypt_payment_output, recover_payment_output,
+        encrypt_payment_output, encrypt_withdrawal_output, recover_payment_output,
+        recover_withdrawal_output, withdrawal_encryption_core,
     };
 
     /// Builds the declared context with distinctive complete identifiers and checkpoint bounds.
@@ -678,6 +750,297 @@ mod tests {
                         NoteRecoveryError::Decryption(NoteDecryptionError::AuthenticationFailed)
                     ),
                     "core mutation {change} did not fail authentication"
+                );
+            }
+        }
+    }
+    /// Supplies complete source authority and an independent public fee for withdrawal fixtures.
+    fn withdrawal_core(
+        commitment: NoteCommitment,
+        atoms: u128,
+        fee: u128,
+    ) -> RewardWithdrawalEncryptionCore {
+        RewardWithdrawalEncryptionCore::new(
+            context(),
+            RewardAccountId::from_bytes([12; 64]),
+            EncodedMlDsa87PublicKey::from_bytes([14; 2592]),
+            WithdrawalNonce::new(u64::MAX),
+            Amount::from_atoms(atoms).unwrap(),
+            Amount::from_atoms(fee).unwrap(),
+            (commitment, CryptoSuite::V1),
+        )
+        .unwrap()
+    }
+
+    /// Assembles a withdrawal without replacing any public source or context field.
+    fn withdrawal_body(
+        core: &RewardWithdrawalEncryptionCore,
+        output: NoteOutput,
+    ) -> RewardWithdrawalBody {
+        RewardWithdrawalBody::new(
+            core.context(),
+            core.reward_account_id(),
+            core.withdrawal_public_key().clone(),
+            core.nonce(),
+            core.public_amount(),
+            core.public_fee(),
+            output,
+        )
+        .unwrap()
+    }
+
+    /// Authenticates sender chosen private bytes independently of notes validation.
+    fn authenticated_withdrawal(
+        core: &RewardWithdrawalEncryptionCore,
+        recipient: &NoteRecipient,
+        bytes: &[u8],
+    ) -> RewardWithdrawalBody {
+        let context =
+            NoteEncryptionContext::for_reward_withdrawal(core, recipient.kem_public_key()).unwrap();
+        withdrawal_body(
+            core,
+            NoteOutput::new(core.output().0, context.seal(bytes, 96).unwrap()),
+        )
+    }
+
+    /// Checks canonical boundary delivery and that fees never change the recovered amount.
+    #[test]
+    fn withdrawal_recovery_returns_exact_openings_and_preserves_complete_bodies() {
+        for seed in [11, 12] {
+            let key = MlKem1024DecapsulationKey::from_seed(&[seed; 64]);
+            let recipient = recipient(&key, [13; 64]);
+            for (atoms, fee) in [
+                (1, 0),
+                (1, Amount::MAX_ATOMS),
+                ((1_u128 << 64) + 3, 17),
+                (Amount::MAX_ATOMS, Amount::MAX_ATOMS),
+            ] {
+                let original = opening(&recipient, atoms, 0xa5);
+                let core = withdrawal_core(original.commitment().unwrap(), atoms, fee);
+                let output = encrypt_withdrawal_output(&core, &recipient, &original, 84).unwrap();
+                let body = withdrawal_body(&core, output);
+                let unchanged = body.clone();
+                assert_eq!(withdrawal_encryption_core(&body, 84).unwrap(), core);
+                let recovered = recover_withdrawal_output(&body, &recipient, &key, 84).unwrap();
+                assert_eq!(recovered.format(), NoteFormat::V1);
+                assert_eq!(recovered.recipient(), &recipient);
+                assert_eq!(recovered.amount().atoms(), atoms);
+                assert_eq!(recovered.commitment().unwrap(), body.output().commitment());
+                assert_eq!(
+                    &recovered.encode_plaintext()[..],
+                    &plaintext(atoms, 0xa5)[..]
+                );
+                assert_eq!(body, unchanged);
+                assert_eq!(
+                    &original.encode_plaintext()[..],
+                    &plaintext(atoms, 0xa5)[..]
+                );
+            }
+        }
+    }
+
+    /// Rejects authenticated amount mismatches only after matching the opening commitment.
+    #[test]
+    fn withdrawal_recovery_rejects_authenticated_public_amount_disagreement() {
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, [13; 64]);
+        for (private, public) in [
+            (1, 2),
+            (2, 1),
+            (1_u128 << 64, (1_u128 << 64) + 1),
+            (1, Amount::MAX_ATOMS),
+            (Amount::MAX_ATOMS, 1),
+        ] {
+            let opening = opening(&recipient, private, 0xa5);
+            let core = withdrawal_core(opening.commitment().unwrap(), public, 17);
+            let body = authenticated_withdrawal(&core, &recipient, &plaintext(private, 0xa5)[..]);
+            let error = recover_withdrawal_output(&body, &recipient, &key, 84).unwrap_err();
+            assert!(matches!(error, NoteRecoveryError::WithdrawalAmountMismatch));
+            assert_eq!(
+                error.to_string(),
+                "recovered note amount does not match the public withdrawal amount"
+            );
+            assert!(error.source().is_none());
+        }
+        let core = withdrawal_core(NoteCommitment::from_bytes([0; 64]), 2, 17);
+        let body = authenticated_withdrawal(&core, &recipient, &plaintext(1, 0xa5)[..]);
+        assert!(matches!(
+            recover_withdrawal_output(&body, &recipient, &key, 84),
+            Err(NoteRecoveryError::CommitmentMismatch)
+        ));
+    }
+
+    /// Requires authentication before exact private decoding and decoding before commitment matching.
+    #[test]
+    fn withdrawal_recovery_rejects_malformed_authenticated_records_and_tampering() {
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, [13; 64]);
+        let opening = opening(&recipient, 1, 0xa5);
+        let core = withdrawal_core(opening.commitment().unwrap(), 1, 17);
+        let valid = plaintext(1, 0xa5);
+        let mut malformed: Vec<Zeroizing<Vec<u8>>> = (0..52)
+            .map(|length| Zeroizing::new(valid[..length].to_vec()))
+            .collect();
+        let mut trailing = Zeroizing::new(valid.to_vec());
+        trailing.push(0);
+        malformed.push(trailing);
+        for version in [0_u32, 2, 0x0100_0001, u32::MAX] {
+            let mut changed = Zeroizing::new(valid.to_vec());
+            changed[..4].copy_from_slice(&version.to_le_bytes());
+            malformed.push(changed);
+        }
+        for amount in [0, Amount::MAX_ATOMS + 1, u128::MAX] {
+            malformed.push(Zeroizing::new(plaintext(amount, 0xa5).to_vec()));
+        }
+        for bytes in malformed {
+            let body = authenticated_withdrawal(&core, &recipient, &bytes);
+            assert!(matches!(
+                recover_withdrawal_output(&body, &recipient, &key, 96),
+                Err(NoteRecoveryError::InvalidPlaintext)
+            ));
+            let envelope = body.output().envelope();
+            let mut payload = envelope.payload().to_vec();
+            *payload.last_mut().unwrap() ^= 1;
+            let changed = withdrawal_body(
+                &core,
+                NoteOutput::new(
+                    core.output().0,
+                    EncryptedNoteEnvelope::new(envelope.encapsulation().clone(), payload, 96)
+                        .unwrap(),
+                ),
+            );
+            assert!(matches!(
+                recover_withdrawal_output(&changed, &recipient, &key, 96),
+                Err(NoteRecoveryError::Decryption(
+                    NoteDecryptionError::AuthenticationFailed
+                ))
+            ));
+        }
+    }
+
+    /// Keeps public projection before recipient checks and groups mismatched private keys.
+    #[test]
+    fn withdrawal_recovery_checks_payload_bounds_recipient_and_key() {
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let wrong_key = MlKem1024DecapsulationKey::from_seed(&[12; 64]);
+        let recipient = recipient(&key, [13; 64]);
+        let opening = opening(&recipient, 1, 0xa5);
+        let core = withdrawal_core(opening.commitment().unwrap(), 1, 17);
+        let body = authenticated_withdrawal(&core, &recipient, &plaintext(1, 0xa5)[..]);
+        let mut bytes = recipient.to_bytes();
+        bytes[67] ^= 1;
+        let mut network = *context().network_id().as_bytes();
+        network[63] ^= 1;
+        let wrong_network =
+            NoteRecipient::from_bytes(&bytes, NetworkId::from_bytes(network)).unwrap();
+        for maximum in [0, 32, 83] {
+            let error =
+                recover_withdrawal_output(&body, &wrong_network, &wrong_key, maximum).unwrap_err();
+            assert!(matches!(
+                error,
+                NoteRecoveryError::Projection(NoteContextError::OutputPayload {
+                    output_index: 0,
+                    ..
+                })
+            ));
+            assert!(error.source().unwrap().is::<NoteContextError>());
+        }
+        assert!(matches!(
+            recover_withdrawal_output(&body, &wrong_network, &key, 84),
+            Err(NoteRecoveryError::NetworkMismatch)
+        ));
+        assert!(matches!(
+            recover_withdrawal_output(&body, &recipient, &wrong_key, 84),
+            Err(NoteRecoveryError::Decryption(
+                NoteDecryptionError::AuthenticationFailed
+            ))
+        ));
+        let wrong_recipient = self::recipient(&wrong_key, [13; 64]);
+        assert!(matches!(
+            recover_withdrawal_output(&body, &wrong_recipient, &wrong_key, 84),
+            Err(NoteRecoveryError::Decryption(
+                NoteDecryptionError::AuthenticationFailed
+            ))
+        ));
+        let wrong_ownership = self::recipient(&key, [12; 64]);
+        assert!(matches!(
+            recover_withdrawal_output(&body, &wrong_ownership, &key, 84),
+            Err(NoteRecoveryError::CommitmentMismatch)
+        ));
+        for maximum in [84, 85, usize::MAX] {
+            assert!(recover_withdrawal_output(&body, &recipient, &key, maximum).is_ok());
+        }
+    }
+
+    /// Binds all complete source and context fields and the withdrawal operation domain.
+    #[test]
+    fn withdrawal_recovery_authenticates_the_complete_body_context() {
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, [13; 64]);
+        let opening = opening(&recipient, 1, 0xa5);
+        let core = withdrawal_core(opening.commitment().unwrap(), 1, 17);
+        let body = authenticated_withdrawal(&core, &recipient, &plaintext(1, 0xa5)[..]);
+        let payment_core = self::core(vec![(core.output().0, CryptoSuite::V1)]);
+        let payment_body = self::body(&payment_core, vec![body.output().clone()]);
+        assert!(matches!(
+            recover_payment_output(&payment_body, 0, &recipient, &key, limits(), 84),
+            Err(NoteRecoveryError::Decryption(
+                NoteDecryptionError::AuthenticationFailed
+            ))
+        ));
+        for change in 0..13 {
+            let (original, mut account, authority, mut nonce, mut amount, mut fee, output) =
+                body.clone().into_parts();
+            let mut authority = *authority.as_bytes();
+            let mut commitment = output.commitment();
+            let mut network = original.network_id();
+            let mut protocol = original.protocol_version();
+            let mut proof = original.proof_profile_id();
+            let mut schedule = original.fee_schedule_id();
+            let mut start = CheckpointSequence::new(5);
+            let mut end = CheckpointSequence::new(8);
+            match change {
+                0 => network = NetworkId::from_bytes([6; 64]),
+                1 => protocol = ProtocolVersion::new(0x0100_0003),
+                2 => proof = ProofProfileId::new(0x0200_0002),
+                3 => schedule = FeeScheduleId::new(0x0300_0005),
+                4 => start = CheckpointSequence::new(4),
+                5 => end = CheckpointSequence::new(9),
+                6 => account = RewardAccountId::from_bytes([14; 64]),
+                7 => authority[0] ^= 1,
+                8 => authority[2591] ^= 1,
+                9 => nonce = WithdrawalNonce::new(u64::MAX - 1),
+                10 => amount = Amount::from_atoms(2).unwrap(),
+                11 => fee = Amount::from_atoms(18).unwrap(),
+                12 => commitment = NoteCommitment::from_bytes([0; 64]),
+                _ => unreachable!(),
+            }
+            let changed = RewardWithdrawalBody::new(
+                TransactionContext::new(
+                    network,
+                    protocol,
+                    proof,
+                    schedule,
+                    ValidityCheckpointRange::new(start, end).unwrap(),
+                ),
+                account,
+                EncodedMlDsa87PublicKey::from_bytes(authority),
+                nonce,
+                amount,
+                fee,
+                NoteOutput::new(commitment, output.into_parts().1),
+            )
+            .unwrap();
+            let error = recover_withdrawal_output(&changed, &recipient, &key, 84).unwrap_err();
+            if change == 0 {
+                assert!(matches!(error, NoteRecoveryError::NetworkMismatch));
+            } else {
+                assert!(
+                    matches!(
+                        error,
+                        NoteRecoveryError::Decryption(NoteDecryptionError::AuthenticationFailed)
+                    ),
+                    "mutation {change}"
                 );
             }
         }

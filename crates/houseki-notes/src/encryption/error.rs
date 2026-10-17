@@ -125,6 +125,10 @@ pub enum NoteRecoveryError {
     #[error("recovered note does not match the selected output commitment")]
     CommitmentMismatch,
 
+    /// The matched opening amount differs from the public withdrawal amount.
+    #[error("recovered note amount does not match the public withdrawal amount")]
+    WithdrawalAmountMismatch,
+
     /// Recipient binding or commitment framing failed without returning a digest.
     #[error("could not derive recovered note commitment: {0}")]
     CommitmentFraming(

@@ -20,7 +20,7 @@ pub use blinding::{NoteBlinding, NoteBlindingError};
 pub use encryption::{
     NoteContextError, NoteOutputEncryptionError, NoteRecoveryError, encrypt_payment_output,
     encrypt_withdrawal_output, payment_encryption_core, recover_payment_output,
-    withdrawal_encryption_core,
+    recover_withdrawal_output, withdrawal_encryption_core,
 };
 pub use format::{NoteFormat, NoteFormatError};
 pub use opening::{NoteOpening, NoteOpeningError};
