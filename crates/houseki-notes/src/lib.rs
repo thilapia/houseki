@@ -18,8 +18,8 @@ mod recipient;
 
 pub use blinding::{NoteBlinding, NoteBlindingError};
 pub use encryption::{
-    NoteContextError, NoteOutputEncryptionError, encrypt_payment_output, payment_encryption_core,
-    withdrawal_encryption_core,
+    NoteContextError, NoteOutputEncryptionError, encrypt_payment_output, encrypt_withdrawal_output,
+    payment_encryption_core, withdrawal_encryption_core,
 };
 pub use format::{NoteFormat, NoteFormatError};
 pub use opening::{NoteOpening, NoteOpeningError};

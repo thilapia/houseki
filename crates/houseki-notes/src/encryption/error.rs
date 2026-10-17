@@ -62,6 +62,10 @@ pub enum NoteOutputEncryptionError {
     #[error("note opening does not match the selected output commitment")]
     CommitmentMismatch,
 
+    /// The matched opening contains a different amount than the public withdrawal amount.
+    #[error("note opening amount does not match the public withdrawal amount")]
+    WithdrawalAmountMismatch,
+
     /// Recipient binding or commitment framing failed without returning a digest.
     #[error("could not derive note output commitment: {0}")]
     CommitmentFraming(
