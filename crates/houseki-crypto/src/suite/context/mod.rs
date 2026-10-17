@@ -153,11 +153,13 @@ impl NoteEncryptionContext {
         recipient_key: &MlKem1024EncapsulationKey,
     ) -> Self {
         let (note_commitment, suite) = output;
+
         // Keep suite handling exhaustive so a future algorithm assignment must explicitly
         // address compatibility with this validated key type.
         let recipient_key = match suite {
             CryptoSuite::V1 => recipient_key.clone(),
         };
+
         Self {
             transaction_context,
             core_digest,
@@ -262,6 +264,7 @@ mod tests {
         // This fixture asserts encoding validation, not honest key generation.
         let mut bytes = [0; 1568];
         bytes[1536..].fill(seed_byte);
+
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
@@ -276,6 +279,7 @@ mod tests {
             .map(|(index, byte)| {
                 let index = u64::try_from(index).unwrap();
                 let context = NoteEncryptionContext::for_payment(&core, index, &key).unwrap();
+
                 assert_eq!(context.transaction_context(), transaction_context());
                 assert_eq!(hex(context.core_digest()), PAYMENT_DIGEST);
                 assert_eq!(context.output_index(), index);
@@ -285,6 +289,7 @@ mod tests {
                 );
                 assert_eq!(context.suite(), CryptoSuite::V1);
                 assert_eq!(context.recipient_key().to_encoded(), key.to_encoded());
+
                 context
             })
             .collect();
@@ -299,6 +304,7 @@ mod tests {
     fn invalid_payment_indices_preserve_all_supplied_bits() {
         let core = payment();
         let key = recipient_key(20);
+
         for index in [3, 4, 256, 65_536, 1 << 32, u64::MAX] {
             assert!(matches!(
                 NoteEncryptionContext::for_payment(&core, index, &key),
@@ -318,6 +324,7 @@ mod tests {
             let key = recipient_key(21);
             NoteEncryptionContext::for_reward_withdrawal(&core, &key).unwrap()
         };
+
         assert_eq!(context.transaction_context(), transaction_context());
         assert_eq!(hex(context.core_digest()), WITHDRAWAL_DIGEST);
         assert_eq!(context.output_index(), 0);
@@ -340,6 +347,7 @@ mod tests {
             let core = payment();
             NoteEncryptionContext::for_payment(&core, 0, &key).unwrap()
         };
+
         for change in 0..2 {
             let (context, inputs, mut outputs, mut fee) = payment().into_parts();
             if change == 0 {
@@ -347,9 +355,11 @@ mod tests {
             } else {
                 outputs[1].0 = NoteCommitment::from_bytes([22; 64]);
             }
+
             let changed_core =
                 PaymentEncryptionCore::new(context, inputs, outputs, fee, limits()).unwrap();
             let changed = NoteEncryptionContext::for_payment(&changed_core, 0, &key).unwrap();
+
             assert_eq!(changed.note_commitment(), original.note_commitment());
             assert_eq!(
                 changed.transaction_context(),
@@ -366,6 +376,7 @@ mod tests {
         let core = withdrawal();
         let key = recipient_key(21);
         let original = NoteEncryptionContext::for_reward_withdrawal(&core, &key).unwrap();
+
         let (context, account, authority, _, amount, fee, output) = core.into_parts();
         let changed_core = RewardWithdrawalEncryptionCore::new(
             context,
@@ -378,6 +389,7 @@ mod tests {
         )
         .unwrap();
         let changed = NoteEncryptionContext::for_reward_withdrawal(&changed_core, &key).unwrap();
+
         assert_eq!(changed.note_commitment(), original.note_commitment());
         assert_eq!(
             changed.transaction_context(),
@@ -404,6 +416,7 @@ mod tests {
                 NoteEncryptionContext::for_reward_withdrawal(&withdrawal, &second_key).unwrap(),
             ),
         ];
+
         for (first, second) in pairs {
             assert_eq!(first.core_digest(), second.core_digest());
             assert_eq!(first.note_commitment(), second.note_commitment());

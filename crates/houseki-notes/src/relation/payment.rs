@@ -104,9 +104,11 @@ pub fn check_payment(
     limits: PaymentCountLimits,
 ) -> Result<(), PaymentRelationError> {
     limits.validate_shape(body.shape())?;
+
     if inputs.len() != body.inputs().input_count() {
         return Err(PaymentRelationError::InputCountMismatch);
     }
+
     if outputs.len() != body.outputs().output_count() {
         return Err(PaymentRelationError::OutputCountMismatch);
     }
@@ -142,9 +144,11 @@ pub fn check_payment(
         match (opening.format(), opening.recipient().suite()) {
             (crate::NoteFormat::V1, houseki_crypto::CryptoSuite::V1) => {}
         }
+
         if opening.recipient().context().network_id() != body.context().network_id() {
             return Err(PaymentRelationError::OutputNetworkMismatch { output_index });
         }
+
         if opening.commitment()? != output.commitment() {
             return Err(PaymentRelationError::OutputCommitmentMismatch { output_index });
         }
@@ -246,6 +250,7 @@ mod tests {
                 )
             })
             .collect();
+
         PaymentBody::new(
             context(),
             PaymentInputs::new(anchor.root(), markers, limits()).unwrap(),
@@ -256,7 +261,8 @@ mod tests {
         .unwrap()
     }
 
-    /// Counts repeated outputs and distinct inserted duplicate inputs exactly, including totals above the amount cap.
+    /// Counts repeated outputs and distinct inserted duplicate inputs exactly, including totals
+    /// above the amount cap.
     #[test]
     fn payment_conservation_counts_every_occurrence_and_the_fee_once() {
         let spending = SpendingKey::from_bytes(&[0xa7; 32]);
@@ -381,14 +387,17 @@ mod tests {
             other_network,
         )
         .unwrap();
+
         let other_output = opening(&other_recipient, 20, 0x5a);
         let other_body = self::body(&anchor, vec![marker], &[&other_output], 3);
+
         assert!(matches!(
             check_payment(&other_body, &anchor, &inputs, &[&other_output], limits()),
             Err(PaymentRelationError::OutputNetworkMismatch { output_index: 0 })
         ));
 
         let tight = PaymentCountLimits::new(1, 1).unwrap();
+
         assert!(matches!(
             check_payment(
                 &body,
@@ -405,6 +414,7 @@ mod tests {
             anchor.count(),
             NoteRoot::from_bytes([0; 64]),
         );
+
         assert!(matches!(
             check_payment(
                 &body,
@@ -422,6 +432,7 @@ mod tests {
             &[&first_output, &second_output],
             3,
         );
+
         assert!(matches!(
             check_payment(
                 &changed,
@@ -434,7 +445,8 @@ mod tests {
         ));
     }
 
-    /// Receives an actually signed withdrawal, spends its real path and receives and verifies the next note.
+    /// Receives an actually signed withdrawal, spends its real path and receives and verifies
+    /// the next note.
     #[test]
     fn received_outputs_can_be_spent_against_actual_updated_membership() {
         let alice_spending = SpendingKey::from_bytes(&[0xa7; 32]);
@@ -463,6 +475,7 @@ mod tests {
             (incoming.commitment().unwrap(), CryptoSuite::V1),
         )
         .unwrap();
+
         let output = encrypt_withdrawal_output(&core, &alice, &incoming, 84).unwrap();
         let withdrawal = RewardWithdrawalBody::new(
             context(),
@@ -474,6 +487,7 @@ mod tests {
             output,
         )
         .unwrap();
+
         let bytes_limits = BodyCodecLimits::new(limits(), 84, 16384);
         let withdrawal = RewardWithdrawalBody::from_bytes(
             &withdrawal.to_bytes(bytes_limits).unwrap(),
@@ -511,6 +525,7 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         let outputs = vec![
             encrypt_payment_output(&core, 0, &bob, &recipient_note, 84).unwrap(),
             encrypt_payment_output(&core, 1, &alice, &change, 84).unwrap(),
@@ -523,9 +538,11 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         let payment =
             PaymentBody::from_bytes(&payment.to_bytes(bytes_limits).unwrap(), bytes_limits)
                 .unwrap();
+
         let witnesses = [SpendWitness::new(
             &recovered,
             &alice_spending,
@@ -544,6 +561,7 @@ mod tests {
 
         let bob_received =
             recover_payment_output(&payment, 0, &bob, &bob_kem, limits(), 84).unwrap();
+
         let bob_position = tree
             .append(payment.outputs().outputs()[0].commitment())
             .unwrap();
@@ -557,6 +575,7 @@ mod tests {
             bob_membership.original_position(),
         )
         .unwrap();
+
         check_spend(
             &tree.anchor(),
             bob_marker,
@@ -568,6 +587,7 @@ mod tests {
             ),
         )
         .unwrap();
+
         assert_ne!(marker, bob_marker);
 
         let (context, inputs, outputs, _) = payment.clone().into_parts();
@@ -579,6 +599,7 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         assert!(matches!(
             check_payment(
                 &changed,

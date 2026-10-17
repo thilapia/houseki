@@ -40,6 +40,7 @@ impl CryptoSuite {
         match self {
             Self::V1 => {
                 let encoded_key = key.to_encoded();
+
                 poseidon2(
                     Domain::RecipientKemKey,
                     &[
@@ -63,6 +64,7 @@ mod tests {
     fn key(seed_byte: u8) -> MlKem1024EncapsulationKey {
         let mut bytes = [0; 1568];
         bytes[1536..].fill(seed_byte);
+
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
@@ -87,6 +89,7 @@ mod tests {
                 .recipient_key_binding(network, &key(seed_byte))
                 .unwrap();
             let actual: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+
             assert_eq!(actual, expected);
         }
     }
@@ -99,9 +102,11 @@ mod tests {
         let original = CryptoSuite::V1
             .recipient_key_binding(network, &key)
             .unwrap();
+
         for index in [0, 63] {
             let mut bytes = *network.as_bytes();
             bytes[index] ^= 1;
+
             assert_ne!(
                 CryptoSuite::V1
                     .recipient_key_binding(NetworkId::from_bytes(bytes), &key)
@@ -109,12 +114,15 @@ mod tests {
                 original
             );
         }
+
         for index in [0, 384, 768, 1152, 1535, 1536, 1567] {
             let mut bytes = *key.to_encoded().as_bytes();
             bytes[index] = 1;
+
             let changed =
                 MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes))
                     .unwrap();
+
             assert_ne!(
                 CryptoSuite::V1
                     .recipient_key_binding(network, &changed)

@@ -115,6 +115,7 @@ pub fn encrypt_withdrawal_output(
         recipient,
         opening,
     )?;
+
     if opening.amount() != &core.public_amount() {
         return Err(NoteOutputEncryptionError::WithdrawalAmountMismatch);
     }
@@ -136,6 +137,7 @@ fn match_opening_to_output(
     if recipient.context().network_id() != network {
         return Err(NoteOutputEncryptionError::NetworkMismatch);
     }
+
     if opening.recipient() != recipient {
         return Err(NoteOutputEncryptionError::RecipientMismatch);
     }
@@ -144,6 +146,7 @@ fn match_opening_to_output(
     match (opening.format(), recipient.suite(), output.1) {
         (NoteFormat::V1, CryptoSuite::V1, CryptoSuite::V1) => {}
     }
+
     if opening.commitment()? != output.0 {
         return Err(NoteOutputEncryptionError::CommitmentMismatch);
     }
@@ -277,6 +280,7 @@ mod tests {
         expected[0] = 1;
         expected[4..20].copy_from_slice(&atoms.to_le_bytes());
         expected[20..].fill(blinding);
+
         expected
     }
 
@@ -287,6 +291,7 @@ mod tests {
         let second_key = MlKem1024DecapsulationKey::from_seed(&[12; 64]);
         let first_recipient = recipient(&first_key, [13; 64]);
         let second_recipient = recipient(&second_key, [14; 64]);
+
         for atoms in [1, (1_u128 << 64) + 3, Amount::MAX_ATOMS] {
             let first = opening(&first_recipient, atoms, 0xa5);
             let second = opening(&second_recipient, 19, 0x5a);
@@ -295,6 +300,7 @@ mod tests {
                 (second.commitment().unwrap(), CryptoSuite::V1),
                 (first.commitment().unwrap(), CryptoSuite::V1),
             ]);
+
             let mut outputs = Vec::new();
             for (index, recipient, opening) in [
                 (0, &first_recipient, &first),
@@ -302,11 +308,14 @@ mod tests {
                 (2, &first_recipient, &first),
             ] {
                 let output = encrypt_payment_output(&core, index, recipient, opening, 84).unwrap();
+
                 assert_eq!(output.commitment(), core.outputs()[index as usize].0);
                 assert_eq!(output.envelope().payload_len(), 84);
                 assert_eq!(&output.envelope().payload()[..4], &[1, 0, 0, 0]);
+
                 outputs.push(output);
             }
+
             let body = PaymentBody::new(
                 core.context(),
                 core.inputs().clone(),
@@ -315,10 +324,12 @@ mod tests {
                 limits(),
             )
             .unwrap();
+
             let rebuilt = payment_encryption_core(&body, limits(), 84).unwrap();
 
             assert_eq!(rebuilt, core);
             assert_eq!(rebuilt.digest().unwrap(), core.digest().unwrap());
+
             for (index, key, recipient, atoms, blinding) in [
                 (0, &first_key, &first_recipient, atoms, 0xa5),
                 (1, &second_key, &second_recipient, 19, 0x5a),
@@ -329,8 +340,10 @@ mod tests {
                         .unwrap()
                         .open(body.outputs().outputs()[index as usize].envelope(), key, 84)
                         .unwrap();
+
                 assert_eq!(recovered.as_slice(), &plaintext(atoms, blinding)[..]);
             }
+
             assert_eq!(first.amount().atoms(), atoms);
             assert_eq!(&first.encode_plaintext()[..], &plaintext(atoms, 0xa5)[..]);
         }
@@ -343,6 +356,7 @@ mod tests {
         let recipient = recipient(&key, [13; 64]);
         let opening = opening(&recipient, 1, 0xa5);
         let core = core(vec![(NoteCommitment::from_bytes([0; 64]), CryptoSuite::V1)]);
+
         let mut bytes = recipient.to_bytes();
         bytes[4] ^= 1;
         let wrong_network = NoteRecipient::from_bytes(
@@ -354,6 +368,7 @@ mod tests {
         for index in [1, 256, 65_536, 1_u64 << 32, u64::MAX] {
             let error =
                 encrypt_payment_output(&core, index, &wrong_network, &opening, 0).unwrap_err();
+
             assert!(matches!(
                 &error,
                 NoteOutputEncryptionError::Context(
@@ -382,6 +397,7 @@ mod tests {
             bytes[4..68].copy_from_slice(&network);
             let changed =
                 NoteRecipient::from_bytes(&bytes, NetworkId::from_bytes(network)).unwrap();
+
             assert!(matches!(
                 encrypt_payment_output(&core, 0, &changed, &opening, 0),
                 Err(NoteOutputEncryptionError::NetworkMismatch)
@@ -401,23 +417,28 @@ mod tests {
             let mut bytes = recipient.to_bytes();
             bytes[index] ^= 1;
             let changed = NoteRecipient::from_bytes(&bytes, context().network_id()).unwrap();
+
             assert!(matches!(
                 encrypt_payment_output(&core, 0, &changed, &original, 0),
                 Err(NoteOutputEncryptionError::RecipientMismatch)
             ));
         }
+
         let other_key = MlKem1024DecapsulationKey::from_seed(&[12; 64]);
         let other = self::recipient(&other_key, [13; 64]);
+
         assert!(matches!(
             encrypt_payment_output(&core, 0, &other, &original, 0),
             Err(NoteOutputEncryptionError::RecipientMismatch)
         ));
+
         let mut bytes = recipient.to_bytes();
         bytes[67] ^= 1;
         let mut network = [7; 64];
         network[63] ^= 1;
         let changed = NoteRecipient::from_bytes(&bytes, NetworkId::from_bytes(network)).unwrap();
         let changed_opening = opening(&changed, 1, 0xa5);
+
         assert!(matches!(
             encrypt_payment_output(&core, 0, &recipient, &changed_opening, 0),
             Err(NoteOutputEncryptionError::RecipientMismatch)
@@ -436,11 +457,13 @@ mod tests {
             let mut bytes = *commitment.as_bytes();
             bytes[index] ^= 1;
             let core = core(vec![(NoteCommitment::from_bytes(bytes), CryptoSuite::V1)]);
+
             assert!(matches!(
                 encrypt_payment_output(&core, 0, &recipient, &original, 0),
                 Err(NoteOutputEncryptionError::CommitmentMismatch)
             ));
         }
+
         let core = core(vec![(commitment, CryptoSuite::V1)]);
         for changed in [opening(&recipient, 2, 0xa5), opening(&recipient, 1, 0xa4)] {
             assert!(matches!(
@@ -461,6 +484,7 @@ mod tests {
         for maximum in [0, 32, 83] {
             let error =
                 encrypt_payment_output(&core, 0, &recipient, &opening, maximum).unwrap_err();
+
             assert!(matches!(
                 &error,
                 NoteOutputEncryptionError::Encryption(
@@ -473,10 +497,12 @@ mod tests {
                 &plaintext(1_u128 << 64, 0xa5)[..]
             );
         }
+
         for maximum in [84, 85, usize::MAX] {
             let output = encrypt_payment_output(&core, 0, &recipient, &opening, maximum).unwrap();
             let context =
                 NoteEncryptionContext::for_payment(&core, 0, recipient.kem_public_key()).unwrap();
+
             assert_eq!(output.envelope().payload_len(), 84);
             assert_eq!(
                 context
@@ -486,6 +512,7 @@ mod tests {
                 &plaintext(1_u128 << 64, 0xa5)[..]
             );
         }
+
         assert_eq!(
             &opening.encode_plaintext()[..],
             &plaintext(1_u128 << 64, 0xa5)[..]
@@ -504,9 +531,11 @@ mod tests {
             (NoteCommitment::from_bytes([0; 64]), CryptoSuite::V1),
             (commitment, CryptoSuite::V1),
         ]);
+
         let output = encrypt_payment_output(&core, 0, &recipient, &opening, 84).unwrap();
         let duplicate =
             NoteEncryptionContext::for_payment(&core, 2, recipient.kem_public_key()).unwrap();
+
         assert!(matches!(
             duplicate.open(output.envelope(), &key, 84),
             Err(NoteDecryptionError::AuthenticationFailed)
@@ -539,6 +568,7 @@ mod tests {
                 }
                 _ => unreachable!(),
             }
+
             let context = TransactionContext::new(
                 network,
                 protocol,
@@ -573,6 +603,7 @@ mod tests {
     fn withdrawal_delivery_preserves_the_public_amount_and_complete_source_core() {
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(&key, [13; 64]);
+
         for (atoms, fee) in [
             (1, 0),
             (1, Amount::MAX_ATOMS),
@@ -581,9 +612,12 @@ mod tests {
         ] {
             let opening = opening(&recipient, atoms, 0xa5);
             let core = withdrawal(opening.commitment().unwrap(), atoms, fee);
+
             let output = encrypt_withdrawal_output(&core, &recipient, &opening, 84).unwrap();
+
             assert_eq!(output.commitment(), core.output().0);
             assert_eq!(output.envelope().payload_len(), 84);
+
             let body = RewardWithdrawalBody::new(
                 core.context(),
                 core.reward_account_id(),
@@ -594,15 +628,18 @@ mod tests {
                 output,
             )
             .unwrap();
+
             let rebuilt = withdrawal_encryption_core(&body, 84).unwrap();
 
             assert_eq!(rebuilt, core);
             assert_eq!(rebuilt.digest().unwrap(), core.digest().unwrap());
+
             let recovered =
                 NoteEncryptionContext::for_reward_withdrawal(&rebuilt, recipient.kem_public_key())
                     .unwrap()
                     .open(body.output().envelope(), &key, 84)
                     .unwrap();
+
             assert_eq!(recovered.as_slice(), &plaintext(atoms, 0xa5)[..]);
             assert_eq!(&opening.encode_plaintext()[..], &plaintext(atoms, 0xa5)[..]);
         }
@@ -613,6 +650,7 @@ mod tests {
     fn withdrawal_rejects_different_public_and_opening_amounts_before_sealing() {
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(&key, [13; 64]);
+
         for (private, public) in [
             (1, 2),
             (2, 1),
@@ -623,6 +661,7 @@ mod tests {
         ] {
             let opening = opening(&recipient, private, 0xa5);
             let core = withdrawal(opening.commitment().unwrap(), public, 17);
+
             assert!(matches!(
                 encrypt_withdrawal_output(&core, &recipient, &opening, 0),
                 Err(NoteOutputEncryptionError::WithdrawalAmountMismatch)
@@ -641,18 +680,22 @@ mod tests {
         let recipient = recipient(&key, [13; 64]);
         let opening = opening(&recipient, 1, 0xa5);
         let core = withdrawal(NoteCommitment::from_bytes([0; 64]), 2, 17);
+
         let mut network = [7; 64];
         network[63] ^= 1;
         let mut bytes = recipient.to_bytes();
         bytes[4..68].copy_from_slice(&network);
         let changed = NoteRecipient::from_bytes(&bytes, NetworkId::from_bytes(network)).unwrap();
+
         assert!(matches!(
             encrypt_withdrawal_output(&core, &changed, &opening, 0),
             Err(NoteOutputEncryptionError::NetworkMismatch)
         ));
+
         let mut bytes = recipient.to_bytes();
         bytes[135] ^= 1;
         let changed = NoteRecipient::from_bytes(&bytes, context().network_id()).unwrap();
+
         assert!(matches!(
             encrypt_withdrawal_output(&core, &changed, &opening, 0),
             Err(NoteOutputEncryptionError::RecipientMismatch)
@@ -674,6 +717,7 @@ mod tests {
         for maximum in [0, 32, 83] {
             let error =
                 encrypt_withdrawal_output(&core, &recipient, &opening, maximum).unwrap_err();
+
             assert!(matches!(
                 &error,
                 NoteOutputEncryptionError::Encryption(
@@ -686,11 +730,13 @@ mod tests {
                 &plaintext(1_u128 << 64, 0xa5)[..]
             );
         }
+
         for maximum in [84, 85, usize::MAX] {
             let output = encrypt_withdrawal_output(&core, &recipient, &opening, maximum).unwrap();
             let context =
                 NoteEncryptionContext::for_reward_withdrawal(&core, recipient.kem_public_key())
                     .unwrap();
+
             assert_eq!(output.envelope().payload_len(), 84);
             assert_eq!(
                 context
@@ -700,6 +746,7 @@ mod tests {
                 &plaintext(1_u128 << 64, 0xa5)[..]
             );
         }
+
         assert_eq!(
             &opening.encode_plaintext()[..],
             &plaintext(1_u128 << 64, 0xa5)[..]
@@ -714,10 +761,13 @@ mod tests {
         let opening = opening(&recipient, 1, 0xa5);
         let commitment = opening.commitment().unwrap();
         let core = withdrawal(commitment, 1, 17);
+
         let output = encrypt_withdrawal_output(&core, &recipient, &opening, 84).unwrap();
+
         let payment = self::core(vec![(commitment, CryptoSuite::V1)]);
         let payment =
             NoteEncryptionContext::for_payment(&payment, 0, recipient.kem_public_key()).unwrap();
+
         assert!(matches!(
             payment.open(output.envelope(), &key, 84),
             Err(NoteDecryptionError::AuthenticationFailed)
@@ -749,6 +799,7 @@ mod tests {
                 12 => pair.0 = NoteCommitment::from_bytes([0; 64]),
                 _ => unreachable!(),
             }
+
             let changed = RewardWithdrawalEncryptionCore::new(
                 TransactionContext::new(
                     network,
@@ -768,6 +819,7 @@ mod tests {
             let context =
                 NoteEncryptionContext::for_reward_withdrawal(&changed, recipient.kem_public_key())
                     .unwrap();
+
             assert!(
                 matches!(
                     context.open(output.envelope(), &key, 84),

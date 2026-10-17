@@ -59,6 +59,7 @@ mod tests {
     fn final_advancement_reaches_exhaustion_without_wrapping() {
         /// Compile time successor of the final usable withdrawal counter.
         const NEXT: Option<WithdrawalNonce> = WithdrawalNonce::new(u64::MAX - 1).checked_next();
+
         let exhausted = NEXT.unwrap();
 
         assert_eq!(exhausted.value(), u64::MAX);

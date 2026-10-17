@@ -125,19 +125,23 @@ impl PaymentBody {
 
         let count = reader.count(true, limits)?;
         reader.require_list(count, 64, 24 + 1640)?;
+
         let mut nullifiers = reserve(count)?;
         for _ in 0..count {
             nullifiers.push(Nullifier::from_bytes(reader.array()?));
         }
+
         let inputs = PaymentInputs::new(anchor, nullifiers, limits.payment_counts())?;
 
         let fee = reader.amount()?;
         let count = reader.count(false, limits)?;
         reader.require_list(count, 1640, 0)?;
+
         let mut outputs = reserve(count)?;
         for _ in 0..count {
             outputs.push(reader.output(limits)?);
         }
+
         reader.finish()?;
 
         Ok(Self::new(
@@ -203,6 +207,7 @@ impl RewardWithdrawalBody {
         let amount = reader.amount()?;
         let fee = reader.amount()?;
         let output = reader.output(limits)?;
+
         reader.finish()?;
 
         Ok(Self::new(
@@ -253,6 +258,7 @@ mod tests {
         bytes[316] = 2;
         output(&mut bytes, 324);
         output(&mut bytes, 1967);
+
         bytes
     }
 
@@ -266,6 +272,7 @@ mod tests {
         bytes[2764..2780].copy_from_slice(&((1_u128 << 64) + 3).to_le_bytes());
         bytes[2780] = 17;
         output(&mut bytes, 2796);
+
         bytes
     }
 
@@ -273,7 +280,9 @@ mod tests {
     #[test]
     fn body_codecs_match_independent_offset_fixtures() {
         let bytes = payment();
+
         let body = PaymentBody::from_bytes(&bytes, limits()).unwrap();
+
         assert_eq!(body.context().network_id(), NetworkId::from_bytes([7; 64]));
         assert_eq!(body.context().validity_checkpoint_range().end().value(), 8);
         assert_eq!(body.inputs().anchor(), NoteRoot::from_bytes([8; 64]));
@@ -290,8 +299,11 @@ mod tests {
         assert_eq!(body.outputs().outputs()[0].envelope().payload(), &[0, 1, 2]);
         assert_eq!(body.to_bytes(limits()).unwrap(), bytes);
         assert_eq!(body.encoded_len(limits()).unwrap(), bytes.len());
+
         let bytes = withdrawal();
+
         let body = RewardWithdrawalBody::from_bytes(&bytes, limits()).unwrap();
+
         assert_eq!(
             body.reward_account_id(),
             RewardAccountId::from_bytes([13; 64])
@@ -314,31 +326,40 @@ mod tests {
                 } else {
                     RewardWithdrawalBody::from_bytes(&bytes[..length], limits()).map(|_| ())
                 };
+
                 assert!(result.is_err(), "accepted truncated body at {length}");
             }
+
             let mut trailing = bytes.clone();
             trailing.push(0);
+
             let result = if bytes[4] == 1 {
                 PaymentBody::from_bytes(&trailing, limits()).map(|_| ())
             } else {
                 RewardWithdrawalBody::from_bytes(&trailing, limits()).map(|_| ())
             };
+
             assert!(matches!(result, Err(BodyCodecError::TrailingBytes)));
         }
+
         for value in [0_u32, 2, 257, 0x0100_0001, u32::MAX] {
             let mut bytes = payment();
             bytes[..4].copy_from_slice(&value.to_le_bytes());
+
             assert!(
                 matches!(PaymentBody::from_bytes(&bytes, limits()), Err(BodyCodecError::UnsupportedVersion {version}) if version == value)
             );
         }
+
         for value in [0_u32, 2, 257, u32::MAX] {
             let mut bytes = payment();
             bytes[4..8].copy_from_slice(&value.to_le_bytes());
+
             assert!(
                 matches!(PaymentBody::from_bytes(&bytes, limits()), Err(BodyCodecError::UnexpectedKind {actual, expected:1}) if actual == value)
             );
         }
+
         assert!(matches!(
             RewardWithdrawalBody::from_bytes(&payment(), limits()),
             Err(BodyCodecError::UnexpectedKind {
@@ -352,9 +373,12 @@ mod tests {
     #[test]
     fn body_codec_limits_and_declared_lengths_are_checked() {
         let bytes = payment();
+
         let body = PaymentBody::from_bytes(&bytes, limits()).unwrap();
+
         for maximum in [0, bytes.len() - 1] {
             let bound = BodyCodecLimits::new(limits().payment_counts(), 3, maximum);
+
             assert!(matches!(
                 body.to_bytes(bound),
                 Err(BodyCodecError::BodyTooLong { .. })
@@ -364,9 +388,13 @@ mod tests {
                 Err(BodyCodecError::BodyTooLong { .. })
             ));
         }
+
         let exact = BodyCodecLimits::new(limits().payment_counts(), 3, bytes.len());
+
         assert_eq!(body.to_bytes(exact).unwrap(), bytes);
+
         let payload_bound = BodyCodecLimits::new(limits().payment_counts(), 2, 5000);
+
         assert!(matches!(
             body.to_bytes(payload_bound),
             Err(BodyCodecError::PayloadTooLong {
@@ -381,24 +409,32 @@ mod tests {
                 maximum: 2
             })
         ));
+
         for offset in [164, 316, 1956, 3599] {
             let mut changed = bytes.clone();
             changed[offset..offset + 8].copy_from_slice(&u64::MAX.to_le_bytes());
+
             assert!(PaymentBody::from_bytes(&changed, limits()).is_err());
         }
+
         let loose = BodyCodecLimits::new(
             PaymentCountLimits::new(usize::MAX, usize::MAX).unwrap(),
             usize::MAX,
             usize::MAX,
         );
+
         for offset in [164, 316] {
             let mut changed = bytes.clone();
             changed[offset..offset + 8].copy_from_slice(&u64::MAX.to_le_bytes());
+
             assert!(PaymentBody::from_bytes(&changed, loose).is_err());
         }
+
         let restricted = BodyCodecLimits::new(PaymentCountLimits::new(1, 1).unwrap(), 3, 5000);
+
         assert!(body.to_bytes(restricted).is_err());
         assert!(PaymentBody::from_bytes(&bytes, restricted).is_err());
+
         assert_eq!(body.to_bytes(limits()).unwrap(), bytes);
     }
 
@@ -406,40 +442,53 @@ mod tests {
     #[test]
     fn decoded_body_invariants_reject_malformed_public_values() {
         let bytes = payment();
+
         for offset in [164, 316] {
             let mut changed = bytes.clone();
             changed[offset..offset + 8].fill(0);
+
             assert!(PaymentBody::from_bytes(&changed, limits()).is_err());
         }
+
         let mut changed = bytes.clone();
         changed[236..300].fill(9);
+
         assert!(matches!(
             PaymentBody::from_bytes(&changed, limits()),
             Err(BodyCodecError::Inputs(
                 PaymentInputsError::DuplicateNullifier { .. }
             ))
         ));
+
         let mut changed = bytes.clone();
         changed[300..316].copy_from_slice(&(Amount::MAX_ATOMS + 1).to_le_bytes());
+
         assert!(matches!(
             PaymentBody::from_bytes(&changed, limits()),
             Err(BodyCodecError::Amount(_))
         ));
+
         let mut changed = bytes;
         changed[84] = 9;
+
         assert!(matches!(
             PaymentBody::from_bytes(&changed, limits()),
             Err(BodyCodecError::Validity(_))
         ));
+
         for atoms in [0, Amount::MAX_ATOMS + 1] {
             let mut changed = withdrawal();
             changed[2764..2780].copy_from_slice(&atoms.to_le_bytes());
+
             assert!(RewardWithdrawalBody::from_bytes(&changed, limits()).is_err());
         }
+
         for atoms in [1, Amount::MAX_ATOMS] {
             let mut changed = withdrawal();
             changed[2764..2780].copy_from_slice(&atoms.to_le_bytes());
+
             let body = RewardWithdrawalBody::from_bytes(&changed, limits()).unwrap();
+
             assert_eq!(body.to_bytes(limits()).unwrap(), changed);
         }
     }

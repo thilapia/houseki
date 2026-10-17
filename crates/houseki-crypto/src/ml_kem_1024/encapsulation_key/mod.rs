@@ -79,11 +79,12 @@ mod tests {
     #[test]
     fn accepts_boundary_coefficients_and_preserves_the_complete_encoding() {
         let mut bytes = [0; 1568];
-        // Each three-byte group encodes two little-endian 12-bit coefficients.
+        // Each three byte group encodes two little endian 12 bit coefficients.
         // These literal fixtures follow FIPS 203 ByteEncode_12 with q = 3329.
         for pair in bytes[..1536].as_chunks_mut::<3>().0 {
             pair.copy_from_slice(&[0x00, 0x0d, 0xd0]); // (3328, 3328)
         }
+
         bytes[..3].copy_from_slice(&[0x00, 0x00, 0xd0]); // (0, 3328)
         bytes[3..6].copy_from_slice(&[0x00, 0x0d, 0x00]); // (3328, 0)
         bytes[1533..1536].copy_from_slice(&[0x01, 0xf0, 0xcf]); // (1, 3327)

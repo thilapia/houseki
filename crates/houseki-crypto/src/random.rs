@@ -11,5 +11,6 @@ pub(crate) fn secret_bytes<const N: usize, R: TryCryptoRng + ?Sized>(
 ) -> Result<Zeroizing<[u8; N]>, R::Error> {
     let mut bytes = Zeroizing::new([0; N]);
     rng.try_fill_bytes(bytes.as_mut())?;
+
     Ok(bytes)
 }

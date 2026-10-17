@@ -45,6 +45,7 @@ impl PaymentCountLimits {
         if max_input_count == 0 {
             return Err(PaymentCountLimitsError::ZeroInputLimit);
         }
+
         if max_output_count == 0 {
             return Err(PaymentCountLimitsError::ZeroOutputLimit);
         }
@@ -79,6 +80,7 @@ impl PaymentCountLimits {
                 maximum: self.max_input_count,
             });
         }
+
         if shape.output_count() > self.max_output_count {
             return Err(PaymentCountLimitsError::OutputCountExceedsLimit {
                 actual: shape.output_count(),
@@ -104,6 +106,7 @@ mod tests {
                 Err(PaymentCountLimitsError::ZeroInputLimit)
             ));
         }
+
         for inputs in [1, usize::MAX] {
             assert!(matches!(
                 PaymentCountLimits::new(inputs, 0),
@@ -164,11 +167,13 @@ mod tests {
             Ok(limits) => limits,
             Err(_) => panic!("positive limits are representable"),
         };
+
         /// Largest representable nonempty payment shape constructed at compile time.
         const SHAPE: PaymentShape = match PaymentShape::new(usize::MAX, usize::MAX) {
             Ok(shape) => shape,
             Err(_) => panic!("positive counts are representable"),
         };
+
         /// Compile time validation of the maximum shape against its matching limits.
         const RESULT: Result<(), PaymentCountLimitsError> = LIMITS.validate_shape(SHAPE);
 

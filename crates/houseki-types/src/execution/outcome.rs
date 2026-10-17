@@ -25,5 +25,8 @@ pub enum ExecutionOutcome {
 
     /// The occurrence failed a state rule and left state unchanged, including
     /// balances, fees, nonces, nullifiers and note outputs.
-    Rejected(ExecutionRejectionReason),
+    Rejected(
+        /// Reported state rule failure for this occurrence.
+        ExecutionRejectionReason,
+    ),
 }

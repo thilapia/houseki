@@ -86,11 +86,13 @@ impl<'a> Reader<'a> {
     ) -> Result<usize, BodyCodecError> {
         let count = usize::try_from(u64::from_le_bytes(self.array()?))
             .map_err(|_| BodyCodecError::LengthOverflow)?;
+
         let shape = if inputs {
             PaymentShape::new(count, 1)?
         } else {
             PaymentShape::new(1, count)?
         };
+
         limits.payment_counts().validate_shape(shape)?;
 
         Ok(count)
@@ -125,6 +127,7 @@ impl<'a> Reader<'a> {
         let bytes = self.take(length)?;
         let mut payload = reserve(length)?;
         payload.extend_from_slice(bytes);
+
         let envelope =
             EncryptedNoteEnvelope::new(encapsulation, payload, limits.max_payload_bytes())
                 .expect("payload length checked before allocation");

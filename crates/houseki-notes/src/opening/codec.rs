@@ -63,6 +63,7 @@ impl NoteOpening {
                 .map_err(|_| NotePlaintextError::InvalidLength {
                     actual: plaintext.len(),
                 })?;
+
         let version = NoteVersion::new(u32::from_le_bytes([
             plaintext[0],
             plaintext[1],
@@ -70,6 +71,7 @@ impl NoteOpening {
             plaintext[3],
         ]));
         let format = NoteFormat::try_from(version)?;
+
         // Each added format must select its own plaintext layout.
         match format {
             NoteFormat::V1 => {}
@@ -108,8 +110,10 @@ mod tests {
         let network = NetworkId::from_bytes([7; 64]);
         let context =
             AddressContext::new(network, AddressFormatVersion::new(1), CryptoSuite::V1.id());
+
         let mut key = [0; 1568];
         key[1536..].fill(pattern);
+
         let descriptor = RecipientDescriptor::new(
             context,
             OwnershipCommitment::from_bytes([pattern; 64]),
@@ -160,6 +164,7 @@ mod tests {
     #[test]
     fn decoding_retains_positive_amounts_and_complete_blinding_patterns() {
         let recipient = recipient(0x35);
+
         for atoms in [1, 1_u128 << 64, Amount::MAX_ATOMS] {
             for blinding in [
                 [0; 32],
@@ -184,12 +189,14 @@ mod tests {
     fn decoding_rejects_inexact_lengths_before_version_and_amount_checks() {
         let recipient = recipient(0x59);
         let bytes = Zeroizing::new(vec![0xff; 52]);
+
         for length in 0..52 {
             assert!(matches!(
                 NoteOpening::decode_plaintext(&bytes[..length], &recipient),
                 Err(NotePlaintextError::InvalidLength { actual }) if actual == length
             ));
         }
+
         for length in [53, 104] {
             let bytes = Zeroizing::new(vec![0xff; length]);
 
@@ -205,6 +212,7 @@ mod tests {
     fn decoding_preserves_all_version_bits_before_amount_validation() {
         let recipient = recipient(0x17);
         let mut bytes = plaintext(u128::MAX, &[0xff; 32]);
+
         for value in [0, 2, 257, 65_537, 0x0100_0001, u32::MAX] {
             bytes[..4].copy_from_slice(&value.to_le_bytes());
 
@@ -228,6 +236,7 @@ mod tests {
                 NoteOpeningError::ZeroAmount
             ))
         ));
+
         for atoms in [Amount::MAX_ATOMS + 1, 1_u128 << 127, u128::MAX] {
             let bytes = plaintext(atoms, &[0x3c; 32]);
 

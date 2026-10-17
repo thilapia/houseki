@@ -1,4 +1,4 @@
-//! Sparse in-memory append state for the fixed depth 64 application note tree.
+//! Sparse append state held in memory for the fixed depth 64 application note tree.
 
 use crate::NoteMembershipWitness;
 use houseki_crypto::{
@@ -139,6 +139,7 @@ impl NoteTree {
             changed[level + 1] = note_tree_parent(self.network, u32::from(height), left, right)?;
             index >>= 1;
         }
+
         let root = note_tree_root(self.network, count, &changed[64])?;
 
         let mut index = position.value();
@@ -170,7 +171,6 @@ impl NoteTree {
 
         let mut siblings = Zeroizing::new([[0; 64]; 64]);
         let mut index = Zeroizing::new(position.value());
-
         for (height, sibling) in siblings.iter_mut().enumerate() {
             let node = self
                 .nodes
@@ -207,6 +207,7 @@ mod tests {
         let network = NetworkId::from_bytes([7; 64]);
         let commitment = NoteCommitment::from_bytes([11; 64]);
         let mut tree = NoteTree::new(network).unwrap();
+
         assert_eq!(
             hex(tree.anchor().root().as_bytes()),
             "98f94a4db56e412d63ffd9bbcdd2f003b0af316408cc45f2df96e84479748ce39b5c8f20dfbb01e23bafc647f5133067f59aba1c8a6e050cfe9ecf5722b0ec10"
@@ -217,6 +218,7 @@ mod tests {
         ));
 
         let first = tree.append(commitment).unwrap();
+
         assert_eq!(first.value(), 0);
         assert_eq!(tree.anchor().count().value(), 1);
         assert_eq!(
@@ -226,21 +228,25 @@ mod tests {
 
         let old_anchor = tree.anchor();
         let old_witness = tree.witness(&first).unwrap();
+
         old_witness.verify(&old_anchor, &commitment).unwrap();
 
         let second = tree.append(commitment).unwrap();
+
         assert_eq!(second.value(), 1);
         assert_eq!(tree.anchor().count().value(), 2);
         assert_eq!(
             hex(tree.anchor().root().as_bytes()),
             "ccc96d667cc275ffe4ddc49d7df3cf4914ab7bbd1aa5c4c6b28064757e5caedbb8c39a97c5048fdc780d32b6edb64b6a70115e29cb8ab98d63ea695ed449b62b"
         );
+
         for position in [&first, &second] {
             tree.witness(position)
                 .unwrap()
                 .verify(&tree.anchor(), &commitment)
                 .unwrap();
         }
+
         assert!(matches!(
             old_witness.verify(&tree.anchor(), &commitment),
             Err(NoteMembershipError::RootMismatch)
@@ -250,6 +256,7 @@ mod tests {
         for byte in 12..20 {
             let commitment = NoteCommitment::from_bytes([byte; 64]);
             let position = tree.append(commitment).unwrap();
+
             tree.witness(&position)
                 .unwrap()
                 .verify(&tree.anchor(), &commitment)

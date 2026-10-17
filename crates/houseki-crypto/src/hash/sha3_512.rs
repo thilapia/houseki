@@ -10,6 +10,7 @@ pub(crate) fn sha3_512<E>(
 ) -> Result<[u8; 64], E> {
     let mut hasher = Sha3_512::new();
     emit(&mut |chunk| hasher.update(chunk))?;
+
     Ok(hasher.finalize().into())
 }
 
@@ -29,6 +30,7 @@ mod tests {
         // NIST SHA3-512_Msg0.pdf, final "Hash val".
         // https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg0.pdf
         let digest = sha3_512(|_| Ok::<_, ()>(())).unwrap();
+
         assert_eq!(
             hex(&digest),
             concat!(
@@ -51,9 +53,11 @@ mod tests {
                     sink(chunk);
                     sink(&[]);
                 }
+
                 Ok::<_, ()>(())
             })
             .unwrap();
+
             assert_eq!(
                 hex(&digest),
                 concat!(

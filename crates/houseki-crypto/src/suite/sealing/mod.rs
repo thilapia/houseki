@@ -53,12 +53,14 @@ impl NoteEncryptionContext {
         match self.suite() {
             CryptoSuite::V1 => {
                 let length = payload_length(plaintext.len(), max_payload_bytes)?;
+
                 let nonce = secret_bytes::<12, _>(rng)
                     .map_err(|_| NoteEncryptionError::RandomnessUnavailable)?;
                 let (encapsulation, secret) = self
                     .recipient_key()
                     .encapsulate_with_rng(rng)
                     .map_err(|_| NoteEncryptionError::RandomnessUnavailable)?;
+
                 let material = derive_note_material(self, secret, &encapsulation, &nonce)?;
                 let ciphertext = material
                     .seal(plaintext, plaintext.len())
@@ -68,6 +70,7 @@ impl NoteEncryptionContext {
                 payload.extend_from_slice(&self.suite().id().value().to_le_bytes());
                 payload.extend_from_slice(&*nonce);
                 payload.extend_from_slice(&ciphertext);
+
                 EncryptedNoteEnvelope::new(encapsulation, payload, max_payload_bytes).map_err(
                     |error| match error {
                         EncryptedNoteEnvelopeError::PayloadLengthExceedsLimit {
@@ -95,8 +98,10 @@ fn payload_length(plaintext: usize, maximum: usize) -> Result<usize, NoteEncrypt
             maximum,
         });
     }
+
     sealed_length(plaintext, 0, plaintext).map_err(|_| NoteEncryptionError::LengthLimitExceeded)?;
     isize::try_from(length).map_err(|_| NoteEncryptionError::LengthLimitExceeded)?;
+
     Ok(length)
 }
 
@@ -146,6 +151,7 @@ mod tests {
             limits,
         )
         .unwrap();
+
         NoteEncryptionContext::for_payment(&core, 0, &key.encapsulation_key()).unwrap()
     }
 
@@ -161,6 +167,7 @@ mod tests {
             (NoteCommitment::from_bytes([14; 64]), CryptoSuite::V1),
         )
         .unwrap();
+
         NoteEncryptionContext::for_reward_withdrawal(&core, &key.encapsulation_key()).unwrap()
     }
 
@@ -172,8 +179,10 @@ mod tests {
     ) -> Option<zeroize::Zeroizing<Vec<u8>>> {
         let payload = envelope.payload();
         assert_eq!(&payload[..4], &1_u32.to_le_bytes());
+
         let nonce: &[u8; 12] = payload[4..16].try_into().unwrap();
         let secret = key.decapsulate(envelope.encapsulation());
+
         derive_note_material(context, secret, envelope.encapsulation(), nonce)
             .unwrap()
             .open(&payload[16..], payload.len() - 32)
@@ -188,9 +197,11 @@ mod tests {
             for plaintext in [b"".as_slice(), b"note", &[0xa5; 32]] {
                 let original = plaintext.to_vec();
                 let mut rng = FixtureRng::default();
+
                 let envelope = context
                     .seal_with_rng(plaintext, plaintext.len() + 32, &mut rng)
                     .unwrap();
+
                 assert_eq!(rng.position, 44);
                 assert_eq!(envelope.payload_len(), plaintext.len() + 32);
                 assert_eq!(
@@ -216,8 +227,10 @@ mod tests {
     fn excessive_payload_lengths_do_not_consume_entropy() {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let context = payment(&key);
+
         for (plaintext, maximum) in [(b"".as_slice(), 0), (b"", 31), (b"note", 35)] {
             let mut rng = FixtureRng::default();
+
             assert!(matches!(
                 context.seal_with_rng(plaintext, maximum, &mut rng),
                 Err(NoteEncryptionError::PayloadLengthExceedsLimit { actual, maximum: limit })
@@ -232,11 +245,13 @@ mod tests {
     fn entropy_failure_never_returns_a_partial_envelope() {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let context = payment(&key);
+
         for fail_after in 0..44 {
             let mut rng = FixtureRng {
                 position: 0,
                 fail_after: Some(fail_after),
             };
+
             assert!(matches!(
                 context.seal_with_rng(b"note", 36, &mut rng),
                 Err(NoteEncryptionError::RandomnessUnavailable)
@@ -250,12 +265,14 @@ mod tests {
     fn payload_bounds_include_the_header_nonce_and_tag() {
         assert_eq!(payload_length(0, 32).unwrap(), 32);
         assert_eq!(payload_length(16, 48).unwrap(), 48);
+
         for length in [usize::MAX, isize::MAX as usize] {
             assert!(matches!(
                 payload_length(length, usize::MAX),
                 Err(NoteEncryptionError::LengthLimitExceeded)
             ));
         }
+
         if let Ok(maximum) = usize::try_from(aes_gcm_siv::P_MAX) {
             assert_eq!(payload_length(maximum, usize::MAX).unwrap(), maximum + 32);
             assert!(matches!(
@@ -270,10 +287,13 @@ mod tests {
     fn public_sealing_uses_fresh_operation_randomness() {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let context = payment(&key);
+
         let first = context.seal(b"note", 36).unwrap();
         let second = context.seal(b"note", 36).unwrap();
+
         assert_ne!(first.encapsulation(), second.encapsulation());
         assert_ne!(&first.payload()[4..16], &second.payload()[4..16]);
+
         for envelope in [first, second] {
             assert_eq!(
                 recover(&context, &key, &envelope).unwrap().as_slice(),
@@ -288,26 +308,34 @@ mod tests {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let wrong_key = MlKem1024DecapsulationKey::from_seed(&[8; 64]);
         let context = payment(&key);
+
         let envelope = context
             .seal_with_rng(b"note", 36, &mut FixtureRng::default())
             .unwrap();
+
         assert!(recover(&context, &wrong_key, &envelope).is_none());
         assert!(recover(&withdrawal(&key), &key, &envelope).is_none());
+
         for index in 4..envelope.payload_len() {
             let mut bytes = envelope.payload().to_vec();
             bytes[index] ^= 1;
+
             let changed =
                 EncryptedNoteEnvelope::new(envelope.encapsulation().clone(), bytes, 36).unwrap();
+
             assert!(recover(&context, &key, &changed).is_none());
         }
+
         let mut bytes = *envelope.encapsulation().as_bytes();
         bytes[0] ^= 1;
+
         let changed = EncryptedNoteEnvelope::new(
             houseki_types::EncodedMlKem1024Ciphertext::from_bytes(bytes),
             envelope.payload().to_vec(),
             36,
         )
         .unwrap();
+
         assert!(recover(&context, &key, &changed).is_none());
     }
 
@@ -332,6 +360,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -339,6 +368,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -348,9 +378,11 @@ mod tests {
                 if self.fail_after == Some(self.position) {
                     return Err(std::io::Error::other("fixture entropy exhausted"));
                 }
+
                 *byte = u8::try_from(self.position % 256).unwrap();
                 self.position += 1;
             }
+
             Ok(())
         }
     }

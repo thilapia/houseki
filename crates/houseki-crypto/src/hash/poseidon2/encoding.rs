@@ -62,10 +62,10 @@ impl BytePacker {
 ///
 /// Extraction is lossy and retains the low 512 bits without reducing them in the field.
 pub(super) fn extract_digest(values: [Goldilocks; OUTPUT_ELEMENTS]) -> [u8; 64] {
-    let mut limbs = [0_u64; 8];
     // Horner evaluation in Z/(2^512).
     // Canonical samples and each carry are below p, so a u64 limb times p plus carry always
     // fits in a u128.
+    let mut limbs = [0_u64; 8];
     for value in values.iter().rev() {
         let mut carry = u128::from(value.as_canonical_u64());
         for limb in &mut limbs {
@@ -95,6 +95,7 @@ mod tests {
     fn emitted_bytes_do_not_remain_in_the_pending_buffer() {
         let mut packer = BytePacker::default();
         packer.update(&[0xa5; 7], &mut |_| {});
+
         assert_eq!(&packer.buffer[..], &[0; 7]);
         assert_eq!(packer.used, 0);
     }
@@ -124,6 +125,7 @@ mod tests {
                 packer.update(chunk, &mut |x| result.push(*x));
             }
             packer.finish(&mut |x| result.push(*x));
+
             assert_eq!(
                 result,
                 [
@@ -185,6 +187,7 @@ mod tests {
         for (values, expected) in vectors {
             let actual = extract_digest(Goldilocks::new_array(values));
             let hex: String = actual.iter().map(|byte| format!("{byte:02x}")).collect();
+
             assert_eq!(hex, expected);
         }
 

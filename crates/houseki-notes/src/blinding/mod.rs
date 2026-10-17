@@ -175,6 +175,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -182,6 +183,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -191,12 +193,14 @@ mod tests {
                 if self.fail_after == Some(self.written) {
                     return Err(std::io::Error::other("fixture entropy unavailable"));
                 }
+
                 *byte = *self
                     .bytes
                     .get(self.written)
                     .ok_or_else(|| std::io::Error::other("fixture entropy exhausted"))?;
                 self.written += 1;
             }
+
             if self.fail_after == Some(self.written) {
                 return Err(std::io::Error::other("fixture entropy unavailable"));
             }

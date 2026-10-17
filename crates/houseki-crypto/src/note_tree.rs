@@ -183,6 +183,7 @@ mod tests {
             )
             .unwrap();
         }
+
         values
     }
 
@@ -193,6 +194,7 @@ mod tests {
         let empty = empties(network);
         let commitment = NoteCommitment::from_bytes([11; 64]);
         let leaf = note_tree_leaf(network, &commitment).unwrap();
+
         assert_eq!(
             hex(&empty[0]),
             "faa55e2149cd2456a05bb8936abb21728c53832ec468cccd2e7b69dc8ecb81050f51e41a637ed7fa6ecfce9fe155bc992f6509376afcc26223918695313c0b48"
@@ -217,6 +219,7 @@ mod tests {
             ),
             "98f94a4db56e412d63ffd9bbcdd2f003b0af316408cc45f2df96e84479748ce39b5c8f20dfbb01e23bafc647f5133067f59aba1c8a6e050cfe9ecf5722b0ec10"
         );
+
         let siblings: [[u8; 64]; 64] = empty[..64].try_into().unwrap();
         let one = note_membership_root(
             network,
@@ -226,10 +229,12 @@ mod tests {
             &siblings,
         )
         .unwrap();
+
         assert_eq!(
             hex(one.as_bytes()),
             "a8d550d23bfb1703ec81bd155e5a233c72ccbf1261b45b2999ef38853c4b583af1c8e8a098ef4d26123840a50c1b17818a97ba852af7f987bb8e8b0839dc90f4"
         );
+
         let mut duplicated = siblings;
         duplicated[0] = leaf;
         let two = note_membership_root(
@@ -240,6 +245,7 @@ mod tests {
             &duplicated,
         )
         .unwrap();
+
         assert_eq!(
             hex(two.as_bytes()),
             "ccc96d667cc275ffe4ddc49d7df3cf4914ab7bbd1aa5c4c6b28064757e5caedbb8c39a97c5048fdc780d32b6edb64b6a70115e29cb8ab98d63ea695ed449b62b"
@@ -267,6 +273,7 @@ mod tests {
         let position = NotePosition::new(0);
         let original =
             note_membership_root(network, count, &commitment, &position, &siblings).unwrap();
+
         for bit in [0, 8, 16, 24, 32, 40, 48, 56, 63] {
             assert_ne!(
                 note_membership_root(
@@ -280,14 +287,17 @@ mod tests {
                 original
             );
         }
+
         for level in 0..64 {
             let mut changed = siblings;
             changed[level][63] ^= 1;
+
             assert_ne!(
                 note_membership_root(network, count, &commitment, &position, &changed).unwrap(),
                 original
             );
         }
+
         assert_ne!(
             note_membership_root(
                 network,
@@ -321,6 +331,7 @@ mod tests {
             .unwrap(),
             original
         );
+
         assert_eq!(siblings, [[12; 64]; 64]);
         assert_eq!(position.value(), 0);
         assert_eq!(
@@ -333,11 +344,13 @@ mod tests {
     #[test]
     fn tree_parent_levels_and_roles_are_exact() {
         let network = NetworkId::from_bytes([7; 64]);
+
         for level in [64, 256, u32::MAX] {
             assert!(
                 matches!(note_tree_parent(network,level,&[11;64],&[12;64]),Err(NoteTreeHashError::InvalidLevel {level:actual}) if actual==level)
             );
         }
+
         assert_ne!(
             note_tree_parent(network, 0, &[11; 64], &[12; 64]).unwrap(),
             note_tree_parent(network, 0, &[12; 64], &[11; 64]).unwrap()

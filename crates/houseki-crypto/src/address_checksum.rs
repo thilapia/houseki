@@ -18,6 +18,7 @@ pub fn recipient_descriptor_checksum(bytes: &[u8; 1704]) -> Result<[u8; 8], Cryp
         frame.part(bytes)?;
         frame.finish()
     })?;
+
     Ok(digest[..8]
         .try_into()
         .expect("fixed checksum prefix length"))

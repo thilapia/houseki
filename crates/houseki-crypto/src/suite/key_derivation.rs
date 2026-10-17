@@ -45,6 +45,7 @@ pub(super) fn derive_note_material(
     match context.suite() {
         CryptoSuite::V1 => {
             let associated_data = context.associated_data(encapsulation, nonce)?;
+
             let mut salt = Vec::new();
             let mut sink = |chunk: &[u8]| salt.extend_from_slice(chunk);
             let mut frame = Frame::new(Domain::NoteKdfExtract, 2, &mut sink);
@@ -59,6 +60,7 @@ pub(super) fn derive_note_material(
             frame.finish()?;
 
             let key = secret.derive_key(&salt, &info);
+
             Ok(NoteEncryptionMaterial {
                 key,
                 associated_data,
@@ -108,6 +110,7 @@ mod tests {
             limits,
         )
         .unwrap();
+
         NoteEncryptionContext::for_payment(&core, 0, key).unwrap()
     }
 
@@ -119,6 +122,7 @@ mod tests {
                 .unwrap();
         let context = context(&key, 0, 17);
         let encapsulation = EncodedMlKem1024Ciphertext::from_bytes([0; 1568]);
+
         let material = derive_note_material(
             &context,
             MlKem1024SharedSecret::fixture_secret(),
@@ -126,14 +130,16 @@ mod tests {
             &[0; 12],
         )
         .unwrap();
+
         // Python hashlib/hmac with the specified core, AAD, salt and info codecs, plus the
-        // independent recipient-binding vector.
+        // independent recipient binding vector.
         // Synthetic material tests the codec, while honest KEM pairing is tested separately.
         let actual: String = material
             .key
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect();
+
         assert_eq!(
             actual,
             "707cf5dd633235fa4ab8841cb748694b36b5c099d378dbb43a358c319a369dbf"
@@ -151,6 +157,7 @@ mod tests {
         let public = recipient.encapsulation_key();
         let (encapsulation, sender_secret) = public.encapsulate().unwrap();
         let nonce = [23; 12];
+
         let sender = derive_note_material(
             &context(&public, 0, 17),
             sender_secret,
@@ -165,6 +172,7 @@ mod tests {
             &nonce,
         )
         .unwrap();
+
         assert_eq!(*sender.key, *recovered.key);
         assert_eq!(sender.associated_data, recovered.associated_data);
 
@@ -176,6 +184,7 @@ mod tests {
             &nonce,
         )
         .unwrap();
+
         assert_ne!(*sender.key, *rejected.key);
         assert_eq!(sender.associated_data, rejected.associated_data);
         // Implicit rejection still produces a key.
@@ -194,10 +203,12 @@ mod tests {
         let (encapsulation, secret) = public.encapsulate().unwrap();
         let nonce = [23; 12];
         let original_context = context(&public, 0, 17);
+
         let ciphertext = derive_note_material(&original_context, secret, &encapsulation, &nonce)
             .unwrap()
             .seal(b"note", 4)
             .unwrap();
+
         let recovered = derive_note_material(
             &original_context,
             recipient.decapsulate(&encapsulation),
@@ -207,6 +218,7 @@ mod tests {
         .unwrap()
         .open(&ciphertext, 4)
         .unwrap();
+
         assert_eq!(&**recovered, b"note");
 
         let wrong_secret = derive_note_material(
@@ -217,6 +229,7 @@ mod tests {
         )
         .unwrap()
         .open(&ciphertext, 4);
+
         assert_eq!(
             wrong_secret.unwrap_err(),
             NoteAeadError::AuthenticationFailed
@@ -246,6 +259,7 @@ mod tests {
                 &changed_nonce,
             )
             .unwrap();
+
             assert_eq!(
                 material.open(&ciphertext, 4).unwrap_err(),
                 NoteAeadError::AuthenticationFailed
@@ -266,6 +280,7 @@ mod tests {
             &[0; 12],
         )
         .unwrap();
+
         for (context, encapsulation, nonce) in [
             (context(&public, 1, 17), encapsulation.clone(), [0; 12]),
             (context(&public, 0, 18), encapsulation.clone(), [0; 12]),
@@ -284,6 +299,7 @@ mod tests {
                 &nonce,
             )
             .unwrap();
+
             assert_ne!(*original.key, *changed.key);
             assert_ne!(original.associated_data, changed.associated_data);
         }

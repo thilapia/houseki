@@ -49,17 +49,20 @@ impl PaymentEncryptionCore {
         sha3_512(|sink| {
             let mut frame = Frame::new(Domain::NoteEncryptionCore, part_count, sink);
             frame_context(&mut frame, b"payment", self.context())?;
+
             frame.part(self.inputs().anchor().as_bytes())?;
             frame.part(&input_count.to_le_bytes())?;
             for nullifier in self.inputs().nullifiers() {
                 frame.part(nullifier.as_bytes())?;
             }
+
             frame.part(&self.public_fee().atoms().to_le_bytes())?;
             frame.part(&output_count.to_le_bytes())?;
             for (commitment, suite) in self.outputs() {
                 frame.part(commitment.as_bytes())?;
                 frame.part(&suite.id().value().to_le_bytes())?;
             }
+
             frame.finish()
         })
     }
@@ -98,15 +101,18 @@ impl RewardWithdrawalEncryptionCore {
         sha3_512(|sink| {
             let mut frame = Frame::new(Domain::NoteEncryptionCore, 15, sink);
             frame_context(&mut frame, b"reward-withdrawal", self.context())?;
+
             frame.part(self.reward_account_id().as_bytes())?;
             frame.part(self.withdrawal_public_key().as_bytes())?;
             frame.part(&self.nonce().value().to_le_bytes())?;
             frame.part(&self.public_amount().atoms().to_le_bytes())?;
             frame.part(&self.public_fee().atoms().to_le_bytes())?;
             frame.part(&1_u64.to_le_bytes())?;
+
             let (commitment, suite) = self.output();
             frame.part(commitment.as_bytes())?;
             frame.part(&suite.id().value().to_le_bytes())?;
+
             frame.finish()
         })
     }
@@ -116,6 +122,7 @@ impl RewardWithdrawalEncryptionCore {
 fn payment_part_count(inputs: usize, outputs: usize) -> Result<u32, CryptoFramingError> {
     let inputs = u32::try_from(inputs).map_err(|_| CryptoFramingError::TooManyParts)?;
     let outputs = u32::try_from(outputs).map_err(|_| CryptoFramingError::TooManyParts)?;
+
     // Seven context parts, anchor, input count, fee, output count, plus each nullifier and two
     // separate parts for each commitment/suite pair.
     outputs
@@ -188,6 +195,7 @@ mod tests {
             None => {}
             _ => panic!("unknown context field"),
         }
+
         TransactionContext::new(
             NetworkId::from_bytes(network),
             ProtocolVersion::new(protocol),
@@ -285,6 +293,7 @@ mod tests {
     fn every_context_field_is_bound_for_both_operations() {
         let payment_digest = payment(context(None)).digest().unwrap();
         let withdrawal_digest = withdrawal(context(None)).digest().unwrap();
+
         for field in 0..6 {
             assert_ne!(
                 payment(context(Some(field))).digest().unwrap(),
@@ -304,6 +313,7 @@ mod tests {
     fn payment_binds_source_fee_output_order_and_multiplicity() {
         let original = payment(context(None));
         let expected = original.digest().unwrap();
+
         for change in 0..9 {
             let (context, inputs, mut outputs, mut fee) = original.clone().into_parts();
             let mut anchor = inputs.anchor();
@@ -324,6 +334,7 @@ mod tests {
                 8 => outputs.push(outputs[0]),
                 _ => unreachable!(),
             }
+
             let changed = PaymentEncryptionCore::new(
                 context,
                 PaymentInputs::new(anchor, nullifiers, limits()).unwrap(),
@@ -332,6 +343,7 @@ mod tests {
                 limits(),
             )
             .unwrap();
+
             assert_ne!(
                 changed.digest().unwrap(),
                 expected,
@@ -345,6 +357,7 @@ mod tests {
     fn withdrawal_binds_account_complete_key_nonce_amount_fee_and_output() {
         let original = withdrawal(context(None));
         let expected = original.digest().unwrap();
+
         for change in 0..8 {
             let (context, mut account, mut key, mut nonce, mut amount, mut fee, mut output) =
                 original.clone().into_parts();
@@ -361,10 +374,12 @@ mod tests {
                 7 => output.0 = NoteCommitment::from_bytes([0x62; 64]),
                 _ => unreachable!(),
             }
+
             let changed = RewardWithdrawalEncryptionCore::new(
                 context, account, key, nonce, amount, fee, output,
             )
             .unwrap();
+
             assert_ne!(
                 changed.digest().unwrap(),
                 expected,
@@ -377,6 +392,7 @@ mod tests {
     #[test]
     fn payment_layout_rejects_unrepresentable_counts_without_allocating() {
         let max = usize::try_from(u32::MAX).unwrap();
+
         assert_eq!(payment_part_count(1, 1), Ok(14));
         assert_eq!(payment_part_count(2, 3), Ok(19));
         assert_eq!(payment_part_count(max - 13, 1), Ok(u32::MAX));

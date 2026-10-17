@@ -76,6 +76,7 @@ impl NoteRecipient {
         let suite = match CryptoSuite::try_from(context.crypto_suite_id())? {
             CryptoSuite::V1 => CryptoSuite::V1,
         };
+
         let kem_public_key = MlKem1024EncapsulationKey::try_from(descriptor.kem_public_key())?;
 
         Ok(Self {
@@ -142,6 +143,7 @@ mod tests {
         for pair in bytes[..1536].as_chunks_mut::<3>().0 {
             pair.copy_from_slice(&[0x00, 0x0d, 0xd0]);
         }
+
         bytes[1536..].copy_from_slice(&std::array::from_fn::<_, 32, _>(|index| index as u8));
 
         EncodedMlKem1024PublicKey::from_bytes(bytes)

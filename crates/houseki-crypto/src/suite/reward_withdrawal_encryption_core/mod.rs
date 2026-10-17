@@ -207,6 +207,7 @@ mod tests {
         let amount = Amount::from_atoms(15).unwrap();
         let fee = Amount::from_atoms(16).unwrap();
         let output = output();
+
         let core = RewardWithdrawalEncryptionCore::new(
             context,
             account,

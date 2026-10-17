@@ -75,6 +75,7 @@ impl MlKem1024DecapsulationKey {
     ) -> Result<Self, MlKem1024DecapsulationKeyError> {
         let seed = secret_bytes::<{ Self::SEED_LENGTH }, _>(rng)
             .map_err(|_| MlKem1024DecapsulationKeyError::RandomnessUnavailable)?;
+
         Ok(Self::from_seed(&seed))
     }
 }
@@ -176,6 +177,7 @@ mod tests {
     /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
+
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
@@ -185,9 +187,12 @@ mod tests {
         #[allow(deprecated)]
         {
             use ml_kem::ExpandedKeyEncoding;
+
             let actual: [u8; 3168] = key.0.to_expanded_bytes().into();
+
             assert_eq!(actual, decode_hex::<3168>(EXPANDED_KEY));
         }
+
         let expected = decode_hex::<3168>(EXPANDED_KEY);
         assert_eq!(
             key.encapsulation_key().to_encoded().as_bytes().as_slice(),
@@ -243,6 +248,7 @@ mod tests {
             .encapsulation_key();
 
         assert_ne!(first, second);
+
         for key in [first, second] {
             assert_eq!(
                 MlKem1024EncapsulationKey::try_from(&key.to_encoded()).unwrap(),
@@ -271,7 +277,7 @@ mod tests {
     }
 
     // Deterministic and deliberately insecure.
-    // This implementation is test-only.
+    // This implementation is confined to tests.
     impl TryCryptoRng for FixtureRng {}
 
     /// Synthetic error from the fixture entropy source.
@@ -295,6 +301,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -302,6 +309,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -312,9 +320,11 @@ mod tests {
                 if self.position == self.fail_after.unwrap_or(seed.len()) {
                     return Err(EntropyFailure);
                 }
+
                 *byte = seed[self.position];
                 self.position += 1;
             }
+
             Ok(())
         }
     }

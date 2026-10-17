@@ -19,6 +19,7 @@ impl MlDsa87VerificationKey {
     /// Decodes the complete public representation without rejecting representable field values.
     pub fn from_encoded(encoded: &EncodedMlDsa87PublicKey) -> Self {
         let bytes = ml_dsa::EncodedVerifyingKey::<MlDsa87>::from(*encoded.as_bytes());
+
         Self(VerifyingKey::decode(&bytes))
     }
 
@@ -44,6 +45,7 @@ mod tests {
         ] {
             let encoded = EncodedMlDsa87PublicKey::from_bytes(bytes);
             let key = MlDsa87VerificationKey::from_encoded(&encoded);
+
             assert_eq!(key.to_encoded(), encoded);
             assert_eq!(key.clone().to_encoded(), encoded);
         }

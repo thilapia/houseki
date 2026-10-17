@@ -148,12 +148,14 @@ mod tests {
     /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
+
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
     /// Imports the public key from the published encapsulation fixture.
     fn fixture_key() -> MlKem1024EncapsulationKey {
         let encoded = EncodedMlKem1024PublicKey::from_bytes(decode_hex(ENCODED_KEY));
+
         MlKem1024EncapsulationKey::try_from(&encoded).unwrap()
     }
 
@@ -208,7 +210,7 @@ mod tests {
     }
 
     // Deterministic and deliberately insecure.
-    // This implementation is test-only.
+    // This implementation is confined to tests.
     impl TryCryptoRng for FixtureRng {}
 
     impl TryRng for FixtureRng {
@@ -219,6 +221,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -226,6 +229,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -236,14 +240,17 @@ mod tests {
                 if self.position == self.fail_after.unwrap_or(randomness.len()) {
                     return Err(std::io::Error::other("fixture entropy exhausted"));
                 }
+
                 *byte = randomness[self.position];
                 self.position += 1;
             }
+
             if self.fail_after == Some(self.position) {
                 return Err(std::io::Error::other(
                     "fixture entropy failed after writing",
                 ));
             }
+
             Ok(())
         }
     }

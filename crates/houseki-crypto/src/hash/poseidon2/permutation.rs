@@ -23,9 +23,11 @@ pub(super) fn permute(state: &mut [FieldElement; WIDTH]) {
     for constants in &GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_INITIAL {
         full_round(state, constants);
     }
+
     for constant in GOLDILOCKS_POSEIDON2_RC_16_INTERNAL {
         partial_round(state, constant);
     }
+
     for constants in &GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_FINAL {
         full_round(state, constants);
     }
@@ -39,6 +41,7 @@ fn external_linear(state: &mut [FieldElement; WIDTH]) {
         let sum = first_pair.add(&second_pair);
         let with_second = sum.add(&block[1]);
         let with_fourth = sum.add(&block[3]);
+
         // Build every coordinate before replacing the original block.
         *block = [
             with_second.add(&first_pair),
@@ -47,6 +50,7 @@ fn external_linear(state: &mut [FieldElement; WIDTH]) {
             with_fourth.add(&block[0].add(&block[0])),
         ];
     }
+
     let sums: [FieldElement; 4] = std::array::from_fn(|i| {
         state[i]
             .add(&state[i + 4])
@@ -73,12 +77,14 @@ fn full_round(state: &mut [FieldElement; WIDTH], constants: &[Goldilocks; WIDTH]
     for (value, constant) in state.iter_mut().zip(constants) {
         *value = seventh_power(&value.add(&public_constant(*constant)));
     }
+
     external_linear(state);
 }
 
 /// Updates the first coordinate with its public constant before internal mixing.
 fn partial_round(state: &mut [FieldElement; WIDTH], constant: Goldilocks) {
     state[0] = seventh_power(&state[0].add(&public_constant(constant)));
+
     internal_linear(state);
 }
 
@@ -148,15 +154,19 @@ mod tests {
                 [u64::MAX; WIDTH],
                 [0xffff_ffff_0000_0000; WIDTH],
             ]);
+
         for input in cases {
             let mut external = input.map(|word| FieldElement::from_word(&word));
             let mut internal = input.map(|word| FieldElement::from_word(&word));
             let mut expected_external = input.map(|word| u128::from(word) % PRIME);
             let mut expected_internal = expected_external;
+
             reference_external(&mut expected_external);
             reference_internal(&mut expected_internal);
+
             external_linear(&mut external);
             internal_linear(&mut internal);
+
             assert_eq!(words(&external), expected_external);
             assert_eq!(words(&internal), expected_internal);
         }
@@ -172,9 +182,12 @@ mod tests {
         ] {
             let mut state = input.map(|word| FieldElement::from_word(&word));
             let mut expected = input.map(|word| u128::from(word) % PRIME);
+
             external_linear(&mut state);
             reference_external(&mut expected);
+
             assert_eq!(words(&state), expected);
+
             for constants in GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_INITIAL {
                 for (value, constant) in expected.iter_mut().zip(constants) {
                     *value =
@@ -182,15 +195,19 @@ mod tests {
                 }
                 reference_external(&mut expected);
                 full_round(&mut state, &constants);
+
                 assert_eq!(words(&state), expected);
             }
+
             for constant in GOLDILOCKS_POSEIDON2_RC_16_INTERNAL {
                 expected[0] =
                     reference_sbox((expected[0] + u128::from(constant.as_canonical_u64())) % PRIME);
                 reference_internal(&mut expected);
                 partial_round(&mut state, constant);
+
                 assert_eq!(words(&state), expected);
             }
+
             for constants in GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_FINAL {
                 for (value, constant) in expected.iter_mut().zip(constants) {
                     *value =
@@ -198,10 +215,13 @@ mod tests {
                 }
                 reference_external(&mut expected);
                 full_round(&mut state, &constants);
+
                 assert_eq!(words(&state), expected);
             }
+
             let mut complete = input.map(|word| FieldElement::from_word(&word));
             permute(&mut complete);
+
             assert_eq!(words(&complete), expected);
         }
     }
@@ -245,8 +265,10 @@ mod tests {
             0x9522431667b3c5f9,
             0xeaf5638a69518f65,
         ];
+
         let mut state = input.map(|word| FieldElement::from_word(&word));
         permute(&mut state);
+
         assert_eq!(words(&state), expected);
     }
 
@@ -264,6 +286,7 @@ mod tests {
             for _ in 0..2 {
                 permute(&mut state);
                 super::super::profile::permute(&mut expected);
+
                 assert_eq!(
                     words(&state),
                     expected.map(|value| u128::from(value.as_canonical_u64()))

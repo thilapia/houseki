@@ -22,6 +22,7 @@ impl MlKem1024DecapsulationKey {
     /// plaintext.
     pub fn decapsulate(&self, ciphertext: &EncodedMlKem1024Ciphertext) -> MlKem1024SharedSecret {
         let shared_key = self.0.decapsulate(ciphertext.as_bytes().into());
+
         MlKem1024SharedSecret::from_backend(Zeroizing::new(shared_key))
     }
 }
@@ -131,6 +132,7 @@ mod tests {
     /// Decodes a fixed length hexadecimal conformance fixture.
     fn decode_hex<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
+
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
@@ -156,6 +158,7 @@ mod tests {
     #[test]
     fn changed_ciphertexts_produce_exact_fallback_secrets() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(VALID_SEED));
+
         // Independent FIPS 203 Algorithm 18 fallback oracles, calculated with Python
         // hashlib.shake_256(z + modified_ciphertext).hexdigest(32).
         for (index, expected) in [
@@ -171,6 +174,7 @@ mod tests {
             let mut bytes =
                 decode_hex::<{ EncodedMlKem1024Ciphertext::BYTE_LENGTH }>(VALID_CIPHERTEXT);
             bytes[index] ^= 1;
+
             let ciphertext = EncodedMlKem1024Ciphertext::from_bytes(bytes);
 
             assert_secret_eq(&key.decapsulate(&ciphertext), &decode_hex(expected));
@@ -182,6 +186,7 @@ mod tests {
     fn wrong_recipient_produces_exact_fallback_secret() {
         let key = MlKem1024DecapsulationKey::from_seed(&decode_hex(REJECTED_SEED));
         let ciphertext = EncodedMlKem1024Ciphertext::from_bytes(decode_hex(VALID_CIPHERTEXT));
+
         // The same independent SHAKE256 oracle, using this other key's z.
         let expected =
             decode_hex("97aa7b9c23e6c94d2191ee2e9b28e557c7a8ff9e5308a4100fb3e529469ac807");

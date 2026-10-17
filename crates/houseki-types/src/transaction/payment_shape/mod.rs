@@ -42,6 +42,7 @@ impl PaymentShape {
         if input_count == 0 {
             return Err(PaymentShapeError::EmptyInputs);
         }
+
         if output_count == 0 {
             return Err(PaymentShapeError::EmptyOutputs);
         }

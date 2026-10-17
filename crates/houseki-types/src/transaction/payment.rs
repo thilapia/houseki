@@ -82,6 +82,7 @@ impl PaymentBody {
             outputs,
             public_fee,
         };
+
         limits.validate_shape(body.shape())?;
 
         Ok(body)
@@ -156,10 +157,13 @@ mod tests {
             .map(|index| {
                 let mut bytes = [0; 64];
                 bytes[..size_of::<usize>()].copy_from_slice(&index.to_le_bytes());
+
                 Nullifier::from_bytes(bytes)
             })
             .collect();
+
         let inputs = PaymentInputs::new(NoteRoot::from_bytes([9; 64]), nullifiers, limits).unwrap();
+
         let envelope = EncryptedNoteEnvelope::new(
             EncodedMlKem1024Ciphertext::from_bytes([10; 1568]),
             vec![11, 12, 13],
@@ -168,6 +172,7 @@ mod tests {
         .unwrap();
         let output = NoteOutput::new(NoteCommitment::from_bytes([14; 64]), envelope);
         let outputs = PaymentOutputs::new(vec![output; output_count], limits).unwrap();
+
         (inputs, outputs)
     }
 

@@ -30,6 +30,7 @@ use profile::{OUTPUT_ELEMENTS, RATE, WIDTH, permute};
 /// Returns a framing error without a digest if a count or length is unrepresentable.
 pub(crate) fn poseidon2(domain: Domain, parts: &[&[u8]]) -> Result<[u8; 64], CryptoFramingError> {
     let length = frame_length(domain, parts)?;
+
     let mut sponge = Sponge {
         state: [Goldilocks::ZERO; WIDTH],
         used: 0,
@@ -53,6 +54,7 @@ fn frame_length(domain: Domain, parts: &[&[u8]]) -> Result<u64, CryptoFramingErr
     emit_frame(domain, parts, &mut |chunk| {
         length = length.and_then(|length| add_frame_length(length, chunk.len()));
     })?;
+
     length
 }
 
@@ -77,6 +79,7 @@ fn emit_frame(
 /// Accumulates one chunk length or rejects overflow of the u64 frame prefix.
 fn add_frame_length(length: u64, chunk_length: usize) -> Result<u64, CryptoFramingError> {
     let chunk_length = u64::try_from(chunk_length).map_err(|_| CryptoFramingError::FrameTooLong)?;
+
     length
         .checked_add(chunk_length)
         .ok_or(CryptoFramingError::FrameTooLong)
@@ -94,8 +97,9 @@ struct Sponge {
 impl Sponge {
     /// Adds a packed word or padding value and permutes each completed rate block.
     fn absorb(&mut self, word: u64) {
-        // Only seven-byte words and the field padding values 0 and 1 enter.
+        // Only seven byte words and the field padding values 0 and 1 enter.
         debug_assert!(word < (1 << 56));
+
         self.state[self.used] += Goldilocks::new(word);
         self.used += 1;
         if self.used == RATE {
@@ -114,8 +118,10 @@ impl Sponge {
 
         let mut values = [Goldilocks::ZERO; OUTPUT_ELEMENTS];
         values[..RATE].copy_from_slice(&self.state[..RATE]);
+
         permute(&mut self.state);
         values[RATE..].copy_from_slice(&self.state[..OUTPUT_ELEMENTS - RATE]);
+
         extract_digest(values)
     }
 }
@@ -130,7 +136,7 @@ mod tests {
     fn sponge_matches_independent_vectors_at_packing_and_padding_boundaries() {
         // Independent Python field arithmetic using the pinned upstream constants, checked
         // against its permutation KAT first.
-        // Includes the u64 frame-length prefix, seven-byte words, mandatory field padding, two
+        // Includes the u64 frame length prefix, seven byte words, mandatory field padding, two
         // squeeze reads and base-p extraction.
         // Length 48 gives exactly fourteen input words and requires a complete extra padding
         // block.
@@ -170,6 +176,7 @@ mod tests {
                 *super::guarded::poseidon2_secret(Domain::RecipientKemKey, &[&bytes]).unwrap(),
             ] {
                 let actual: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+
                 assert_eq!(actual, expected, "length {length}");
             }
         }
@@ -194,6 +201,7 @@ mod tests {
         for domain in [Domain::RecipientKemKey, Domain::NoteEncryptionCore] {
             for parts in parts {
                 let digest = poseidon2(domain, parts).unwrap();
+
                 assert!(!digests.contains(&digest));
                 digests.push(digest);
             }

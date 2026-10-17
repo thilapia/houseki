@@ -13,7 +13,7 @@ pub enum AmountError {
     #[error("the numeric operation underflowed")]
     ValueUnderflow,
 
-    /// The value exceeds the protocol's `10^29`-atom cap.
+    /// The value exceeds the protocol's cap of `10^29` atoms.
     #[error("the amount exceeds the maximum allowed value")]
     ValueExceedsMaximum,
 

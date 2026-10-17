@@ -53,6 +53,7 @@ impl CryptoSuite {
                     minimum: 4,
                 })?;
         let suite = Self::try_from(CryptoSuiteId::new(u32::from_le_bytes(*header)))?;
+
         let minimum = match suite {
             Self::V1 => 4 + 12 + 16,
         };
@@ -78,6 +79,7 @@ mod tests {
     fn payload(id: u32, length: usize) -> Vec<u8> {
         let mut bytes = vec![0xa5; length];
         bytes[..4].copy_from_slice(&id.to_le_bytes());
+
         bytes
     }
 
@@ -87,6 +89,7 @@ mod tests {
         for bytes in [vec![0], payload(1, 31), payload(u32::MAX, 32)] {
             let actual = bytes.len();
             let maximum = actual - 1;
+
             assert!(matches!(
                 CryptoSuite::from_note_payload(&bytes, maximum),
                 Err(NotePayloadError::PayloadLengthExceedsLimit {
@@ -144,6 +147,7 @@ mod tests {
             for fill in [0, 0xa5, 0xff] {
                 bytes[4..].fill(fill);
                 let original = bytes.clone();
+
                 assert_eq!(
                     CryptoSuite::from_note_payload(&bytes, length).unwrap(),
                     CryptoSuite::V1
@@ -162,6 +166,7 @@ mod tests {
             48,
         )
         .unwrap();
+
         assert!(matches!(
             CryptoSuite::from_note_payload(envelope.payload(), 47),
             Err(NotePayloadError::PayloadLengthExceedsLimit {

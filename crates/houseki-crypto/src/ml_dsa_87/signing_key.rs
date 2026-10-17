@@ -51,6 +51,7 @@ impl MlDsa87SigningKey {
     /// The original import buffer remains the caller's responsibility to clear.
     pub fn from_seed(seed: &[u8; Self::SEED_LENGTH]) -> Self {
         let seed = Zeroizing::new(ml_dsa::Seed::from(*seed));
+
         Self(SigningKey::from_seed(&seed))
     }
 
@@ -86,6 +87,7 @@ mod tests {
     /// Parses public standard fixture hexadecimal without production codec dependencies.
     fn decode<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
+
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
@@ -138,7 +140,9 @@ mod tests {
             "B3DF125D1A61843F71A272E3A1D97AAB97DE5831C56D16A6A6620F8C6CD0F4F1E41AFE6895BA3664D23A03EAB3531126E87335F4BCBBF2E39C47B5A58BA15066",
             "F79717D8296667553ECD0991F14D42F8934D753929F146E4B58D00A3E0139D66"
         ));
+
         let key = MlDsa87SigningKey::from_seed(&seed);
+
         assert_eq!(key.verification_key().to_encoded().as_bytes(), &expected);
         assert_eq!(key.verification_key().to_encoded().as_bytes(), &expected);
     }
@@ -151,20 +155,25 @@ mod tests {
                 failure: Some(failure),
                 position: 0,
             };
+
             assert!(matches!(
                 MlDsa87SigningKey::generate_with_rng(&mut rng),
                 Err(MlDsa87SigningKeyError::RandomnessUnavailable)
             ));
             assert_eq!(rng.position, failure);
         }
+
         let mut rng = FixtureRng {
             failure: None,
             position: 0,
         };
         let key = MlDsa87SigningKey::generate_with_rng(&mut rng).unwrap();
+
         assert_eq!(rng.position, 32);
+
         let expected =
             MlDsa87SigningKey::from_seed(&std::array::from_fn(|i| u8::try_from(i).unwrap()));
+
         assert_eq!(key.verification_key(), expected.verification_key());
     }
 
@@ -173,11 +182,14 @@ mod tests {
     fn signing_key_diagnostics_and_system_generation() {
         for seed in [[0; 32], [0xff; 32]] {
             let key = MlDsa87SigningKey::from_seed(&seed);
+
             assert_eq!(format!("{key:?}"), "MlDsa87SigningKey([REDACTED])");
             assert_eq!(format!("{key:#?}"), "MlDsa87SigningKey([REDACTED])");
         }
+
         let first = MlDsa87SigningKey::generate().unwrap();
         let second = MlDsa87SigningKey::generate().unwrap();
+
         assert_ne!(first.verification_key(), second.verification_key());
     }
 
@@ -199,6 +211,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -206,6 +219,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -215,12 +229,15 @@ mod tests {
                 if self.failure == Some(self.position) {
                     return Err(std::io::Error::other("fixture failure"));
                 }
+
                 *byte = u8::try_from(self.position).unwrap();
                 self.position += 1;
             }
+
             if self.failure == Some(self.position) {
                 return Err(std::io::Error::other("fixture failure"));
             }
+
             Ok(())
         }
     }

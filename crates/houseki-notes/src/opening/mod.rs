@@ -115,8 +115,10 @@ mod tests {
         let network = NetworkId::from_bytes([pattern; 64]);
         let context =
             AddressContext::new(network, AddressFormatVersion::new(1), CryptoSuite::V1.id());
+
         let mut key = [0; 1568];
         key[1536..].fill(pattern);
+
         let descriptor = RecipientDescriptor::new(
             context,
             OwnershipCommitment::from_bytes([pattern.wrapping_add(1); 64]),
@@ -130,6 +132,7 @@ mod tests {
     #[test]
     fn construction_retains_positive_amounts_and_all_opening_fields() {
         let recipient = recipient(0x37);
+
         for atoms in [1, 2, 1_u128 << 64, Amount::MAX_ATOMS - 1, Amount::MAX_ATOMS] {
             let amount = Amount::from_atoms(atoms).unwrap();
             let blinding = NoteBlinding::generate().unwrap();

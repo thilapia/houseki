@@ -31,6 +31,7 @@ impl FromStr for Amount {
         {
             return Err(AmountError::InvalidDecimal);
         }
+
         if fraction.len() > Self::DECIMAL_PLACES as usize {
             return Err(AmountError::TooManyDecimalPlaces);
         }
@@ -38,15 +39,18 @@ impl FromStr for Amount {
         let whole = whole
             .parse::<u128>()
             .map_err(|_| AmountError::ValueOverflow)?;
+
         let fractional_atoms = if fraction.is_empty() {
             0
         } else {
             let digits = fraction
                 .parse::<u128>()
                 .map_err(|_| AmountError::ValueOverflow)?;
+
             // At most 20 decimal digits, so this product is below one coin.
             digits * 10_u128.pow(Self::DECIMAL_PLACES - fraction.len() as u32)
         };
+
         let atoms = whole
             .checked_mul(Self::ATOMS_PER_COIN)
             .and_then(|atoms| atoms.checked_add(fractional_atoms))

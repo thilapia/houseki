@@ -117,23 +117,27 @@ mod tests {
         tree.append(NoteCommitment::from_bytes([12; 64])).unwrap();
         let anchor = tree.anchor();
         let witness = tree.witness(&position).unwrap();
+
         witness.verify(&anchor, &commitment).unwrap();
 
         for level in 0..64 {
             let mut changed = Zeroizing::new(*witness.siblings);
             changed[level][63] ^= 1;
             let changed = NoteMembershipWitness::from_parts(&position, &changed);
+
             assert!(matches!(
                 changed.verify(&anchor, &commitment),
                 Err(NoteMembershipError::RootMismatch)
             ));
         }
+
         assert!(matches!(
             witness.verify(&anchor, &NoteCommitment::from_bytes([10; 64])),
             Err(NoteMembershipError::RootMismatch)
         ));
 
         let changed = NoteMembershipWitness::from_parts(&NotePosition::new(1), &witness.siblings);
+
         assert!(matches!(
             changed.verify(&anchor, &commitment),
             Err(NoteMembershipError::RootMismatch)
@@ -142,6 +146,7 @@ mod tests {
         for position in [2, 1_u64 << 32, u64::MAX] {
             let changed =
                 NoteMembershipWitness::from_parts(&NotePosition::new(position), &witness.siblings);
+
             assert!(matches!(
                 changed.verify(&anchor, &commitment),
                 Err(NoteMembershipError::PositionNotOccupied)
@@ -149,6 +154,7 @@ mod tests {
         }
 
         let changed = NoteTreeAnchor::new(network, NoteCount::new(1).unwrap(), anchor.root());
+
         assert!(matches!(
             witness.verify(&changed, &commitment),
             Err(NoteMembershipError::RootMismatch)
@@ -159,6 +165,7 @@ mod tests {
             anchor.count(),
             anchor.root(),
         );
+
         assert!(matches!(
             witness.verify(&changed, &commitment),
             Err(NoteMembershipError::RootMismatch)

@@ -63,6 +63,7 @@ mod tests {
             network,
         )
         .unwrap();
+
         NoteOpening::new(
             NoteFormat::V1,
             &recipient,
@@ -77,6 +78,7 @@ mod tests {
     fn nullifiers_match_independent_positive_v1_vectors() {
         let opening = opening([0; 64], 1, 0);
         let key = NullifierKey::from_bytes(&[0; 32]);
+
         // Independent Python integer arithmetic recomputes E and C before each NF transcript.
         for (position, expected) in [
             (
@@ -103,6 +105,7 @@ mod tests {
                 .iter()
                 .map(|byte| format!("{byte:02x}"))
                 .collect();
+
             assert_eq!(actual, expected);
         }
     }
@@ -115,31 +118,38 @@ mod tests {
         let position = NotePosition::new(0);
         let original = derive_nullifier(&opening, &key, &position).unwrap();
         let commitment = opening.commitment().unwrap();
+
         for index in 0..8 {
             let changed = NotePosition::new(1 << (index * 8));
+
             assert_ne!(
                 derive_nullifier(&opening, &key, &changed).unwrap(),
                 original
             );
         }
+
         for index in 0..32 {
             let mut bytes = [0; 32];
             bytes[index] = 1;
             let changed = NullifierKey::from_bytes(&bytes);
+
             assert_ne!(
                 derive_nullifier(&opening, &changed, &position).unwrap(),
                 original
             );
         }
+
         for index in 0..64 {
             let mut network = [0; 64];
             network[index] = 1;
             let changed = self::opening(network, 1, 0);
+
             assert_ne!(
                 derive_nullifier(&changed, &key, &position).unwrap(),
                 original
             );
         }
+
         for changed in [
             self::opening([0; 64], 2, 0),
             self::opening([0; 64], Amount::MAX_ATOMS, 0),
@@ -150,6 +160,7 @@ mod tests {
                 original
             );
         }
+
         assert_eq!(position.value(), 0);
         assert_eq!(opening.amount().atoms(), 1);
         assert_eq!(opening.commitment().unwrap(), commitment);

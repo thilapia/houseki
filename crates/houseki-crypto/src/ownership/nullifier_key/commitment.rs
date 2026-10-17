@@ -142,6 +142,7 @@ mod tests {
             .unwrap();
 
         assert_ne!(commitment.as_bytes(), spending.as_bytes());
+
         for domain in [Domain::RecipientKemKey, Domain::NoteEncryptionCore] {
             let other = poseidon2(domain, &[network.as_bytes(), &key_bytes]).unwrap();
 

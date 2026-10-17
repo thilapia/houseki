@@ -52,6 +52,7 @@ impl NoteEncryptionContext {
                 let plaintext_length = payload.len() - 32;
                 sealed_length(plaintext_length, 0, plaintext_length)
                     .map_err(|_| NoteDecryptionError::LengthLimitExceeded)?;
+
                 if &key.encapsulation_key() != self.recipient_key() {
                     return Err(NoteDecryptionError::AuthenticationFailed);
                 }
@@ -61,6 +62,7 @@ impl NoteEncryptionContext {
                     .expect("V1 layout validation guarantees the complete nonce");
                 let secret = key.decapsulate(envelope.encapsulation());
                 let material = derive_note_material(self, secret, envelope.encapsulation(), nonce)?;
+
                 material
                     .open(&payload[16..], plaintext_length)
                     .map_err(|_| NoteDecryptionError::AuthenticationFailed)
@@ -114,6 +116,7 @@ mod tests {
             limits,
         )
         .unwrap();
+
         NoteEncryptionContext::for_payment(&core, index, &key.encapsulation_key()).unwrap()
     }
 
@@ -129,6 +132,7 @@ mod tests {
             (NoteCommitment::from_bytes([14; 64]), CryptoSuite::V1),
         )
         .unwrap();
+
         NoteEncryptionContext::for_reward_withdrawal(&core, &key.encapsulation_key()).unwrap()
     }
 
@@ -150,8 +154,10 @@ mod tests {
             for plaintext in [b"".as_slice(), b"not a canonical note", &[0xa5; 32]] {
                 let sealed = context.seal(plaintext, plaintext.len() + 32).unwrap();
                 let original = sealed.clone();
+
                 let opened: Zeroizing<Vec<u8>> =
                     context.open(&sealed, &key, sealed.payload_len()).unwrap();
+
                 assert_eq!(opened.as_slice(), plaintext);
                 assert_eq!(sealed, original);
             }
@@ -165,6 +171,7 @@ mod tests {
         let wrong_key = MlKem1024DecapsulationKey::from_seed(&[8; 64]);
         let context = payment(&key, 1, 0);
         let sealed = context.seal(b"note", 36).unwrap();
+
         for candidate in [sealed.clone(), envelope(vec![0xff; 36])] {
             assert!(matches!(
                 context.open(&candidate, &wrong_key, 35),
@@ -176,6 +183,7 @@ mod tests {
                 ))
             ));
         }
+
         assert_eq!(
             context.open(&sealed, &key, usize::MAX).unwrap().as_slice(),
             b"note"
@@ -189,8 +197,10 @@ mod tests {
         let wrong_key = MlKem1024DecapsulationKey::from_seed(&[8; 64]);
         let context = payment(&key, 1, 0);
         let sealed = context.seal(b"note", 36).unwrap();
+
         for length in 0..32 {
             let candidate = envelope(sealed.payload()[..length].to_vec());
+
             assert!(matches!(
                 context.open(&candidate, &wrong_key, length),
                 Err(NoteDecryptionError::Payload(NotePayloadError::TruncatedPayload {
@@ -198,8 +208,10 @@ mod tests {
                 })) if actual == length && minimum == if length < 4 { 4 } else { 32 }
             ));
         }
+
         for id in [0_u32, 2, 257, 65_537, u32::MAX] {
             let candidate = envelope(id.to_le_bytes().to_vec());
+
             assert!(matches!(
                 context.open(&candidate, &wrong_key, 4),
                 Err(NoteDecryptionError::Payload(NotePayloadError::UnsupportedSuite(
@@ -216,10 +228,12 @@ mod tests {
         let wrong_key = MlKem1024DecapsulationKey::from_seed(&[8; 64]);
         let context = payment(&key, 1, 0);
         let sealed = context.seal(b"note", 36).unwrap();
+
         assert!(matches!(
             context.open(&sealed, &wrong_key, 36),
             Err(NoteDecryptionError::AuthenticationFailed)
         ));
+
         let wrong_recipient = payment(&wrong_key, 1, 0);
         for supplied_key in [&key, &wrong_key] {
             assert!(matches!(
@@ -227,6 +241,7 @@ mod tests {
                 Err(NoteDecryptionError::AuthenticationFailed)
             ));
         }
+
         for changed in [payment(&key, 2, 0), payment(&key, 1, 1), withdrawal(&key)] {
             assert!(matches!(
                 changed.open(&sealed, &key, 36),
@@ -241,18 +256,22 @@ mod tests {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let context = payment(&key, 1, 0);
         let sealed = context.seal(b"note", 36).unwrap();
+
         for index in 4..sealed.payload_len() {
             let mut bytes = sealed.payload().to_vec();
             bytes[index] ^= 1;
+
             let changed =
                 EncryptedNoteEnvelope::new(sealed.encapsulation().clone(), bytes, 36).unwrap();
             let original = changed.clone();
+
             assert!(matches!(
                 context.open(&changed, &key, 36),
                 Err(NoteDecryptionError::AuthenticationFailed)
             ));
             assert_eq!(changed, original);
         }
+
         for index in [0, 783, 1567] {
             let mut bytes = *sealed.encapsulation().as_bytes();
             bytes[index] ^= 1;
@@ -262,6 +281,7 @@ mod tests {
                 36,
             )
             .unwrap();
+
             assert!(matches!(
                 context.open(&changed, &key, 36),
                 Err(NoteDecryptionError::AuthenticationFailed)
@@ -275,6 +295,7 @@ mod tests {
         let key = MlKem1024DecapsulationKey::from_seed(&[7; 64]);
         let context = payment(&key, 1, 0);
         let sealed = context.seal(b"note", 36).unwrap();
+
         for length in 32..sealed.payload_len() {
             let changed = EncryptedNoteEnvelope::new(
                 sealed.encapsulation().clone(),
@@ -282,15 +303,18 @@ mod tests {
                 36,
             )
             .unwrap();
+
             assert!(matches!(
                 context.open(&changed, &key, 36),
                 Err(NoteDecryptionError::AuthenticationFailed)
             ));
         }
+
         let mut payload = sealed.payload().to_vec();
         payload.push(0);
         let changed =
             EncryptedNoteEnvelope::new(sealed.encapsulation().clone(), payload, 37).unwrap();
+
         assert!(matches!(
             context.open(&changed, &key, 37),
             Err(NoteDecryptionError::AuthenticationFailed)

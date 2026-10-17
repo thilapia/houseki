@@ -165,6 +165,7 @@ mod tests {
     fn payload(length: usize) -> Vec<u8> {
         let mut bytes = vec![0xa5; length];
         bytes[..4].copy_from_slice(&1_u32.to_le_bytes());
+
         bytes
     }
 
@@ -223,6 +224,7 @@ mod tests {
             limits(),
         )
         .unwrap();
+
         let first = output(3, payload(32));
         let body = body(vec![
             first.clone(),
@@ -270,6 +272,7 @@ mod tests {
     #[test]
     fn output_count_limits_precede_payloads() {
         let body = body(vec![output(3, vec![]), output(1, payload(32))]);
+
         let result = payment_encryption_core(&body, PaymentCountLimits::new(2, 1).unwrap(), 0);
 
         assert!(matches!(
@@ -292,6 +295,7 @@ mod tests {
             let mut outputs = vec![output(3, payload(32)); failing_index];
             outputs.push(output(1, vec![]));
             outputs.push(output(2, payload(48)));
+
             let body = body(outputs);
 
             let result = payment_encryption_core(&body, limits(), 32);
@@ -314,6 +318,7 @@ mod tests {
     fn payload_limits_are_rechecked_before_suite_resolution() {
         let mut bytes = payload(48);
         bytes[..4].copy_from_slice(&u32::MAX.to_le_bytes());
+
         let body = body(vec![output(3, payload(32)), output(1, bytes)]);
 
         let result = payment_encryption_core(&body, limits(), 47);
@@ -336,6 +341,7 @@ mod tests {
         for id in [0, 2, 257, 65_537, 0x0100_0001, u32::MAX] {
             let mut bytes = payload(32);
             bytes[..4].copy_from_slice(&id.to_le_bytes());
+
             let body = body(vec![output(3, payload(32)), output(1, bytes)]);
 
             let result = payment_encryption_core(&body, limits(), 32);
@@ -360,6 +366,7 @@ mod tests {
             if let Some(first) = bytes.first_mut() {
                 *first = 1;
             }
+
             let body = body(vec![output(3, payload(32)), output(1, bytes)]);
             let expected_minimum = if actual < 4 { 4 } else { 32 };
 
@@ -409,6 +416,7 @@ mod tests {
     #[test]
     fn projection_excludes_encapsulation_nonce_ciphertext_and_tag_bytes() {
         let first = body(vec![output(3, payload(48))]);
+
         let mut bytes = payload(48);
         bytes[4..].fill(0xff);
         let second = body(vec![NoteOutput::new(
@@ -442,6 +450,7 @@ mod tests {
             (NoteCommitment::from_bytes([3; 64]), CryptoSuite::V1),
         )
         .unwrap();
+
         let body = withdrawal_body(output(3, payload(48)));
         let original = body.clone();
 
@@ -485,6 +494,7 @@ mod tests {
             for length in [4, 32] {
                 let mut bytes = payload(length);
                 bytes[..4].copy_from_slice(&id.to_le_bytes());
+
                 let body = withdrawal_body(output(3, bytes));
 
                 let result = withdrawal_encryption_core(&body, length);
@@ -510,6 +520,7 @@ mod tests {
             if let Some(first) = bytes.first_mut() {
                 *first = 1;
             }
+
             let body = withdrawal_body(output(3, bytes));
             let expected_minimum = if actual < 4 { 4 } else { 32 };
 
@@ -562,6 +573,7 @@ mod tests {
     #[test]
     fn withdrawal_projection_excludes_encrypted_envelope_bytes() {
         let first = withdrawal_body(output(3, payload(48)));
+
         let mut bytes = payload(48);
         bytes[4..].fill(0xff);
         let second = withdrawal_body(NoteOutput::new(

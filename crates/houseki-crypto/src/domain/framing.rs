@@ -26,9 +26,11 @@ impl<'a> Frame<'a> {
         let label = domain.label();
         let label_length =
             u16::try_from(label.len()).expect("registered Houseki domain labels fit in a u16");
+
         sink(&label_length.to_le_bytes());
         sink(label);
         sink(&part_count.to_le_bytes());
+
         Self {
             sink,
             remaining: part_count,
@@ -43,10 +45,13 @@ impl<'a> Frame<'a> {
         if self.remaining == 0 {
             return Err(CryptoFramingError::PartCountMismatch);
         }
+
         let length = u64::try_from(bytes.len()).map_err(|_| CryptoFramingError::PartTooLong)?;
         (self.sink)(&length.to_le_bytes());
         (self.sink)(bytes);
+
         self.remaining -= 1;
+
         Ok(())
     }
 
@@ -57,6 +62,7 @@ impl<'a> Frame<'a> {
         if self.remaining != 0 {
             return Err(CryptoFramingError::PartCountMismatch);
         }
+
         Ok(())
     }
 }
@@ -78,7 +84,9 @@ mod tests {
         for part in parts {
             frame.part(part).unwrap();
         }
+
         frame.finish().unwrap();
+
         bytes
     }
 
@@ -89,6 +97,7 @@ mod tests {
             \x00\x00\x00\x00\x00\x00\x00\x00\
             \x02\x00\x00\x00\x00\x00\x00\x00ab\
             \x01\x00\x00\x00\x00\x00\x00\x00c";
+
         assert_eq!(encode(&[b"", b"ab", b"c"]), expected);
         assert_eq!(
             encode(&[]),
@@ -109,7 +118,9 @@ mod tests {
             &[b"abc"],
             &[b"abc", b"abc"],
         ];
+
         let encodings: Vec<_> = cases.iter().map(|parts| encode(parts)).collect();
+
         for (index, encoding) in encodings.iter().enumerate() {
             for other in &encodings[index + 1..] {
                 assert_ne!(encoding, other);
@@ -123,11 +134,13 @@ mod tests {
         let mut bytes = Vec::new();
         let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
         let frame = Frame::new(Domain::NoteEncryptionCore, 0x01020304, &mut sink);
+
         assert_eq!(frame.finish(), Err(CryptoFramingError::PartCountMismatch));
         assert_eq!(&bytes[33..37], &[4, 3, 2, 1]);
 
         let part = vec![0x55; 0x0102];
         let encoded = encode(&[&part]);
+
         assert_eq!(&encoded[37..45], &[2, 1, 0, 0, 0, 0, 0, 0]);
         assert_eq!(&encoded[45..], part);
     }
@@ -138,6 +151,7 @@ mod tests {
         let mut sink = |_: &[u8]| {};
         let mut incomplete = Frame::new(Domain::NoteEncryptionCore, 2, &mut sink);
         incomplete.part(b"first").unwrap();
+
         assert_eq!(
             incomplete.finish(),
             Err(CryptoFramingError::PartCountMismatch)
@@ -146,6 +160,7 @@ mod tests {
         let mut bytes = Vec::new();
         let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
         let mut excess = Frame::new(Domain::NoteEncryptionCore, 0, &mut sink);
+
         assert_eq!(
             excess.part(b"unexpected"),
             Err(CryptoFramingError::PartCountMismatch)

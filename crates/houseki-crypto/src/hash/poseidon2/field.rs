@@ -127,11 +127,13 @@ mod tests {
     fn integer_import_returns_canonical_residues() {
         for word in WORDS {
             let field = FieldElement::from_word(&word);
+
             assert_eq!(
                 u128::from(*field.canonical_word()),
                 u128::from(word) % MODULUS
             );
         }
+
         assert_eq!(*FieldElement::default().canonical_word(), 0);
     }
 
@@ -143,6 +145,7 @@ mod tests {
                 let a = FieldElement::from_word(&left);
                 let b = FieldElement::from_word(&right);
                 let expected = (u128::from(left) + u128::from(right)) % MODULUS;
+
                 assert_eq!(u128::from(*a.add(&b).canonical_word()), expected);
                 assert_eq!(u128::from(*a.canonical_word()), u128::from(left) % MODULUS);
                 assert_eq!(u128::from(*b.canonical_word()), u128::from(right) % MODULUS);
@@ -158,6 +161,7 @@ mod tests {
                 let a = FieldElement::from_word(&left);
                 let b = FieldElement::from_word(&right);
                 let expected = (u128::from(left) * u128::from(right)) % MODULUS;
+
                 assert_eq!(u128::from(*a.multiply(&b).canonical_word()), expected);
                 assert_eq!(u128::from(*a.canonical_word()), u128::from(left) % MODULUS);
                 assert_eq!(u128::from(*b.canonical_word()), u128::from(right) % MODULUS);
@@ -173,8 +177,10 @@ mod tests {
             let square = value.square();
             let fourth = square.square();
             let seventh = fourth.multiply(&square).multiply(&value);
+
             let reduced = u128::from(word) % MODULUS;
             let expected = (0..7).fold(1, |acc, _| acc * reduced % MODULUS);
+
             assert_eq!(
                 u128::from(*square.canonical_word()),
                 reduced * reduced % MODULUS
@@ -189,6 +195,7 @@ mod tests {
     fn explicit_zeroization_clears_residues_and_leaves_usable_zero_values() {
         let mut fields = WORDS.map(|word| FieldElement::from_word(&word));
         fields.zeroize();
+
         let one = FieldElement::from_word(&1);
         for field in fields {
             assert_eq!(*field.canonical_word(), 0);

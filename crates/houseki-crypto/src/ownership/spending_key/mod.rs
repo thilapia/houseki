@@ -59,6 +59,7 @@ impl SpendingKey {
     fn generate_with_rng<R: TryCryptoRng + ?Sized>(rng: &mut R) -> Result<Self, SpendingKeyError> {
         let bytes = secret_bytes::<{ Self::LENGTH }, _>(rng)
             .map_err(|_| SpendingKeyError::RandomnessUnavailable)?;
+
         Ok(Self::from_bytes(&bytes))
     }
 }
@@ -88,6 +89,7 @@ mod tests {
     #[test]
     fn import_preserves_all_bytes_without_borrowing_caller_storage() {
         assert_eq!(SpendingKey::LENGTH, 32);
+
         for expected in [
             [0; 32],
             [0xff; 32],
@@ -95,7 +97,9 @@ mod tests {
         ] {
             let mut source = expected;
             let key = SpendingKey::from_bytes(&source);
+
             source.fill(0xa5);
+
             assert_eq!(key.0, expected);
             assert_eq!(source, [0xa5; 32]);
         }
@@ -106,6 +110,7 @@ mod tests {
     fn generation_retains_all_requested_entropy_bytes() {
         let mut rng = FixtureRng::default();
         let key = SpendingKey::generate_with_rng(&mut rng).unwrap();
+
         assert_eq!(rng.position, 32);
         assert_eq!(key.0, std::array::from_fn(|i| u8::try_from(i).unwrap()));
     }
@@ -118,6 +123,7 @@ mod tests {
                 position: 0,
                 fail_after: Some(fail_after),
             };
+
             assert!(matches!(
                 SpendingKey::generate_with_rng(&mut rng),
                 Err(SpendingKeyError::RandomnessUnavailable)
@@ -131,6 +137,7 @@ mod tests {
     fn system_generation_produces_distinct_keys() {
         let first = SpendingKey::generate().unwrap();
         let second = SpendingKey::generate().unwrap();
+
         assert_ne!(first.0, second.0);
     }
 
@@ -139,6 +146,7 @@ mod tests {
     fn diagnostics_never_include_key_bytes() {
         for bytes in [[0; 32], [0xff; 32]] {
             let key = SpendingKey::from_bytes(&bytes);
+
             assert_eq!(format!("{key:?}"), "SpendingKey([REDACTED])");
             assert_eq!(format!("{key:#?}"), "SpendingKey([REDACTED])");
         }
@@ -165,6 +173,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -172,6 +181,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -181,9 +191,11 @@ mod tests {
                 if self.position == self.fail_after.unwrap_or(32) {
                     return Err(std::io::Error::other("fixture entropy exhausted"));
                 }
+
                 *byte = u8::try_from(self.position).unwrap();
                 self.position += 1;
             }
+
             Ok(())
         }
     }

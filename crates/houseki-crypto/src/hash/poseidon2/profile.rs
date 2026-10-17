@@ -1,6 +1,6 @@
 //! Fixed public input profile from Plonky3 0.8.0 at a21e3ed42905040ad49c519e402f018381c12d0c.
 //!
-//! No caller-selected parameters.
+//! Callers cannot select parameters.
 
 use std::sync::OnceLock;
 
@@ -27,8 +27,10 @@ pub(super) fn permute(state: &mut [Goldilocks; WIDTH]) {
     // The factory uses the pinned constants, x^7, four initial full rounds, 22 partial rounds
     // and four final full rounds on every supported target.
     // Cache only public permutation parameters, never a transcript state.
+
     /// Cached public permutation parameters shared across independent hash states.
     static PERMUTATION: OnceLock<Poseidon2Goldilocks<WIDTH>> = OnceLock::new();
+
     PERMUTATION
         .get_or_init(default_goldilocks_poseidon2_16)
         .permute_mut(state);
@@ -64,6 +66,7 @@ mod tests {
             0xe90f3b02127fa552,
         ]);
         permute(&mut state);
+
         assert_eq!(
             state.map(|x| x.as_canonical_u64()),
             [

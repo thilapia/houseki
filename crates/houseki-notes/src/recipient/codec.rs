@@ -49,6 +49,7 @@ impl NoteRecipient {
                 .map_err(|_| NoteRecipientError::InvalidBinaryLength {
                     actual: bytes.len(),
                 })?;
+
         let version =
             AddressFormatVersion::new(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]));
         validate_address_format(version)?;
@@ -113,6 +114,7 @@ mod tests {
         for pair in bytes[..1536].as_chunks_mut::<3>().0 {
             pair.copy_from_slice(&[0x00, 0x0d, 0xd0]);
         }
+
         bytes[1536..].copy_from_slice(&std::array::from_fn::<_, 32, _>(|index| 0xc0 + index as u8));
 
         EncodedMlKem1024PublicKey::from_bytes(bytes)
@@ -177,6 +179,7 @@ mod tests {
                 Err(NoteRecipientError::InvalidBinaryLength { actual }) if actual == length
             ));
         }
+
         for length in [1705, 1720, 3408] {
             let mut trailing = bytes.to_vec();
             trailing.resize(length, 0xa5);
@@ -231,6 +234,7 @@ mod tests {
     fn binary_suite_resolution_precedes_key_import_without_narrowing() {
         let mut bytes = canonical_bytes();
         bytes[136..139].fill(0xff);
+
         for value in [0, 2, 257, 65_537, 0x0100_0001, u32::MAX] {
             bytes[68..72].copy_from_slice(&value.to_le_bytes());
 

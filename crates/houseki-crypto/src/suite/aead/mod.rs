@@ -31,10 +31,12 @@ impl NoteEncryptionMaterial {
             self.associated_data.len(),
             max_plaintext_bytes,
         )?;
+
         // Reserve once, before copying plaintext, so growing for the tag never reallocates a
         // buffer that previously held plaintext.
         let mut buffer = Zeroizing::new(Vec::with_capacity(length));
         buffer.extend_from_slice(plaintext);
+
         let cipher = Aes256GcmSiv::new((&*self.key).into());
         let tag = cipher
             .encrypt_inout_detached(
@@ -72,9 +74,11 @@ impl NoteEncryptionMaterial {
             .checked_sub(16)
             .ok_or(NoteAeadError::AuthenticationFailed)?;
         sealed_length(length, self.associated_data.len(), max_plaintext_bytes)?;
+
         let (message, tag) = ciphertext.split_at(length);
         let tag: &[u8; 16] = tag.try_into().expect("exactly sixteen trailing tag bytes");
         let mut buffer = Zeroizing::new(message.to_vec());
+
         let cipher = Aes256GcmSiv::new((&*self.key).into());
         cipher
             .decrypt_inout_detached(
@@ -84,6 +88,7 @@ impl NoteEncryptionMaterial {
                 tag.into(),
             )
             .map_err(|_| NoteAeadError::AuthenticationFailed)?;
+
         Ok(buffer)
     }
 }
@@ -104,15 +109,18 @@ pub(super) fn sealed_length(
             maximum,
         });
     }
+
     let plaintext_u64 = u64::try_from(plaintext).map_err(|_| NoteAeadError::LengthLimitExceeded)?;
     let aad_u64 = u64::try_from(aad).map_err(|_| NoteAeadError::LengthLimitExceeded)?;
     if plaintext_u64 > aes_gcm_siv::P_MAX || aad_u64 > aes_gcm_siv::A_MAX {
         return Err(NoteAeadError::LengthLimitExceeded);
     }
+
     let length = plaintext
         .checked_add(16)
         .ok_or(NoteAeadError::LengthLimitExceeded)?;
     isize::try_from(length).map_err(|_| NoteAeadError::LengthLimitExceeded)?;
+
     Ok(length)
 }
 
@@ -125,8 +133,10 @@ mod tests {
     fn material(aad: &[u8]) -> NoteEncryptionMaterial {
         let mut key = [0; 32];
         key[0] = 1;
+
         let mut nonce = [0; 12];
         nonce[0] = 3;
+
         NoteEncryptionMaterial {
             key: Zeroizing::new(key),
             associated_data: aad.to_vec(),
@@ -169,6 +179,7 @@ mod tests {
             let plaintext = decode(plaintext);
             let aad = decode(aad);
             let sealed = decode(sealed);
+
             assert_eq!(
                 material(&aad).seal(&plaintext, plaintext.len()).unwrap(),
                 sealed
@@ -186,16 +197,19 @@ mod tests {
         let sealed = material(b"bound context")
             .seal(b"private note bytes", 18)
             .unwrap();
+
         for i in 0..sealed.len() {
             let mut altered = sealed.clone();
             altered[i] ^= 1;
             let before = altered.clone();
+
             assert_eq!(
                 material(b"bound context").open(&altered, 100).unwrap_err(),
                 NoteAeadError::AuthenticationFailed
             );
             assert_eq!(altered, before);
         }
+
         for length in 0..sealed.len() {
             assert_eq!(
                 material(b"bound context")
@@ -204,8 +218,10 @@ mod tests {
                 NoteAeadError::AuthenticationFailed
             );
         }
+
         let mut extended = sealed;
         extended.push(0);
+
         assert_eq!(
             material(b"bound context").open(&extended, 100).unwrap_err(),
             NoteAeadError::AuthenticationFailed
@@ -216,22 +232,27 @@ mod tests {
     #[test]
     fn altered_key_nonce_and_associated_data_release_no_plaintext() {
         let sealed = material(b"context").seal(b"note", 4).unwrap();
+
         for index in 0..32 {
             let mut changed = material(b"context");
             changed.key[index] ^= 1;
+
             assert_eq!(
                 changed.open(&sealed, 4).unwrap_err(),
                 NoteAeadError::AuthenticationFailed
             );
         }
+
         for index in 0..12 {
             let mut changed = material(b"context");
             changed.nonce[index] ^= 1;
+
             assert_eq!(
                 changed.open(&sealed, 4).unwrap_err(),
                 NoteAeadError::AuthenticationFailed
             );
         }
+
         assert_eq!(
             material(b"contexu").open(&sealed, 4).unwrap_err(),
             NoteAeadError::AuthenticationFailed
@@ -248,7 +269,9 @@ mod tests {
                 maximum: 3
             }
         );
+
         let sealed = material(b"").seal(b"note", 4).unwrap();
+
         assert_eq!(
             material(b"").open(&sealed, 3).unwrap_err(),
             NoteAeadError::PlaintextTooLong {
@@ -257,7 +280,9 @@ mod tests {
             }
         );
         assert_eq!(&**material(b"").open(&sealed, 4).unwrap(), b"note");
+
         let empty = material(b"").seal(b"", 0).unwrap();
+
         assert_eq!(empty.len(), 16);
         assert!(material(b"").open(&empty, 0).unwrap().is_empty());
     }
@@ -278,6 +303,7 @@ mod tests {
             sealed_length(usize::MAX, 0, usize::MAX),
             Err(NoteAeadError::LengthLimitExceeded)
         );
+
         if let Ok(limit) = usize::try_from(1_u64 << 36) {
             assert_eq!(sealed_length(limit, limit, limit), Ok(limit + 16));
             assert_eq!(

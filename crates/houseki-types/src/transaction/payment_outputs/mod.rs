@@ -95,6 +95,7 @@ mod tests {
             payload_len,
         )
         .unwrap();
+
         NoteOutput::new(NoteCommitment::from_bytes([commitment_byte; 64]), envelope)
     }
 

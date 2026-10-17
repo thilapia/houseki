@@ -105,6 +105,7 @@ mod tests {
             if let Some(previous) = value.checked_sub(1) {
                 assert!(!range.contains(CheckpointSequence::new(previous)));
             }
+
             if let Some(next) = value.checked_add(1) {
                 assert!(!range.contains(CheckpointSequence::new(next)));
             }
@@ -136,12 +137,16 @@ mod tests {
             Ok(range) => range,
             Err(_) => panic!("ordered bounds are valid"),
         };
+
         /// Compile time first sequence of the validity fixture.
         const START: u64 = RANGE.start().value();
+
         /// Compile time last sequence of the validity fixture.
         const END: u64 = RANGE.end().value();
+
         /// Compile time membership result for a sequence inside the fixture.
         const INCLUDED: bool = RANGE.contains(CheckpointSequence::new(8));
+
         /// Compile time membership result for a sequence outside the fixture.
         const EXCLUDED: bool = RANGE.contains(CheckpointSequence::new(10));
 

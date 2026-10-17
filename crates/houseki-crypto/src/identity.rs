@@ -87,6 +87,7 @@ fn identifier(kind: u32, bytes: &[u8]) -> Result<TransactionId, BodyHashError> {
             crate::domain::Frame::new(crate::domain::Domain::TransactionIdentity, 2, sink);
         frame.part(&kind.to_le_bytes())?;
         frame.part(bytes)?;
+
         frame.finish()
     })?;
 
@@ -117,6 +118,7 @@ mod tests {
         bytes[80] = 4;
         bytes[84] = 5;
         bytes[92] = 8;
+
         let offsets: &[usize] = if withdrawal {
             bytes[100..164].fill(13);
             bytes[164..2756].fill(14);
@@ -139,6 +141,7 @@ mod tests {
             bytes[start + 1632] = 3;
             bytes[start + 1640..start + 1643].copy_from_slice(&[0, 1, 2]);
         }
+
         bytes
     }
 
@@ -152,6 +155,7 @@ mod tests {
     fn transaction_identifiers_match_independent_vectors() {
         let payment = PaymentBody::from_bytes(&fixture(false), limits()).unwrap();
         let withdrawal = RewardWithdrawalBody::from_bytes(&fixture(true), limits()).unwrap();
+
         assert_eq!(
             hex(payment_transaction_id(&payment, limits())
                 .unwrap()
@@ -164,6 +168,7 @@ mod tests {
                 .as_bytes()),
             "2052fccd53daab1cc37be64b275eddb0da26dcede38bb7785f76ad12bfd9bebe9be49c7579dd48b94b73e2de75291ab1d343823abda08e47bfeea0552bea613b"
         );
+
         let loose = BodyCodecLimits::new(PaymentCountLimits::new(3, 3).unwrap(), 99, 9999);
         assert_eq!(
             payment_transaction_id(&payment, limits()).unwrap(),
@@ -177,6 +182,7 @@ mod tests {
         let original = fixture(false);
         let body = PaymentBody::from_bytes(&original, limits()).unwrap();
         let expected = payment_transaction_id(&body, limits()).unwrap();
+
         for offset in [
             8, 71, 72, 75, 76, 79, 80, 83, 84, 99, 100, 163, 172, 235, 236, 299, 300, 312, 324,
             387, 388, 1955, 1964, 1966, 1967, 2030, 2031, 3598, 3607, 3609,
@@ -184,15 +190,18 @@ mod tests {
             let mut bytes = original.clone();
             bytes[offset] ^= 1;
             let changed = PaymentBody::from_bytes(&bytes, limits()).unwrap();
+
             assert_ne!(
                 payment_transaction_id(&changed, limits()).unwrap(),
                 expected,
                 "offset {offset}"
             );
         }
+
         let original = fixture(true);
         let body = RewardWithdrawalBody::from_bytes(&original, limits()).unwrap();
         let expected = withdrawal_transaction_id(&body, limits()).unwrap();
+
         for offset in [
             8, 71, 72, 76, 80, 84, 92, 100, 163, 164, 2755, 2756, 2763, 2764, 2772, 2780, 2796,
             2859, 2860, 4427, 4436, 4438,
@@ -200,12 +209,14 @@ mod tests {
             let mut bytes = original.clone();
             bytes[offset] ^= 1;
             let changed = RewardWithdrawalBody::from_bytes(&bytes, limits()).unwrap();
+
             assert_ne!(
                 withdrawal_transaction_id(&changed, limits()).unwrap(),
                 expected,
                 "offset {offset}"
             );
         }
+
         let tight = BodyCodecLimits::new(limits().payment_counts(), 2, 5000);
         assert!(matches!(
             withdrawal_transaction_id(&body, tight),
@@ -222,25 +233,31 @@ mod tests {
         let encoded = EncodedMlDsa87PublicKey::from_bytes([14; 2592]);
         let key = MlDsa87VerificationKey::from_encoded(&encoded);
         let expected = key.reward_account_id(network).unwrap();
+
         assert_eq!(
             hex(expected.as_bytes()),
             "2deed4beb8cc9a66425049ef33a0e1639b43da6657810edea2885197800f9eff972f04a1e95b97fad1e1c9432474709bb3e355712b834ead7e239c5f1e5aee29"
         );
+
         for index in 0..64 {
             let mut bytes = [7; 64];
             bytes[index] ^= 1;
+
             assert_ne!(
                 key.reward_account_id(NetworkId::from_bytes(bytes)).unwrap(),
                 expected
             );
         }
+
         for index in [0, 31, 32, 33, 511, 1023, 2047, 2591] {
             let mut bytes = [14; 2592];
             bytes[index] ^= 1;
             let changed =
                 MlDsa87VerificationKey::from_encoded(&EncodedMlDsa87PublicKey::from_bytes(bytes));
+
             assert_ne!(changed.reward_account_id(network).unwrap(), expected);
         }
+
         assert_eq!(key.to_encoded(), encoded);
         assert_eq!(key.reward_account_id(network).unwrap(), expected);
     }

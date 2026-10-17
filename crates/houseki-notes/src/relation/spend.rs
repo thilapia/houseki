@@ -106,6 +106,7 @@ pub fn check_spend(
     match (opening.format(), recipient.suite()) {
         (crate::NoteFormat::V1, houseki_crypto::CryptoSuite::V1) => {}
     }
+
     if recipient.context().network_id() != anchor.network_id() {
         return Err(SpendRelationError::NetworkMismatch);
     }
@@ -181,16 +182,22 @@ mod tests {
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(network, &spending, &nullifier, &key);
         let opening = opening(&recipient, 23, 0xa5);
+
         let mut tree = NoteTree::new(network).unwrap();
         let first = tree.append(opening.commitment().unwrap()).unwrap();
         let second = tree.append(opening.commitment().unwrap()).unwrap();
+
         let anchor = tree.anchor();
         let first_path = tree.witness(&first).unwrap();
         let second_path = tree.witness(&second).unwrap();
+
         let first_marker = derive_nullifier(&opening, &nullifier, &first).unwrap();
         let second_marker = derive_nullifier(&opening, &nullifier, &second).unwrap();
+
         assert_ne!(first_marker, second_marker);
+
         let witness = SpendWitness::new(&opening, &spending, &nullifier, &first_path);
+
         check_spend(&anchor, first_marker, &witness).unwrap();
         check_spend(
             &anchor,
@@ -198,6 +205,7 @@ mod tests {
             &SpendWitness::new(&opening, &spending, &nullifier, &second_path),
         )
         .unwrap();
+
         assert!(matches!(
             check_spend(
                 &anchor,
@@ -206,6 +214,7 @@ mod tests {
             ),
             Err(SpendRelationError::NullifierMismatch)
         ));
+
         assert_eq!(format!("{witness:?}"), "SpendWitness([REDACTED])");
         assert_eq!(opening.amount().atoms(), 23);
         check_spend(&anchor, first_marker, &witness).unwrap();
@@ -220,12 +229,16 @@ mod tests {
         let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
         let recipient = recipient(network, &spending, &nullifier, &key);
         let opening = opening(&recipient, 23, 0xa5);
+
         let mut tree = NoteTree::new(network).unwrap();
         let position = tree.append(opening.commitment().unwrap()).unwrap();
         let path = tree.witness(&position).unwrap();
         let anchor = tree.anchor();
+
         let marker = derive_nullifier(&opening, &nullifier, &position).unwrap();
+
         let wrong_spending = SpendingKey::from_bytes(&[0xa6; 32]);
+
         assert!(matches!(
             check_spend(
                 &anchor,
@@ -234,7 +247,9 @@ mod tests {
             ),
             Err(SpendRelationError::OwnershipMismatch)
         ));
+
         let wrong_nullifier = NullifierKey::from_bytes(&[0x58; 32]);
+
         assert!(matches!(
             check_spend(
                 &anchor,
@@ -243,6 +258,7 @@ mod tests {
             ),
             Err(SpendRelationError::OwnershipMismatch)
         ));
+
         for changed in [
             self::opening(&recipient, 24, 0xa5),
             self::opening(&recipient, 23, 0xa4),
@@ -266,11 +282,13 @@ mod tests {
                 Err(SpendRelationError::Membership(_))
             ));
         }
+
         let wrong_anchor = NoteTreeAnchor::new(
             NetworkId::from_bytes([6; 64]),
             anchor.count(),
             anchor.root(),
         );
+
         assert!(matches!(
             check_spend(
                 &wrong_anchor,
@@ -279,8 +297,10 @@ mod tests {
             ),
             Err(SpendRelationError::NetworkMismatch)
         ));
+
         let wrong_anchor =
             NoteTreeAnchor::new(network, anchor.count(), NoteRoot::from_bytes([0; 64]));
+
         assert!(matches!(
             check_spend(
                 &wrong_anchor,
@@ -289,7 +309,9 @@ mod tests {
             ),
             Err(SpendRelationError::Membership(_))
         ));
+
         let wrong_path = NoteMembershipWitness::from_parts(&NotePosition::new(1), &[[0; 64]; 64]);
+
         assert!(matches!(
             check_spend(
                 &anchor,
@@ -306,6 +328,7 @@ mod tests {
             ),
             Err(SpendRelationError::NullifierMismatch)
         ));
+
         check_spend(
             &anchor,
             marker,

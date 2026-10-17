@@ -233,6 +233,7 @@ mod tests {
         let amount = Amount::from_atoms(17).unwrap();
         let fee = Amount::from_atoms(18).unwrap();
         let output = output();
+
         let body = RewardWithdrawalBody::new(
             context,
             account_id,

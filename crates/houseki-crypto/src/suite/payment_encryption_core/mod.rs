@@ -173,6 +173,7 @@ mod tests {
         let inputs = inputs();
         let outputs = outputs();
         let fee = Amount::from_atoms(17).unwrap();
+
         let core = PaymentEncryptionCore::new(
             context,
             inputs.clone(),

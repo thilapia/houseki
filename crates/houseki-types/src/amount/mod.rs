@@ -100,12 +100,12 @@ impl Amount {
         }
     }
 
-    /// Encodes the atom count as exactly 16 little-endian bytes.
+    /// Encodes the atom count as exactly 16 little endian bytes.
     pub const fn to_le_bytes(self) -> [u8; 16] {
         self.0.to_le_bytes()
     }
 
-    /// Decodes an atom count from exactly 16 little-endian bytes.
+    /// Decodes an atom count from exactly 16 little endian bytes.
     ///
     /// # Errors
     ///
@@ -129,7 +129,7 @@ impl TryFrom<&[u8]> for Amount {
     /// Error returned when the slice has an invalid length or exceeds the amount cap.
     type Error = AmountError;
 
-    /// Decodes an amount from a slice containing exactly 16 little-endian bytes.
+    /// Decodes an amount from a slice containing exactly 16 little endian bytes.
     ///
     /// # Errors
     ///
@@ -142,6 +142,7 @@ impl TryFrom<&[u8]> for Amount {
             .map_err(|_| AmountError::InvalidByteLength {
                 actual: bytes.len(),
             })?;
+
         Self::from_le_bytes(bytes)
     }
 }
@@ -157,6 +158,7 @@ mod tests {
     #[test]
     fn zeroization_clears_live_values_to_a_valid_zero() {
         let zero = Amount::from_atoms(0).unwrap();
+
         for atoms in [
             0,
             1,
@@ -178,6 +180,7 @@ mod tests {
         let original = Amount::from_atoms(Amount::MAX_ATOMS).unwrap();
         let mut guarded = Zeroizing::new(original);
         let borrowed: &Amount = &guarded;
+
         assert_eq!(borrowed.atoms(), Amount::MAX_ATOMS);
 
         guarded.zeroize();
@@ -213,8 +216,10 @@ mod tests {
             Ok(amount) => amount,
             Err(_) => panic!("one atom is valid"),
         };
+
         /// Compile time atom count of the smallest positive amount.
         const ATOMS: u128 = ONE_ATOM.atoms();
+
         /// Compile time rejection of an amount above the exact cap.
         const TOO_LARGE: Result<Amount, AmountError> = Amount::from_atoms(10_u128.pow(29) + 1);
 
@@ -235,6 +240,7 @@ mod tests {
         ] {
             let left = Amount::from_atoms(left).unwrap();
             let right = Amount::from_atoms(right).unwrap();
+
             assert_eq!(left.checked_add(right).unwrap().atoms(), expected);
         }
     }
@@ -243,6 +249,7 @@ mod tests {
     #[test]
     fn addition_rejects_sums_above_the_cap() {
         let maximum = Amount::from_atoms(10_u128.pow(29)).unwrap();
+
         for right in [Amount::from_atoms(1).unwrap(), maximum] {
             assert!(matches!(
                 maximum.checked_add(right),
@@ -264,6 +271,7 @@ mod tests {
         ] {
             let left = Amount::from_atoms(left).unwrap();
             let right = Amount::from_atoms(right).unwrap();
+
             assert_eq!(left.checked_sub(right).unwrap().atoms(), expected);
         }
     }
@@ -274,6 +282,7 @@ mod tests {
         for (left, right) in [(0, 1), (10_u128.pow(29) - 1, 10_u128.pow(29))] {
             let left = Amount::from_atoms(left).unwrap();
             let right = Amount::from_atoms(right).unwrap();
+
             assert!(matches!(
                 left.checked_sub(right),
                 Err(AmountError::ValueUnderflow)
@@ -307,6 +316,7 @@ mod tests {
             ),
         ] {
             let amount = input.parse::<Amount>().unwrap();
+
             assert_eq!(amount.atoms(), expected_atoms, "{input}");
             assert_eq!(amount.to_string(), expected_display, "{input}");
             assert_eq!(amount.to_string().parse::<Amount>().unwrap(), amount);
@@ -386,12 +396,15 @@ mod tests {
     #[test]
     fn byte_decoding_enforces_the_exact_cap() {
         let maximum_bytes = 10_u128.pow(29).to_le_bytes();
+
         assert_eq!(
             Amount::from_le_bytes(maximum_bytes).unwrap().atoms(),
             10_u128.pow(29)
         );
+
         for atoms in [10_u128.pow(29) + 1, (1_u128 << 97) - 1, u128::MAX] {
             let bytes = atoms.to_le_bytes();
+
             assert!(matches!(
                 Amount::from_le_bytes(bytes),
                 Err(AmountError::ValueExceedsMaximum)
@@ -408,6 +421,7 @@ mod tests {
     fn byte_decoding_rejects_truncated_and_trailing_bytes() {
         for length in [0, 1, 15, 17, 32] {
             let bytes = vec![0; length];
+
             assert!(matches!(
                 Amount::try_from(bytes.as_slice()),
                 Err(AmountError::InvalidByteLength { actual }) if actual == length
@@ -423,8 +437,10 @@ mod tests {
             Ok(amount) => amount,
             Err(_) => panic!("zero is valid"),
         };
+
         /// Canonical zero amount bytes produced at compile time.
         const BYTES: [u8; 16] = ZERO.to_le_bytes();
+
         assert_eq!(BYTES, [0; 16]);
     }
 }

@@ -9,7 +9,7 @@ use super::{AddressContext, EncodedMlKem1024PublicKey, OwnershipCommitment};
 ///
 /// Interpreting the descriptor requires no recipient directory or external key lookup.
 ///
-/// No private key, amount, fee or per-payment randomness belongs in this record.
+/// No private key, amount, fee or randomness for an individual payment belongs in this record.
 ///
 /// Construction preserves the supplied values without validating the key, supported context or
 /// relationship between ownership and encryption material.

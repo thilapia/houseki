@@ -33,6 +33,7 @@ pub(crate) fn poseidon2_secret(
     parts: &[&[u8]],
 ) -> Result<Zeroizing<[u8; 64]>, CryptoFramingError> {
     let length = frame_length(domain, parts)?;
+
     let mut sponge = Sponge {
         state: std::array::from_fn(|_| FieldElement::default()),
         used: 0,
@@ -129,6 +130,7 @@ mod tests {
             let parts: &[&[u8]] = &[&bytes[..split], &[], &bytes[split..]];
             for domain in [Domain::RecipientKemKey, Domain::NoteEncryptionCore] {
                 let actual = poseidon2_secret(domain, parts).unwrap();
+
                 assert_eq!(*actual, super::super::poseidon2(domain, parts).unwrap());
             }
         }

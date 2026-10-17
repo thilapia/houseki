@@ -30,9 +30,11 @@ impl MlKem1024SharedSecret {
     pub(crate) fn derive_key(self, salt: &[u8], info: &[u8]) -> Zeroizing<[u8; 32]> {
         let (prk, hkdf) = hkdf::Hkdf::<sha2::Sha512>::extract(Some(salt), &self.0);
         drop(Zeroizing::new(prk));
+
         let mut key = Zeroizing::new([0; 32]);
         hkdf.expand(info, &mut *key)
             .expect("32 bytes fit the HKDF-SHA512 limit of 255 * 64 bytes");
+
         key
     }
 
@@ -87,6 +89,7 @@ pub(crate) mod tests {
         ] {
             let key = MlKem1024SharedSecret::fixture_secret().derive_key(&salt, &info);
             let actual: String = key.iter().map(|byte| format!("{byte:02x}")).collect();
+
             assert_eq!(actual, expected);
         }
     }

@@ -97,6 +97,7 @@ mod tests {
     fn original_positions_support_explicit_guarded_cleanup() {
         let mut position = zeroize::Zeroizing::new(NotePosition::new(u64::MAX));
         zeroize::Zeroize::zeroize(&mut *position);
+
         assert_eq!(position.value(), 0);
     }
 }

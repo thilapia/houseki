@@ -75,6 +75,7 @@ impl MlDsa87SigningKey {
         rng: &mut R,
     ) -> Result<EncodedMlDsa87Signature, WithdrawalSignatureError> {
         match_authority(&self.verification_key(), body)?;
+
         let message = message(body, limits)?;
 
         let signature = self
@@ -107,11 +108,13 @@ impl MlDsa87VerificationKey {
         limits: BodyCodecLimits,
     ) -> Result<(), WithdrawalSignatureError> {
         match_authority(self, body)?;
+
         let message = message(body, limits)?;
 
         let signature =
             ml_dsa::Signature::<ml_dsa::MlDsa87>::try_from(signature.as_bytes().as_slice())
                 .map_err(|_| WithdrawalSignatureError::InvalidSignature)?;
+
         if !self.0.verify_with_context(&message, CONTEXT, &signature) {
             return Err(WithdrawalSignatureError::InvalidSignature);
         }
@@ -138,6 +141,7 @@ fn message(
     limits: BodyCodecLimits,
 ) -> Result<Vec<u8>, WithdrawalSignatureError> {
     let encoded = body.to_bytes(limits)?;
+
     let domain = crate::domain::Domain::WithdrawalSignatureBody;
     let overhead = 2 + domain.label().len() + 4 + 8 + 4 + 8;
     let length = encoded
@@ -183,6 +187,7 @@ mod tests {
         bytes[80] = 4;
         bytes[84] = 5;
         bytes[92] = 8;
+
         let public = key.verification_key();
         bytes[100..164].copy_from_slice(
             public
@@ -191,13 +196,16 @@ mod tests {
                 .as_bytes(),
         );
         bytes[164..2756].copy_from_slice(public.to_encoded().as_bytes());
+
         bytes[2756..2764].fill(255);
         bytes[2764] = 3;
         bytes[2780] = 17;
+
         bytes[2796..2860].fill(11);
         bytes[2860..4428].fill(12);
         bytes[4428] = 3;
         bytes[4436..].copy_from_slice(&[0, 1, 2]);
+
         RewardWithdrawalBody::from_bytes(&bytes, limits()).unwrap()
     }
 
@@ -207,8 +215,10 @@ mod tests {
         let key = MlDsa87SigningKey::from_seed(&[0x59; 32]);
         let public = key.verification_key();
         let body = body(&key);
+
         let first = key.sign_reward_withdrawal(&body, limits()).unwrap();
         let second = key.sign_reward_withdrawal(&body, limits()).unwrap();
+
         assert_ne!(first, second);
         public
             .verify_reward_withdrawal(&body, &first, limits())
@@ -216,27 +226,35 @@ mod tests {
         public
             .verify_reward_withdrawal(&body, &second, limits())
             .unwrap();
+
         let id = withdrawal_transaction_id(&body, limits()).unwrap();
         let parsed =
             ml_dsa::Signature::<ml_dsa::MlDsa87>::try_from(first.as_bytes().as_slice()).unwrap();
+
         assert!(
             !public
                 .0
                 .verify_with_context(id.as_bytes(), CONTEXT, &parsed)
         );
+
         let message = super::message(&body, limits()).unwrap();
         assert!(!public.0.verify_with_context(&message, b"", &parsed));
+
         let domain = b"houseki/v1/reward-withdrawal/body";
         assert_eq!(&message[2..2 + domain.len()], domain);
+
         let original = body.to_bytes(limits()).unwrap();
         assert_eq!(&message[message.len() - original.len()..], &original);
+
         for offset in [
             8, 71, 72, 76, 80, 84, 92, 100, 163, 2756, 2763, 2764, 2772, 2780, 2796, 2859, 2860,
             4427, 4436, 4438,
         ] {
             let mut bytes = original.clone();
             bytes[offset] ^= 1;
+
             let changed = RewardWithdrawalBody::from_bytes(&bytes, limits()).unwrap();
+
             assert!(
                 matches!(
                     public.verify_reward_withdrawal(&changed, &first, limits()),
@@ -245,6 +263,7 @@ mod tests {
                 "offset {offset}"
             );
         }
+
         assert_eq!(withdrawal_transaction_id(&body, limits()).unwrap(), id);
     }
 
@@ -259,17 +278,20 @@ mod tests {
             position: 0,
             bytes: [0xa5; 32],
         };
+
         assert!(matches!(
             other.sign_with_rng(&body, limits(), &mut rng),
             Err(WithdrawalSignatureError::AuthorityMismatch)
         ));
         assert_eq!(rng.position, 0);
+
         let tight = BodyCodecLimits::new(limits().payment_counts(), 2, 5000);
         assert!(matches!(
             key.sign_with_rng(&body, tight, &mut rng),
             Err(WithdrawalSignatureError::Encoding(_))
         ));
         assert_eq!(rng.position, 0);
+
         let signature = key.sign_reward_withdrawal(&body, limits()).unwrap();
         assert!(matches!(
             other
@@ -284,24 +306,28 @@ mod tests {
     fn withdrawal_signing_rejects_partial_and_final_entropy_failures() {
         let key = MlDsa87SigningKey::from_seed(&[0x59; 32]);
         let body = body(&key);
+
         for failure in 0..=32 {
             let mut rng = FixtureRng {
                 failure: Some(failure),
                 position: 0,
                 bytes: [0xa5; 32],
             };
+
             assert!(matches!(
                 key.sign_with_rng(&body, limits(), &mut rng),
                 Err(WithdrawalSignatureError::RandomnessUnavailable)
             ));
             assert_eq!(rng.position, failure);
         }
+
         let mut rng = FixtureRng {
             failure: None,
             position: 0,
             bytes: [0xa5; 32],
         };
         let signature = key.sign_with_rng(&body, limits(), &mut rng).unwrap();
+
         assert_eq!(rng.position, 32);
         key.verification_key()
             .verify_reward_withdrawal(&body, &signature, limits())
@@ -315,9 +341,11 @@ mod tests {
         let body = body(&key);
         let public = key.verification_key();
         let signature = key.sign_reward_withdrawal(&body, limits()).unwrap();
+
         for index in [0, 63, 64, 4543, 4626] {
             let mut bytes = *signature.as_bytes();
             bytes[index] ^= 1;
+
             assert!(matches!(
                 public.verify_reward_withdrawal(
                     &body,
@@ -327,11 +355,13 @@ mod tests {
                 Err(WithdrawalSignatureError::InvalidSignature)
             ));
         }
+
         let mut bytes = *signature.as_bytes();
         bytes[4544..].fill(0);
         bytes[4544] = 1;
         bytes[4545] = 1;
         bytes[4619..].fill(2);
+
         assert!(matches!(
             public.verify_reward_withdrawal(
                 &body,
@@ -345,6 +375,7 @@ mod tests {
     /// Parses complete public NIST fixture bytes for backend conformance only.
     fn decode<const N: usize>(hex: &str) -> [u8; N] {
         assert_eq!(hex.len(), N * 2);
+
         std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
     }
 
@@ -481,17 +512,20 @@ mod tests {
             "4C75859AEE283D7679AAC3D1D9E417485D6D797ADEEDFEFF2F3B4885A5FF0F2A3334395C82879299D3576AB5DFE60C26363F45949DFB172746C7E9F000000000",
             "0000000000000000000000050E181E292E363C"
         ));
+
         let key = MlDsa87SigningKey::from_seed(&seed);
         let mut rng = FixtureRng {
             failure: None,
             position: 0,
             bytes: random,
         };
+
         let signature = key
             .0
             .expanded_key()
             .sign_randomized(&message, &context, &mut rng)
             .unwrap();
+
         assert_eq!(rng.position, 32);
         assert_eq!(signature.encode().as_slice(), expected);
         assert!(
@@ -526,6 +560,7 @@ mod tests {
         fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
             let mut bytes = [0; 4];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u32::from_le_bytes(bytes))
         }
 
@@ -533,6 +568,7 @@ mod tests {
         fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
             let mut bytes = [0; 8];
             self.try_fill_bytes(&mut bytes)?;
+
             Ok(u64::from_le_bytes(bytes))
         }
 
@@ -542,15 +578,18 @@ mod tests {
                 if self.failure == Some(self.position) {
                     return Err(std::io::Error::other("fixture failure"));
                 }
+
                 *byte = *self
                     .bytes
                     .get(self.position)
                     .ok_or_else(|| std::io::Error::other("fixture exhausted"))?;
                 self.position += 1;
             }
+
             if self.failure == Some(self.position) {
                 return Err(std::io::Error::other("fixture failure"));
             }
+
             Ok(())
         }
     }

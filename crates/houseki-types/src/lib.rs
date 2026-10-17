@@ -7,7 +7,9 @@
 //! use houseki_types::Amount;
 //!
 //! let amount = Amount::from_atoms(Amount::ATOMS_PER_COIN)?;
+//!
 //! assert_eq!(amount.atoms(), 100_000_000_000_000_000_000);
+//!
 //! # Ok::<(), houseki_types::AmountError>(())
 //! ```
 //!

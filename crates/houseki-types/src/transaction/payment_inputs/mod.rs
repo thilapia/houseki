@@ -117,6 +117,7 @@ mod tests {
             Nullifier::from_bytes([2; 64]),
         ];
         let limits = PaymentCountLimits::new(3, 1).unwrap();
+
         let inputs = PaymentInputs::new(anchor, nullifiers.clone(), limits).unwrap();
 
         assert_eq!(inputs.anchor(), anchor);
@@ -130,8 +131,10 @@ mod tests {
     fn construction_accepts_one_input_and_distinct_full_digest_values() {
         let anchor = NoteRoot::from_bytes([0; 64]);
         let first = Nullifier::from_bytes([0; 64]);
+
         let mut last_byte_differs = [0; 64];
         last_byte_differs[63] = 1;
+
         let second = Nullifier::from_bytes(last_byte_differs);
         let limits = PaymentCountLimits::new(2, 1).unwrap();
 

@@ -44,7 +44,8 @@ impl NoteEncryptionContext {
                 let binding = self
                     .suite()
                     .recipient_key_binding(context.network_id(), self.recipient_key())?;
-                // 25 header bytes, nine 8-byte lengths, 1852 field bytes.
+
+                // 25 header bytes, nine 8 byte lengths, 1852 field bytes.
                 let mut bytes = Vec::with_capacity(1949);
                 let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
                 let mut frame = Frame::new(Domain::NoteAssociatedData, 9, &mut sink);
@@ -58,6 +59,7 @@ impl NoteEncryptionContext {
                 frame.part(encapsulation.as_bytes())?;
                 frame.part(nonce)?;
                 frame.finish()?;
+
                 Ok(bytes)
             }
         }
@@ -84,6 +86,7 @@ mod tests {
     fn key(seed: u8) -> MlKem1024EncapsulationKey {
         let mut bytes = [0; 1568];
         bytes[1536..].fill(seed);
+
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
@@ -138,6 +141,7 @@ mod tests {
     /// Decodes and checks the exact associated data layout independently of its encoder.
     fn parts(bytes: &[u8]) -> Vec<&[u8]> {
         assert_eq!(&bytes[..25], b"\x13\x00houseki/v1/note/aad\x09\x00\x00\x00");
+
         let mut rest = &bytes[25..];
         let mut fields = Vec::new();
         for expected_length in [64, 4, 4, 64, 8, 64, 64, 1568, 12] {
@@ -146,11 +150,14 @@ mod tests {
                 u64::from_le_bytes(length.try_into().unwrap()),
                 expected_length
             );
+
             let (field, tail) = tail.split_at(usize::try_from(expected_length).unwrap());
             fields.push(field);
             rest = tail;
         }
+
         assert!(rest.is_empty());
+
         fields
     }
 
@@ -167,9 +174,10 @@ mod tests {
             u8::try_from(i % 256).unwrap()
         }));
         let nonce = std::array::from_fn(|i| u8::try_from(i + 128).unwrap());
+
         // Core hashes independently computed with Python hashlib.sha3_512 and the documented
         // core codec.
-        // E is the independent Poseidon2 vector already pinned by the recipient-binding
+        // E is the independent Poseidon2 vector already pinned by the recipient binding
         // operation.
         for (prepared, index, commitment, digest) in [
             (
@@ -186,7 +194,9 @@ mod tests {
             ),
         ] {
             let encoded = prepared.associated_data(&encapsulation, &nonce).unwrap();
+
             assert_eq!(encoded.len(), 1949);
+
             let fields = parts(&encoded);
             assert_eq!(fields[0], context().network_id().as_bytes());
             assert_eq!(fields[1], [4, 3, 2, 1]);
@@ -210,11 +220,13 @@ mod tests {
         let encapsulation = EncodedMlKem1024Ciphertext::from_bytes([0; 1568]);
         let first = NoteEncryptionContext::for_payment(&core, 0, &key(0)).unwrap();
         let original = first.associated_data(&encapsulation, &[0; 12]).unwrap();
+
         for (index, seed, changed_field) in [(2, 0, 4), (0, 255, 6)] {
             let changed = NoteEncryptionContext::for_payment(&core, index, &key(seed))
                 .unwrap()
                 .associated_data(&encapsulation, &[0; 12])
                 .unwrap();
+
             for (i, (a, b)) in parts(&original).iter().zip(parts(&changed)).enumerate() {
                 if i == changed_field {
                     assert_ne!(*a, b);
@@ -230,6 +242,7 @@ mod tests {
     fn changes_outside_the_selected_output_are_bound_through_the_core_digest() {
         let core = payment();
         let original = NoteEncryptionContext::for_payment(&core, 0, &key(0)).unwrap();
+
         let (context, inputs, mut outputs, fee) = core.into_parts();
         outputs[1].0 = NoteCommitment::from_bytes([99; 64]);
         let changed_core = PaymentEncryptionCore::new(
@@ -241,9 +254,11 @@ mod tests {
         )
         .unwrap();
         let changed = NoteEncryptionContext::for_payment(&changed_core, 0, &key(0)).unwrap();
+
         let encapsulation = EncodedMlKem1024Ciphertext::from_bytes([0; 1568]);
         let a = original.associated_data(&encapsulation, &[0; 12]).unwrap();
         let b = changed.associated_data(&encapsulation, &[0; 12]).unwrap();
+
         for (i, (a, b)) in parts(&a).iter().zip(parts(&b)).enumerate() {
             if i == 3 {
                 assert_ne!(*a, b);
@@ -261,8 +276,10 @@ mod tests {
             let encapsulation = EncodedMlKem1024Ciphertext::from_bytes([byte; 1568]);
             let nonce = [byte; 12];
             let a = prepared.associated_data(&encapsulation, &nonce).unwrap();
+
             assert_eq!(parts(&a)[7], [byte; 1568]);
             assert_eq!(parts(&a)[8], [byte; 12]);
+
             let recovered = NoteEncryptionContext::for_payment(&payment(), 0, &key(0)).unwrap();
             assert_eq!(
                 a,
@@ -278,9 +295,11 @@ mod tests {
         // Exercise the private codec boundary without allocating an enormous output list.
         // Public construction still rejects absent indices.
         prepared.output_index = 0x0102030405060708;
+
         let encoded = prepared
             .associated_data(&EncodedMlKem1024Ciphertext::from_bytes([0; 1568]), &[0; 12])
             .unwrap();
+
         assert_eq!(parts(&encoded)[4], [8, 7, 6, 5, 4, 3, 2, 1]);
     }
 }

@@ -17,7 +17,7 @@ use super::{PaymentEnvelope, RewardWithdrawalEnvelope, TransactionKind};
 /// Both payloads are boxed to keep the common enum compact without reserving space for the
 /// withdrawal's large encoded key and signature in every value.
 ///
-/// This is an in-memory representation choice and assigns no wire layout.
+/// This representation keeps values in memory and assigns no wire layout.
 ///
 /// Construction and conversion preserve unverified data.
 ///
@@ -32,10 +32,16 @@ use super::{PaymentEnvelope, RewardWithdrawalEnvelope, TransactionKind};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TransactionEnvelope {
     /// A private payment with its encoded authorization proof.
-    Payment(Box<PaymentEnvelope>),
+    Payment(
+        /// Complete declared payment and its encoded proof.
+        Box<PaymentEnvelope>,
+    ),
 
     /// A reward withdrawal with its encoded output proof and required signature.
-    RewardWithdrawal(Box<RewardWithdrawalEnvelope>),
+    RewardWithdrawal(
+        /// Complete declared withdrawal with its proof and signature.
+        Box<RewardWithdrawalEnvelope>,
+    ),
 }
 
 impl TransactionEnvelope {

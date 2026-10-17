@@ -52,6 +52,7 @@ mod tests {
     fn key(seed: u8) -> [u8; 1568] {
         let mut bytes = [0; 1568];
         bytes[1536..].fill(seed);
+
         bytes
     }
 
@@ -147,6 +148,7 @@ mod tests {
         for index in 0..64 {
             let mut changed = network;
             changed[index] ^= 1;
+
             assert_ne!(
                 opening(changed, ownership, key(0), 1, &blinding)
                     .commitment()
@@ -156,6 +158,7 @@ mod tests {
 
             let mut changed = ownership;
             changed[index] ^= 1;
+
             assert_ne!(
                 opening(network, changed, key(0), 1, &blinding)
                     .commitment()

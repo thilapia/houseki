@@ -55,6 +55,7 @@ pub fn check_withdrawal_output(
     match (opening.format(), opening.recipient().suite()) {
         (NoteFormat::V1, CryptoSuite::V1) => {}
     }
+
     if opening.recipient().context().network_id() != body.context().network_id() {
         return Err(WithdrawalOutputRelationError::NetworkMismatch);
     }
@@ -101,6 +102,7 @@ mod tests {
             network,
         )
         .unwrap();
+
         NoteOpening::new(
             NoteFormat::V1,
             &recipient,
@@ -151,6 +153,7 @@ mod tests {
     #[test]
     fn withdrawal_relation_accepts_exact_values_with_an_opaque_invalid_envelope() {
         let network = NetworkId::from_bytes([7; 64]);
+
         for (atoms, fee) in [
             (1, 0),
             (1, Amount::MAX_ATOMS),
@@ -161,7 +164,9 @@ mod tests {
             let commitment = opening.commitment().unwrap();
             let body = body(network, commitment, atoms, fee);
             let unchanged = body.clone();
+
             check_withdrawal_output(&body, &opening).unwrap();
+
             assert_eq!(body, unchanged);
             assert_eq!(opening.amount().atoms(), atoms);
             assert_eq!(opening.commitment().unwrap(), commitment);
@@ -175,6 +180,7 @@ mod tests {
         let network = NetworkId::from_bytes([7; 64]);
         let opening = opening(network, 1, 0xa5);
         let commitment = opening.commitment().unwrap();
+
         for index in 0..64 {
             let mut bytes = *network.as_bytes();
             bytes[index] ^= 1;
@@ -184,24 +190,30 @@ mod tests {
                 2,
                 17,
             );
+
             assert!(matches!(
                 check_withdrawal_output(&body, &opening),
                 Err(WithdrawalOutputRelationError::NetworkMismatch)
             ));
+
             let mut bytes = *commitment.as_bytes();
             bytes[index] ^= 1;
             let body = self::body(network, NoteCommitment::from_bytes(bytes), 2, 17);
+
             assert!(matches!(
                 check_withdrawal_output(&body, &opening),
                 Err(WithdrawalOutputRelationError::CommitmentMismatch)
             ));
         }
+
         let changed = self::opening(network, 1, 0xa4);
         let body = body(network, commitment, 1, 17);
+
         assert!(matches!(
             check_withdrawal_output(&body, &changed),
             Err(WithdrawalOutputRelationError::CommitmentMismatch)
         ));
+
         check_withdrawal_output(&body, &opening).unwrap();
     }
 
@@ -209,6 +221,7 @@ mod tests {
     #[test]
     fn withdrawal_relation_rejects_positive_amount_disagreement() {
         let network = NetworkId::from_bytes([7; 64]);
+
         for (private, public) in [
             (1, 2),
             (2, 1),
@@ -219,7 +232,9 @@ mod tests {
             let opening = opening(network, private, 0xa5);
             let commitment = opening.commitment().unwrap();
             let body = body(network, commitment, public, 17);
+
             let error = check_withdrawal_output(&body, &opening).unwrap_err();
+
             assert!(matches!(
                 error,
                 WithdrawalOutputRelationError::AmountMismatch

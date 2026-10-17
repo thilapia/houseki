@@ -142,6 +142,7 @@ mod tests {
 
         let first = Amount::from_atoms(2).unwrap();
         let second = Amount::from_atoms(3).unwrap();
+
         total.add_amount(&first).unwrap();
         total.add_amount(&second).unwrap();
 
@@ -229,7 +230,9 @@ mod tests {
         let mut total =
             partial_total("fffffffffffffffffffffffffffffffffffffffebce1f051928de8355fffffff");
         let maximum = Amount::from_atoms(Amount::MAX_ATOMS).unwrap();
+
         total.add_amount(&maximum).unwrap();
+
         assert_eq!(*total.value, U256::MAX);
 
         let one = Amount::from_atoms(1).unwrap();
@@ -240,6 +243,7 @@ mod tests {
         assert_eq!(*total.value, U256::MAX);
 
         total.add_amount(&Amount::from_atoms(0).unwrap()).unwrap();
+
         assert_eq!(*total.value, U256::MAX);
     }
 
@@ -249,6 +253,7 @@ mod tests {
         let mut first = AmountTotal::zero();
         first.add_amount(&Amount::from_atoms(2).unwrap()).unwrap();
         first.add_amount(&Amount::from_atoms(3).unwrap()).unwrap();
+
         let mut second = AmountTotal::zero();
         second.add_amount(&Amount::from_atoms(5).unwrap()).unwrap();
 
@@ -256,6 +261,7 @@ mod tests {
         assert!(second.matches(&first));
 
         second.add_amount(&Amount::from_atoms(1).unwrap()).unwrap();
+
         assert!(!first.matches(&second));
         assert!(!second.matches(&first));
 
@@ -310,6 +316,7 @@ mod tests {
     fn conservation_rejects_missing_or_repeated_fee_value() {
         let input = Amount::from_atoms(12).unwrap();
         let output = Amount::from_atoms(10).unwrap();
+
         for (fee, expected) in [(0, false), (1, false), (2, true), (3, false), (4, false)] {
             let fee = Amount::from_atoms(fee).unwrap();
 
@@ -320,6 +327,7 @@ mod tests {
         }
 
         let fee = Amount::from_atoms(2).unwrap();
+
         assert!(!amounts_balance([&output], [&input], &fee).unwrap());
     }
 

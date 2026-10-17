@@ -80,6 +80,7 @@ impl NoteRecipient {
         let mut bytes = [0; 1704];
         Base64UrlUnpadded::decode(&text[9..2281], &mut bytes)
             .map_err(|_| NoteAddressError::InvalidText)?;
+
         if !text.as_bytes()[2282..]
             .iter()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
@@ -116,6 +117,7 @@ mod tests {
         bytes[0] = 1;
         bytes[4..68].fill(7);
         bytes[68] = 1;
+
         bytes
     }
 
@@ -123,6 +125,7 @@ mod tests {
     fn transport(bytes: &[u8; 1704]) -> String {
         let checksum = recipient_descriptor_checksum(bytes).unwrap();
         let checksum: String = checksum.iter().map(|b| format!("{b:02x}")).collect();
+
         format!(
             "houseki1:{}:{checksum}",
             Base64UrlUnpadded::encode_string(bytes)
@@ -154,6 +157,7 @@ mod tests {
         );
         let recipient =
             NoteRecipient::from_bytes(&descriptor(), NetworkId::from_bytes([7; 64])).unwrap();
+
         assert_eq!(recipient.to_address().unwrap(), expected);
         assert_eq!(expected.len(), 2298);
         assert_eq!(
@@ -168,15 +172,18 @@ mod tests {
     fn address_text_rejects_every_single_character_mutation_and_noncanonical_syntax() {
         let text = transport(&descriptor());
         let network = NetworkId::from_bytes([7; 64]);
+
         for index in 0..text.len() {
             let mut bytes = text.as_bytes().to_vec();
             bytes[index] = if bytes[index] == b'A' { b'B' } else { b'A' };
             let changed = String::from_utf8(bytes).unwrap();
+
             assert!(
                 NoteRecipient::from_address(&changed, network).is_err(),
                 "byte {index}"
             );
         }
+
         for changed in [
             String::new(),
             text[..2297].to_string(),
@@ -190,8 +197,10 @@ mod tests {
                 Err(NoteAddressError::InvalidText)
             ));
         }
+
         let mut unicode = text.clone();
         unicode.replace_range(9..11, "é");
+
         assert_eq!(unicode.len(), 2298);
         assert!(matches!(
             NoteRecipient::from_address(&unicode, network),
@@ -205,30 +214,37 @@ mod tests {
         let network = NetworkId::from_bytes([7; 64]);
         let bytes = descriptor();
         let text = transport(&bytes);
+
         assert!(matches!(
             NoteRecipient::from_address(&text, NetworkId::from_bytes([6; 64])),
             Err(NoteAddressError::Recipient(
                 NoteRecipientError::NetworkMismatch { .. }
             ))
         ));
+
         for version in [0_u32, 2, 257, 0x0100_0001, u32::MAX] {
             let mut bytes = descriptor();
             bytes[..4].copy_from_slice(&version.to_le_bytes());
             let mut text = transport(&bytes);
+
             assert!(matches!(
                 NoteRecipient::from_address(&text, network),
                 Err(NoteAddressError::Recipient(
                     NoteRecipientError::UnsupportedAddressFormat { .. }
                 ))
             ));
+
             text.replace_range(2297..2298, if &text[2297..] == "0" { "1" } else { "0" });
+
             assert!(matches!(
                 NoteRecipient::from_address(&text, network),
                 Err(NoteAddressError::ChecksumMismatch)
             ));
         }
+
         let mut bytes = descriptor();
         bytes[136..139].copy_from_slice(&[0xff, 0x0f, 0]);
+
         assert!(matches!(
             NoteRecipient::from_address(&transport(&bytes), network),
             Err(NoteAddressError::Recipient(
