@@ -184,6 +184,28 @@ mod tests {
         }
     }
 
+    /// A prior sum remains reusable above one amount's cap, and the final addend cannot be omitted.
+    #[test]
+    fn chained_additions_preserve_the_full_total_and_fee_contribution() {
+        let first = assigned(Amount::MAX_ATOMS, Amount::MAX_ATOMS);
+        let fee = Amount::MAX_ATOMS.to_le_bytes().map(Goldilocks::from_u8);
+        let mut second = [Goldilocks::NEG_ONE; AdditionAir::WIDTH];
+        AdditionAir::assign_row([first[32..48].try_into().unwrap(), &fee], &mut second).unwrap();
+
+        assert!(evaluate(&first).is_ok());
+        assert!(evaluate(&second).is_ok());
+        assert_eq!(
+            second[32..48],
+            (3 * Amount::MAX_ATOMS)
+                .to_le_bytes()
+                .map(Goldilocks::from_u8)
+        );
+
+        write_word(&mut second, 2, 2 * Amount::MAX_ATOMS);
+
+        assert!(!evaluate(&second).is_ok());
+    }
+
     /// Each byte, bit and carry participates even when public fixture values are changed too.
     #[test]
     fn every_addition_cell_is_constrained() {
@@ -196,20 +218,40 @@ mod tests {
         }
     }
 
-    /// An integer equal to zero modulo Goldilocks cannot be dropped from an exact sum.
+    /// Every limb equation is required even when all byte range constraints remain satisfied.
+    #[test]
+    fn each_limb_equation_rejects_a_valid_byte_change() {
+        let original = assigned(0, 0);
+        for slot in 0..3 {
+            for index in 0..16 {
+                let mut row = original;
+                write_word(&mut row, slot, 1_u128 << (8 * index));
+
+                assert!(!evaluate(&row).is_ok(), "operand {slot}, limb {index}");
+            }
+        }
+    }
+
+    /// Shifted modulus multiples cannot disappear from low or high limbs through fractional carries.
     #[test]
     fn modular_alias_cannot_use_non_boolean_carries() {
-        let mut row = [Goldilocks::ZERO; AdditionAir::WIDTH];
-        write_word(&mut row, 0, u128::from(Goldilocks::ORDER_U64));
         let inverse_radix = Goldilocks::from_u16(256).inverse();
-        let mut carry = Goldilocks::ZERO;
-        for index in 0..16 {
-            carry = (row[index] + carry) * inverse_radix;
-            row[432 + index] = carry;
-        }
+        for shift in 0..=8 {
+            let mut row = [Goldilocks::ZERO; AdditionAir::WIDTH];
+            write_word(
+                &mut row,
+                0,
+                u128::from(Goldilocks::ORDER_U64) << (8 * shift),
+            );
+            let mut carry = Goldilocks::ZERO;
+            for index in 0..16 {
+                carry = (row[index] + carry) * inverse_radix;
+                row[432 + index] = carry;
+            }
 
-        assert_eq!(carry, Goldilocks::ZERO);
-        assert!(!evaluate(&row).is_ok());
+            assert_eq!(carry, Goldilocks::ZERO);
+            assert!(!evaluate(&row).is_ok());
+        }
     }
 
     /// Correct byte equations and Boolean carries still cannot permit a final overflow carry.

@@ -11,15 +11,7 @@ mod amount;
 mod encoding;
 
 #[cfg(test)]
-pub(crate) use amount::AdditionAir;
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "circuit consumers follow in later increments"
-    )
-)]
-pub(crate) use amount::eval_addition;
+pub(crate) use amount::{AdditionAir, AmountAir};
 #[cfg(any(test, feature = "prover"))]
 #[cfg_attr(
     not(test),
@@ -28,7 +20,15 @@ pub(crate) use amount::eval_addition;
         reason = "circuit trace builders follow in later increments"
     )
 )]
-pub(crate) use amount::{AmountError, assign_addition};
+pub(crate) use amount::{AmountError, assign_addition, assign_amount};
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "circuit consumers follow in later increments"
+    )
+)]
+pub(crate) use amount::{eval_addition, eval_amount};
 #[cfg(test)]
 pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 #[cfg(any(test, feature = "prover"))]

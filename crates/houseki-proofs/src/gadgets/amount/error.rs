@@ -7,6 +7,10 @@ pub(crate) enum AmountError {
     #[error("amount input is not a byte")]
     InvalidLimb,
 
+    /// The integer violates the individual amount cap or required note positivity.
+    #[error("amount is outside the allowed range")]
+    OutOfRange,
+
     /// An exact sum exceeds the sixteen byte integer capacity.
     #[error("amount arithmetic exceeds integer capacity")]
     Overflow,
