@@ -53,6 +53,10 @@ impl NoteOpening {
     ///
     /// Owned private decoding buffers are guarded through success, failure and unwinding,
     /// with original input storage remaining under the caller's cleanup responsibility.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "Authenticated recovery is a separate increment.")
+    )]
     pub(crate) fn decode_plaintext(
         plaintext: &[u8],
         recipient: &NoteRecipient,

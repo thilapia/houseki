@@ -1,12 +1,5 @@
 //! Checked ownership and protected storage of private note opening material.
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Delivery and recovery consumers are separate increments."
-    )
-)]
 mod codec;
 mod commitment;
 mod error;

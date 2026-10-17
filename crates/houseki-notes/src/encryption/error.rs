@@ -1,7 +1,8 @@
-//! Errors from projecting completed bodies into note encryption inputs.
+//! Failures while projecting completed bodies or encrypting checked note outputs.
 
 use houseki_crypto::{
-    NotePayloadError, PaymentEncryptionCoreError, RewardWithdrawalEncryptionCoreError,
+    CryptoFramingError, NoteEncryptionContextError, NoteEncryptionError, NotePayloadError,
+    PaymentEncryptionCoreError, RewardWithdrawalEncryptionCoreError,
 };
 use thiserror::Error;
 
@@ -34,4 +35,46 @@ pub enum NoteContextError {
         #[source]
         source: NotePayloadError,
     },
+}
+
+/// A failure to match and encrypt an opening for a selected transaction output.
+///
+/// Diagnostics contain no private amount, blinding, plaintext or secret key material.
+#[derive(Debug, Error)]
+pub enum NoteOutputEncryptionError {
+    /// The output index or complete core cannot form an encryption context.
+    #[error("could not prepare note output encryption context: {0}")]
+    Context(
+        /// Original selection or core framing failure retaining public metadata.
+        #[from]
+        NoteEncryptionContextError,
+    ),
+
+    /// The expected recipient belongs to a different network than the transaction core.
+    #[error("note recipient network does not match the transaction")]
+    NetworkMismatch,
+
+    /// The opening's retained recipient differs from the complete expected snapshot.
+    #[error("note opening does not match the expected recipient")]
+    RecipientMismatch,
+
+    /// The opening does not derive the commitment selected from the transaction core.
+    #[error("note opening does not match the selected output commitment")]
+    CommitmentMismatch,
+
+    /// Recipient binding or commitment framing failed without returning a digest.
+    #[error("could not derive note output commitment: {0}")]
+    CommitmentFraming(
+        /// Original framing failure without private opening material.
+        #[from]
+        CryptoFramingError,
+    ),
+
+    /// Complete suite sealing failed without returning a partial output.
+    #[error("could not encrypt note output: {0}")]
+    Encryption(
+        /// Original bounded sealing failure from crypto.
+        #[from]
+        NoteEncryptionError,
+    ),
 }
