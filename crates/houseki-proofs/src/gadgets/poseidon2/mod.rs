@@ -30,11 +30,4 @@ pub(crate) use permutation_air::PermutationAir;
 #[cfg(test)]
 pub(crate) use recipient_hash_air::RecipientHashAir;
 
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "note consumers follow in the next semantic commit"
-    )
-)]
 pub(crate) use scheduled::ScheduledHash;
