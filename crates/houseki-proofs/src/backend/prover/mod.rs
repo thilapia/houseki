@@ -14,6 +14,7 @@ use super::{
 use crate::profile::ExpectedIdentity;
 use crate::{
     CancellationToken,
+    cancellation::Attempt,
     memory::{self, MemoryError, Scope},
     profile::MAX_PROOF_BYTES,
     runtime::Admission,
@@ -30,7 +31,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 /// The guarded input remains owned through every return path and its backend copy is allocated
 /// only after the process allocator and serial execution mode have passed preflight.
 pub(crate) fn prove_encoded<A>(
-    _admission: &Admission<'_>,
+    admission: &Admission<'_>,
     request: Request<'_, A>,
     trace: Trace,
     token: &CancellationToken,
@@ -38,23 +39,40 @@ pub(crate) fn prove_encoded<A>(
 where
     A: QuotientAir<Config> + for<'a> Air<DebugConstraintBuilder<'a, Goldilocks>>,
 {
-    if trace.width() != request.air.width()
-        || request.public.len() != request.air.num_public_values()
-        || !trace.height().is_power_of_two()
-        || trace.height() < 512
-        || trace.height().ilog2() as usize != request.layout.log_rows
-        || trace.width() != request.layout.width
-    {
-        return Err(BackendError::InvalidTrace);
-    }
+    let attempt = Attempt::new(token).ok_or(BackendError::Cancelled)?;
 
+    prove_prepared(admission, request, || Ok(trace), attempt)
+}
+
+/// Builds the guarded trace only after the caller attempt owns protected backend allocation.
+pub(crate) fn prove_prepared<A>(
+    _admission: &Admission<'_>,
+    request: Request<'_, A>,
+    prepare: impl FnOnce() -> Result<Trace, BackendError>,
+    attempt: Attempt<'_>,
+) -> Result<EncodedTransactionProof, BackendError>
+where
+    A: QuotientAir<Config> + for<'a> Air<DebugConstraintBuilder<'a, Goldilocks>>,
+{
+    let token = attempt.token();
     // Subscriber setup occurs outside private allocation accounting and no application subscriber
     // receives backend events while this attempt owns witnesses.
     tracing::subscriber::with_default(tracing::subscriber::NoSubscriber::default(), || {
-        let scope = Scope::enter(token).map_err(memory_error)?;
+        let scope = Scope::from_attempt(attempt).map_err(memory_error)?;
 
         let result = catch_unwind(AssertUnwindSafe(move || {
             memory::checkpoint();
+            let trace = prepare()?;
+            if trace.width() != request.air.width()
+                || request.public.len() != request.air.num_public_values()
+                || !trace.height().is_power_of_two()
+                || trace.height() < 512
+                || trace.height().ilog2() as usize != request.layout.log_rows
+                || trace.width() != request.layout.width
+            {
+                return Err(BackendError::InvalidTrace);
+            }
+
             let config = config::assemble(request.prefix, random::fresh_generators()?);
 
             let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());
@@ -167,6 +185,43 @@ mod tests {
     };
     use p3_field::PrimeCharacteristicRing;
     use p3_util::prover_runtime::Phase;
+
+    /// Witness preparation runs inside protection and errors release the account and runtime slot.
+    #[test]
+    fn prepared_witness_is_protected_and_failure_releases_allocations() {
+        let runtime = ProofRuntime::new();
+        let lease = runtime.acquire().unwrap();
+        let token = CancellationToken::new();
+        let identity = test_identity();
+        let public = [Goldilocks::from_u64(289)];
+        let result = prove_prepared(
+            &lease,
+            Request {
+                prefix: b"prepared witness",
+                air: &SquareAir,
+                public: &public,
+                identity: &identity,
+                layout: test_layout(),
+            },
+            || {
+                assert!(matches!(
+                    Scope::enter(&CancellationToken::new()),
+                    Err(MemoryError::NestedAttempt)
+                ));
+                let _trace = trace();
+
+                Err(BackendError::InvalidTrace)
+            },
+            Attempt::new(&token).unwrap(),
+        );
+
+        assert!(matches!(result, Err(BackendError::InvalidTrace)));
+        assert!(memory::LAST_USAGE.with(|usage| usage.take()).is_some());
+        assert!(Attempt::new(&token).is_none());
+        drop(lease);
+
+        assert!(runtime.acquire().is_ok());
+    }
 
     /// Cancels during every long phase, verifies complete release, and rejects token reuse.
     #[test]

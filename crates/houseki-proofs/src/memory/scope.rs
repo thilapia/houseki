@@ -3,7 +3,7 @@
 #[cfg(test)]
 use super::LAST_USAGE;
 use super::{ACTIVE, Account, MemoryError, Usage, checkpoint::backend_checkpoint};
-use crate::CancellationToken;
+use crate::{CancellationToken, cancellation::Attempt};
 use std::{
     marker::PhantomData,
     ptr,
@@ -29,6 +29,11 @@ pub(crate) struct Scope {
 impl Scope {
     /// Claims one token and checks allocator installation before admitting private work.
     pub(crate) fn enter(token: &CancellationToken) -> Result<Self, MemoryError> {
+        Self::from_attempt(Attempt::new(token).ok_or(MemoryError::Cancelled)?)
+    }
+
+    /// Consumes an earlier reservation so statement failures and backend work share one attempt.
+    pub(crate) fn from_attempt(attempt: Attempt<'_>) -> Result<Self, MemoryError> {
         if p3_maybe_rayon::PARALLEL_ENABLED || !cfg!(panic = "unwind") {
             return Err(MemoryError::BackendUnavailable);
         }
@@ -37,7 +42,8 @@ impl Scope {
             return Err(MemoryError::NestedAttempt);
         }
 
-        if !token.claim() {
+        let token = attempt.token();
+        if token.is_cancelled() {
             return Err(MemoryError::Cancelled);
         }
 

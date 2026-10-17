@@ -1,5 +1,9 @@
 //! Monotonic cancellation shared with one proving attempt.
 
+mod attempt;
+
+pub(crate) use attempt::Attempt;
+
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
