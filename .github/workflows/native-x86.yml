@@ -1,0 +1,103 @@
+name: Native x86 validation
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-x86:
+    name: Rust 1.99.1 on Linux x86-64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.1
+      CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
+      CARGO_TERM_COLOR: never
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+      RUSTFLAGS: ""
+      CARGO_ENCODED_RUSTFLAGS: ""
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Record the native environment and source
+        run: |
+          mkdir -p validation-logs
+          {
+            date -u
+            git rev-parse HEAD
+            uname -a
+            lscpu
+            cat /etc/os-release
+            printf 'Runner: %s %s\nImage: %s %s\n' \
+              "$RUNNER_OS" "$RUNNER_ARCH" "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          } 2>&1 | tee validation-logs/environment.log
+          test "$(uname -m)" = x86_64
+
+          git ls-files -z Cargo.toml Cargo.lock crates .github/workflows \
+            | sort -z | xargs -0 sha256sum > validation-logs/source-sha256.txt
+          cp Cargo.lock validation-logs/Cargo.lock
+
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt \
+            2>&1 | tee validation-logs/toolchain-install.log
+
+      - name: Record and check the compiler host
+        run: |
+          {
+            rustup --version
+            rustup show active-toolchain
+            rustc --version --verbose
+            cargo --version
+            rustc --print cfg
+            printf 'Build target: %s\nRUSTFLAGS: %s\nCARGO_ENCODED_RUSTFLAGS: %s\n' \
+              "$CARGO_BUILD_TARGET" "$RUSTFLAGS" "$CARGO_ENCODED_RUSTFLAGS"
+          } 2>&1 | tee validation-logs/toolchain.log
+          test "$(rustc --version --verbose | sed -n 's/^host: //p')" = x86_64-unknown-linux-gnu
+
+      - name: Check formatting
+        run: cargo fmt --all --check 2>&1 | tee validation-logs/format.log
+
+      - name: Check the locked workspace
+        run: cargo check --workspace --all-targets --locked 2>&1 | tee validation-logs/check.log
+
+      - name: Lint the locked workspace
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings 2>&1 | tee validation-logs/clippy.log
+
+      - name: Check crypto and notes documentation coverage
+        run: |
+          cargo clippy -p houseki-crypto -p houseki-notes --all-targets --no-deps --locked -- \
+            -D warnings -D missing_docs -D clippy::missing_docs_in_private_items \
+            2>&1 | tee validation-logs/documentation-lints.log
+
+      - name: Build documentation including private items
+        run: |
+          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items --locked \
+            2>&1 | tee validation-logs/rustdoc.log
+
+      - name: Test the locked workspace
+        run: cargo test --workspace --locked 2>&1 | tee validation-logs/workspace-tests.log
+
+      - name: Run native release crypto tests
+        run: cargo test -p houseki-crypto --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
+
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: native-x86-${{ github.sha }}-${{ github.run_attempt }}
+          path: validation-logs/
+          if-no-files-found: warn
+          retention-days: 30

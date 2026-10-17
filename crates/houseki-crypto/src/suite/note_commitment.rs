@@ -73,12 +73,12 @@ mod tests {
         MlKem1024EncapsulationKey::try_from(&EncodedMlKem1024PublicKey::from_bytes(bytes)).unwrap()
     }
 
-    /// Checks recipient binding and the complete note transcript against integer vectors.
+    /// Checks complete integer vectors for primitive encodings and positive V1 note amounts.
     #[test]
     fn note_commitments_match_independent_vectors() {
         // Independent Python arithmetic evaluates both transcripts with pinned public constants.
-        // The version and key fixtures exercise encoding without asserting supported note rules
-        // or honest key generation.
+        // The arbitrary versions exercise primitive encoding, while the V1 fixtures cover
+        // positive amounts without asserting honest key generation or blinding freshness.
         for (network, version, ownership, seed, atoms, blinding, expected) in [
             (
                 [0; 64],
@@ -114,6 +114,42 @@ mod tests {
                 concat!(
                     "6393a37c316be92ed2fe487692388a4db67528aecfa1efc630980b87f7f467b4ac",
                     "47aaf2ec8fd082dd80f5e8e325ab5ad81b73f61af0001ac45b0728c743bf41"
+                ),
+            ),
+            (
+                [0; 64],
+                1,
+                [0; 64],
+                0,
+                1,
+                [0; 32],
+                concat!(
+                    "67519504e20c7223a5068feae0c831bdfe180fcc11b6b597c5d8a4506d592c41",
+                    "decf8a6608538e3c875bcd61322d8a832f554417b2bc5a32f4cde0454adb20f0"
+                ),
+            ),
+            (
+                std::array::from_fn(|i| u8::try_from(i).unwrap()),
+                1,
+                std::array::from_fn(|i| u8::try_from(i + 64).unwrap()),
+                0xa5,
+                (1_u128 << 64) + 0x01020304,
+                std::array::from_fn(|i| u8::try_from(i).unwrap()),
+                concat!(
+                    "e4d71a009781bebee473503ea001250799bbe6993cd0f8abd19af0831ebfd7bc9",
+                    "613c3c3e38b39b64f3e2669430253fe98e152ec550823b91554f89adf83ec89"
+                ),
+            ),
+            (
+                [0xff; 64],
+                1,
+                [0xff; 64],
+                0xff,
+                Amount::MAX_ATOMS,
+                [0xff; 32],
+                concat!(
+                    "4de99cdcc2d1080fca897f80fff6e7de81859b438d21ccc9277cb9b964a14853b",
+                    "d2081e4214719bfcbbbae16fdc0f529203dfb118d338517c89209e4930ad825"
                 ),
             ),
         ] {
