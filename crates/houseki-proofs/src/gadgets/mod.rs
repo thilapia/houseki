@@ -60,4 +60,5 @@ pub(crate) use poseidon2::Frame as HashFrame;
 #[cfg(test)]
 pub(crate) use poseidon2::{
     BlockAir, ExtractionRowAir, FramedSpongeAir, FramingAir, HashAir, PermutationAir,
+    RecipientHashAir,
 };

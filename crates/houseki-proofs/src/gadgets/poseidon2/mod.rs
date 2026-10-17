@@ -11,6 +11,8 @@ mod permutation;
 #[cfg(test)]
 mod permutation_air;
 mod profile;
+#[cfg(test)]
+mod recipient_hash_air;
 #[cfg(any(test, feature = "prover"))]
 mod scratch;
 mod sponge;
@@ -26,3 +28,5 @@ pub(crate) use framing::{BlockAir, FramingAir};
 pub(crate) use hash_air::HashAir;
 #[cfg(test)]
 pub(crate) use permutation_air::PermutationAir;
+#[cfg(test)]
+pub(crate) use recipient_hash_air::RecipientHashAir;
