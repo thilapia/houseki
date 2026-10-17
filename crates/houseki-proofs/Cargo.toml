@@ -7,9 +7,16 @@ publish.workspace = true
 
 [features]
 default = []
-prover = ["dep:getrandom"]
+prover = ["dep:getrandom", "p3-util/prover-runtime", "dep:houseki-crypto", "dep:houseki-notes", "dep:houseki-state"]
 
 [dependencies]
+houseki-crypto = { workspace = true, optional = true, features = ["proofs"] }
+houseki-notes = { workspace = true, optional = true, features = ["proofs"] }
+houseki-state = { workspace = true, optional = true, features = ["proofs"] }
+chacha20.workspace = true
+tracing.workspace = true
+p3-util.workspace = true
+p3-maybe-rayon.workspace = true
 houseki-types.workspace = true
 thiserror.workspace = true
 p3-field.workspace = true
@@ -29,4 +36,5 @@ zeroize.workspace = true
 getrandom = { workspace = true, optional = true }
 
 [dev-dependencies]
+p3-util = { workspace = true, features = ["prover-runtime"] }
 getrandom.workspace = true
