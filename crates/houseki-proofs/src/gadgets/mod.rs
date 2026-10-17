@@ -65,4 +65,4 @@ pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
 )]
 pub(crate) use poseidon2::Frame as HashFrame;
 #[cfg(test)]
-pub(crate) use poseidon2::FramingAir;
+pub(crate) use poseidon2::{FramingAir, PermutationAir};

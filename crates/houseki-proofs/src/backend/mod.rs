@@ -18,6 +18,8 @@ mod framing_proof;
 #[cfg(test)]
 mod gadget_proof;
 mod hash;
+#[cfg(test)]
+mod permutation_proof;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
 mod random;
