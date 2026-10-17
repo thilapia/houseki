@@ -13,6 +13,9 @@ pub(crate) struct WithdrawalAir {
 }
 
 impl WithdrawalAir {
+    /// Four complete cycles satisfy the backend's minimum hiding trace height.
+    pub(crate) const ROWS: usize = 512;
+
     /// Fixes the note policy and public source maps without inspecting a witness.
     pub(crate) fn new() -> Self {
         Self {
@@ -146,7 +149,7 @@ mod tests {
     fn reward_withdrawal_air_rejects_every_public_amount_byte_change() {
         let air = WithdrawalAir::new();
         let fixture = OpeningFixture::new(1);
-        let mut rows = vec![Goldilocks::ZERO; 512 * Opening::WIDTH];
+        let mut rows = vec![Goldilocks::ZERO; WithdrawalAir::ROWS * Opening::WIDTH];
         air.opening.assign(fixture.view(), &mut rows).unwrap();
         assert!(valid(&air, &rows, &fixture.public, 76));
 
@@ -162,7 +165,7 @@ mod tests {
     fn reward_withdrawal_air_rejects_direct_trace_changes() {
         let air = WithdrawalAir::new();
         let fixture = OpeningFixture::new(0);
-        let mut rows = vec![Goldilocks::ZERO; 512 * Opening::WIDTH];
+        let mut rows = vec![Goldilocks::ZERO; WithdrawalAir::ROWS * Opening::WIDTH];
         air.opening.assign(fixture.view(), &mut rows).unwrap();
 
         for (phase, column) in [
@@ -201,7 +204,7 @@ mod tests {
         }
 
         assert_eq!(
-            get_max_constraint_degree(&air, AirLayout::from_air(&air), 512),
+            get_max_constraint_degree(&air, AirLayout::from_air(&air), WithdrawalAir::ROWS),
             4
         );
     }

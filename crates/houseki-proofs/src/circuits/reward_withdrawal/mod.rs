@@ -1,9 +1,13 @@
 //! One ordinary output containing exactly the withdrawal body's positive public amount.
 
 mod air;
+#[cfg(all(test, feature = "prover"))]
+mod fixture;
+#[cfg(feature = "prover")]
+mod trace;
 
-#[expect(
-    unused_imports,
-    reason = "family facade consumes the AIR in the next increment"
+#[cfg_attr(
+    not(feature = "prover"),
+    expect(unused_imports, reason = "verifier facade follows")
 )]
 pub(crate) use air::WithdrawalAir;

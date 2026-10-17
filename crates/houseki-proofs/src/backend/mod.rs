@@ -48,6 +48,10 @@ mod verifier;
 mod witness;
 
 pub(crate) use error::BackendError;
+#[cfg(feature = "prover")]
+pub(crate) use trace::Trace;
+#[cfg(feature = "prover")]
+pub(crate) use witness::OpeningFields;
 
 /// Real backend behavior under an internal synthetic relation.
 #[cfg(test)]
