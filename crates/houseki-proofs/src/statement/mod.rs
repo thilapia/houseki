@@ -382,6 +382,37 @@ mod tests {
         }
     }
 
+    /// Binds public body metadata even when it does not change semantic AIR inputs.
+    #[test]
+    fn complete_body_metadata_changes_the_transcript() {
+        let limits = crate::profile::body_limits();
+        for (relation, offsets) in [(1, vec![1902, 400]), (2, vec![100, 164, 2756, 2780, 4438])] {
+            let bytes = body_bytes(relation, 1, 1, 3);
+            let make = |bytes: &[u8]| {
+                if relation == 1 {
+                    let body = PaymentBody::from_bytes(bytes, limits).unwrap();
+                    let anchor = NoteTreeAnchor::new(
+                        body.context().network_id(),
+                        NoteCount::new(137).unwrap(),
+                        body.inputs().anchor(),
+                    );
+                    Statement::payment(&body, &anchor, body.context(), &identity(1, 1, 1)).unwrap()
+                } else {
+                    let body = RewardWithdrawalBody::from_bytes(bytes, limits).unwrap();
+                    Statement::withdrawal(&body, body.context(), &identity(2, 0, 1)).unwrap()
+                }
+            };
+            let original = make(&bytes);
+            for offset in offsets {
+                let mut changed = bytes.clone();
+                changed[offset] ^= 1;
+                let changed = make(&changed);
+                assert_eq!(changed.public_values, original.public_values);
+                assert_ne!(changed.prefix, original.prefix);
+            }
+        }
+    }
+
     /// Rejects a trusted operation identity incompatible with the typed body.
     #[test]
     fn wrong_relation_is_rejected() {

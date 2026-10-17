@@ -131,6 +131,39 @@ pub(crate) mod tests {
         );
     }
 
+    /// Runs independent runtimes concurrently without sharing transcript or private commitment state.
+    #[test]
+    fn independent_proof_requests_use_separate_state() {
+        let requests = [289, 289].map(|square| {
+            std::thread::spawn(move || {
+                let runtime = ProofRuntime::new();
+                let lease = runtime.acquire().unwrap();
+                prover::prove(
+                    &lease,
+                    b"houseki/test/concurrent/v1",
+                    &SquareAir,
+                    trace(),
+                    &[Goldilocks::from_u64(square)],
+                )
+                .unwrap()
+            })
+        });
+        let [first, second] = requests.map(|request| request.join().unwrap());
+        assert_ne!(first.commitments.trace, second.commitments.trace);
+        let verifier_runtime = ProofRuntime::new();
+        let lease = verifier_runtime.acquire().unwrap();
+        for proof in [first, second] {
+            verifier::verify(
+                &lease,
+                b"houseki/test/concurrent/v1",
+                &SquareAir,
+                &proof,
+                &[Goldilocks::from_u64(289)],
+            )
+            .unwrap();
+        }
+    }
+
     /// Stops before a backend invocation whenever any per-attempt seed cannot be acquired.
     #[test]
     fn entropy_failure_has_no_deterministic_fallback() {
