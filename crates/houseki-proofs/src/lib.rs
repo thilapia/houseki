@@ -15,3 +15,13 @@ pub use context::{ContextError, ProofContext};
 pub use runtime::{ProofRuntime, RuntimeError};
 
 pub use statement::StatementError;
+
+#[cfg(any(test, feature = "prover"))]
+mod cancellation;
+#[cfg(any(test, feature = "prover"))]
+#[cfg_attr(not(test), allow(dead_code))]
+mod memory;
+#[cfg(any(test, feature = "prover"))]
+pub use cancellation::CancellationToken;
+#[cfg(feature = "prover")]
+pub use memory::ProofAllocator;

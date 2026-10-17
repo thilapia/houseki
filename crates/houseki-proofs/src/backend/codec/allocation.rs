@@ -13,7 +13,8 @@ struct MeasuredAllocator;
 
 /// Measures only explicitly selected decoder calls without changing allocator behavior.
 #[global_allocator]
-static ALLOCATOR: MeasuredAllocator = MeasuredAllocator;
+static ALLOCATOR: crate::memory::ProofAllocator<MeasuredAllocator> =
+    crate::memory::ProofAllocator::new(MeasuredAllocator);
 
 /// Records a request without allocating or accessing another thread's measurement.
 fn record(bytes: usize) {
