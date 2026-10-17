@@ -1079,4 +1079,44 @@ mod tests {
             ownership
         );
     }
+
+    /// Keeps the spend marker stable when the same opening is delivered under another context.
+    #[test]
+    fn recovered_opening_nullifiers_do_not_depend_on_current_transaction_context() {
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, [13; 64]);
+        let original = opening(&recipient, 23, 0xa5);
+        let nullifier_key = houseki_crypto::NullifierKey::from_bytes(&[0x59; 32]);
+        let position = houseki_types::NotePosition::new(u64::MAX);
+        let expected = crate::derive_nullifier(&original, &nullifier_key, &position).unwrap();
+        for variant in 0..3 {
+            let core = self::core(vec![(original.commitment().unwrap(), CryptoSuite::V1)]);
+            let (context, inputs, outputs, fee) = core.into_parts();
+            let changed_context = TransactionContext::new(
+                context.network_id(),
+                ProtocolVersion::new(variant + 1),
+                context.proof_profile_id(),
+                context.fee_schedule_id(),
+                context.validity_checkpoint_range(),
+            );
+            let changed_inputs = PaymentInputs::new(
+                NoteRoot::from_bytes([u8::try_from(variant).unwrap(); 64]),
+                inputs.nullifiers().to_vec(),
+                limits(),
+            )
+            .unwrap();
+            let core =
+                PaymentEncryptionCore::new(changed_context, changed_inputs, outputs, fee, limits())
+                    .unwrap();
+            let output = encrypt_payment_output(&core, 0, &recipient, &original, 84).unwrap();
+            let body = body(&core, vec![output]);
+            let recovered =
+                recover_payment_output(&body, 0, &recipient, &key, limits(), 84).unwrap();
+            assert_eq!(
+                crate::derive_nullifier(&recovered, &nullifier_key, &position).unwrap(),
+                expected
+            );
+        }
+        assert_eq!(position.value(), u64::MAX);
+    }
 }

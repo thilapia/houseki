@@ -13,6 +13,7 @@ mod accumulation;
 mod blinding;
 mod encryption;
 mod format;
+mod nullifier;
 mod opening;
 mod recipient;
 mod relation;
@@ -24,6 +25,7 @@ pub use encryption::{
     recover_withdrawal_output, withdrawal_encryption_core,
 };
 pub use format::{NoteFormat, NoteFormatError};
+pub use nullifier::derive_nullifier;
 pub use opening::{NoteOpening, NoteOpeningError};
 pub use recipient::{NoteRecipient, NoteRecipientError};
 pub use relation::{WithdrawalOutputRelationError, check_withdrawal_output};

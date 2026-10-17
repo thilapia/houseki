@@ -30,7 +30,7 @@ impl NullifierKey {
     ///
     /// Returns [`CryptoFramingError`] without a nullifier if framing fails, although all parts
     /// currently have fixed lengths and every represented position fits its encoding.
-    pub(crate) fn nullifier(
+    pub fn nullifier(
         &self,
         network: NetworkId,
         version: NoteVersion,
