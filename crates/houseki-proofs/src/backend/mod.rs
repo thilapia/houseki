@@ -1,6 +1,8 @@
 //! Private hiding proof execution with separate proving and verification capabilities.
 
 #[cfg(test)]
+mod addition_proof;
+#[cfg(test)]
 mod byte_proof;
 #[cfg(test)]
 mod bytes_proof;
