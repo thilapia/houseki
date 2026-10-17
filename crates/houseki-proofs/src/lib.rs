@@ -7,6 +7,7 @@ mod backend;
 #[cfg(any(test, feature = "prover"))]
 mod cancellation;
 mod context;
+mod gadgets;
 #[cfg(any(test, feature = "prover"))]
 #[cfg_attr(not(test), allow(dead_code))]
 mod memory;

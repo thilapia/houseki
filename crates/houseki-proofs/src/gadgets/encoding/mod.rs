@@ -1,0 +1,15 @@
+//! Byte representation constraints shared by integer and hash components.
+
+mod byte;
+#[cfg(test)]
+mod byte_air;
+#[cfg(any(test, feature = "prover"))]
+mod error;
+
+#[cfg(any(test, feature = "prover"))]
+pub(crate) use byte::assign_byte;
+pub(crate) use byte::eval_byte;
+#[cfg(test)]
+pub(crate) use byte_air::ByteAir;
+#[cfg(any(test, feature = "prover"))]
+pub(crate) use error::EncodingError;

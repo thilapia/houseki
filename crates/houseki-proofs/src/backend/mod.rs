@@ -1,5 +1,7 @@
 //! Private hiding proof execution with separate proving and verification capabilities.
 
+#[cfg(test)]
+mod byte_proof;
 mod codec;
 mod config;
 mod error;
