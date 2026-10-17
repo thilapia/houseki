@@ -12,6 +12,8 @@ mod codec;
 mod config;
 mod error;
 #[cfg(test)]
+mod extraction_proof;
+#[cfg(test)]
 mod field_proof;
 #[cfg(test)]
 mod framed_sponge_proof;

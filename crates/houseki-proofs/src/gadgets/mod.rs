@@ -48,13 +48,6 @@ pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
     )
 )]
 pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "circuit consumers follow in later increments"
-    )
-)]
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
 #[cfg_attr(
     not(test),
@@ -65,4 +58,4 @@ pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
 )]
 pub(crate) use poseidon2::Frame as HashFrame;
 #[cfg(test)]
-pub(crate) use poseidon2::{FramedSpongeAir, FramingAir, PermutationAir};
+pub(crate) use poseidon2::{ExtractionRowAir, FramedSpongeAir, FramingAir, PermutationAir};

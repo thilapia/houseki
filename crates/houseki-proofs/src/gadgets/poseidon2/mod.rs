@@ -1,5 +1,6 @@
 //! Constraints for the fixed application hash transcript and its field encoding.
 
+mod extraction;
 #[cfg(test)]
 mod framed_sponge_air;
 mod framing;
@@ -12,6 +13,8 @@ mod profile;
 mod scratch;
 mod sponge;
 
+#[cfg(test)]
+pub(crate) use extraction::ExtractionRowAir;
 #[cfg(test)]
 pub(crate) use framed_sponge_air::FramedSpongeAir;
 pub(crate) use framing::Frame;
