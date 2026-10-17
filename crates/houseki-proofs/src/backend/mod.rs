@@ -20,6 +20,8 @@ mod field_proof;
 #[cfg(test)]
 mod framed_sponge_proof;
 #[cfg(test)]
+mod framing_block_proof;
+#[cfg(test)]
 mod framing_proof;
 #[cfg(test)]
 mod gadget_proof;
