@@ -234,6 +234,7 @@ dependencies = [
  "crypto-bigint",
  "getrandom",
  "houseki-crypto",
+ "houseki-state",
  "houseki-types",
  "thiserror",
  "zeroize",

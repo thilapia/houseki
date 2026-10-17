@@ -28,4 +28,7 @@ pub use format::{NoteFormat, NoteFormatError};
 pub use nullifier::derive_nullifier;
 pub use opening::{NoteOpening, NoteOpeningError};
 pub use recipient::{NoteAddressError, NoteRecipient, NoteRecipientError};
-pub use relation::{WithdrawalOutputRelationError, check_withdrawal_output};
+pub use relation::{
+    SpendRelationError, SpendWitness, WithdrawalOutputRelationError, check_spend,
+    check_withdrawal_output,
+};

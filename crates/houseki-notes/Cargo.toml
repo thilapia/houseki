@@ -9,6 +9,7 @@ publish.workspace = true
 # internal
 houseki-crypto.workspace = true
 houseki-types.workspace = true
+houseki-state.workspace = true
 
 # cryptography
 base64ct.workspace = true
