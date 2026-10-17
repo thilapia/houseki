@@ -8,13 +8,16 @@ use getrandom::{SysRng, rand_core::TryCryptoRng};
 use std::fmt;
 use zeroize::{Zeroize, Zeroizing};
 
-/// A protected 32 byte blinding value freshly sampled for one private note.
+/// A protected 32 byte blinding value for one private note.
 ///
 /// [`Self::generate`] obtains independent bytes from the system random source rather than
 /// deriving them from public note fields or reusing another cryptographic role's material.
 ///
-/// The type keeps its bytes private and redacts diagnostics, with no import, export, cloning,
-/// equality or serialization interface.
+/// Private plaintext decoding can preserve existing bytes without certifying their entropy or
+/// freshness, while the public interface provides no import or export.
+///
+/// The type keeps its bytes private and redacts diagnostics, with no cloning, equality or
+/// serialization interface.
 ///
 /// Stored bytes are zeroized when dropped, including during unwinding, although cleanup cannot
 /// erase every copy made by the compiler or operating system or run after process termination.
@@ -26,7 +29,7 @@ pub struct NoteBlinding(
 );
 
 impl NoteBlinding {
-    /// Number of fresh bytes in a complete note blinding value.
+    /// Number of bytes in a complete note blinding value.
     pub const LENGTH: usize = 32;
 
     /// Generates fresh note blinding using the system's cryptographic random source.
@@ -42,10 +45,17 @@ impl NoteBlinding {
         Self::generate_with_rng(&mut SysRng)
     }
 
-    /// Borrows stored bytes only inside crate tests that check exact opening retention.
-    #[cfg(test)]
-    pub(crate) fn test_bytes(&self) -> &[u8; Self::LENGTH] {
+    /// Borrows protected bytes for internal plaintext encoding without a public export.
+    pub(crate) fn as_bytes(&self) -> &[u8; Self::LENGTH] {
         &self.0
+    }
+
+    /// Copies complete private plaintext blinding into protected owned storage.
+    ///
+    /// Every byte pattern remains representable, with freshness and authentication established
+    /// separately and the caller retaining cleanup responsibility for the source buffer.
+    pub(crate) fn from_bytes(bytes: &[u8; Self::LENGTH]) -> Self {
+        Self(*bytes)
     }
 
     /// Acquires the complete blinding value through guarded temporary storage.
@@ -56,7 +66,7 @@ impl NoteBlinding {
         rng.try_fill_bytes(bytes.as_mut())
             .map_err(|_| NoteBlindingError::RandomnessUnavailable)?;
 
-        Ok(Self(*bytes))
+        Ok(Self::from_bytes(&bytes))
     }
 }
 

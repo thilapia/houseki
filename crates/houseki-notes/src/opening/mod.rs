@@ -1,8 +1,17 @@
 //! Checked ownership and protected storage of private note opening material.
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "Delivery and recovery consumers are separate increments."
+    )
+)]
+mod codec;
 mod error;
 
 pub use error::NoteOpeningError;
+pub(crate) use error::NotePlaintextError;
 
 use houseki_crypto::CryptoSuite;
 use houseki_types::Amount;
@@ -13,7 +22,7 @@ use crate::{NoteBlinding, NoteFormat, NoteRecipient};
 
 /// An owned private opening with a supported format, compatible recipient and positive amount.
 ///
-/// Construction consumes fresh [`NoteBlinding`] and retains an independent immutable recipient
+/// Construction consumes [`NoteBlinding`] and retains an independent immutable recipient
 /// snapshot without requiring the recipient's spending, nullifier or decryption secrets.
 ///
 /// The owned amount and blinding are zeroized when dropped, including during unwinding, while
@@ -33,14 +42,7 @@ pub struct NoteOpening {
     /// Positive private amount held in storage that clears its atom count when dropped.
     amount: Zeroizing<Amount>,
 
-    /// Consumed fresh randomness cleared by its owner when the opening is dropped.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "Commitment and plaintext consumers are separate increments."
-        )
-    )]
+    /// Consumed blinding cleared by its owner when the opening is dropped.
     blinding: NoteBlinding,
 }
 
@@ -138,7 +140,7 @@ mod tests {
         for atoms in [1, 2, 1_u128 << 64, Amount::MAX_ATOMS - 1, Amount::MAX_ATOMS] {
             let amount = Amount::from_atoms(atoms).unwrap();
             let blinding = NoteBlinding::generate().unwrap();
-            let expected_blinding = *blinding.test_bytes();
+            let expected_blinding = *blinding.as_bytes();
 
             let opening = NoteOpening::new(NoteFormat::V1, &recipient, amount, blinding).unwrap();
             let borrowed_amount: &Amount = opening.amount();
@@ -146,7 +148,7 @@ mod tests {
             assert_eq!(opening.format(), NoteFormat::V1);
             assert_eq!(opening.recipient(), &recipient);
             assert_eq!(borrowed_amount.atoms(), atoms);
-            assert_eq!(opening.blinding.test_bytes(), &expected_blinding);
+            assert_eq!(opening.blinding.as_bytes(), &expected_blinding);
         }
     }
 
