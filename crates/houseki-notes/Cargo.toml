@@ -11,6 +11,7 @@ houseki-crypto.workspace = true
 houseki-types.workspace = true
 
 # cryptography
+crypto-bigint.workspace = true
 getrandom.workspace = true
 zeroize.workspace = true
 

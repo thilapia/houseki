@@ -2,6 +2,14 @@
 
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "Native payment relation consumers are separate increments."
+    )
+)]
+mod accumulation;
 mod blinding;
 mod encryption;
 mod format;
