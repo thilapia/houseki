@@ -40,6 +40,13 @@ impl NotePosition {
     }
 }
 
+impl zeroize::Zeroize for NotePosition {
+    /// Clears the private integer to valid zero without changing owner controlled copy semantics.
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::NotePosition;
@@ -65,5 +72,13 @@ mod tests {
         const NEXT: Option<NotePosition> = NotePosition::new(u64::MAX).checked_next();
 
         assert_eq!(NEXT, None);
+    }
+
+    /// Explicit cleanup yields valid zero while copying and automatic cleanup stay owner decisions.
+    #[test]
+    fn original_positions_support_explicit_guarded_cleanup() {
+        let mut position = zeroize::Zeroizing::new(NotePosition::new(u64::MAX));
+        zeroize::Zeroize::zeroize(&mut *position);
+        assert_eq!(position.value(), 0);
     }
 }

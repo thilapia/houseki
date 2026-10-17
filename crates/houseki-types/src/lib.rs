@@ -200,8 +200,8 @@ pub use context::{
 pub use execution::{ExecutionOutcome, ExecutionRejectionReason, Occurrence, Receipt};
 pub use note::{
     EncodedMlKem1024Ciphertext, EncodedMlKem1024CiphertextError, EncryptedNoteEnvelope,
-    EncryptedNoteEnvelopeError, NoteCommitment, NoteCommitmentError, NoteOutput, NotePosition,
-    NoteRoot, NoteRootError, Nullifier, NullifierError,
+    EncryptedNoteEnvelopeError, NoteCommitment, NoteCommitmentError, NoteCount, NoteCountError,
+    NoteOutput, NotePosition, NoteRoot, NoteRootError, NoteTreeAnchor, Nullifier, NullifierError,
 };
 pub use transaction::{
     BodyCodecError, BodyCodecLimits, EncodedTransactionProof, EncodedTransactionProofError,
