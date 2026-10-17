@@ -1,6 +1,6 @@
 //! Recognition of expected transaction context without activation or ledger policy.
 
-use houseki_types::{BodyCodecLimits, PaymentCountLimits, TransactionContext};
+use houseki_types::{BodyCodecLimits, TransactionContext};
 
 /// Failure to recognize a supported protocol and proof profile pair.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -51,16 +51,12 @@ impl ProofContext {
 
     /// Returns the representation bounds applied before allocating a canonical body.
     pub fn body_limits(&self) -> BodyCodecLimits {
-        BodyCodecLimits::new(
-            PaymentCountLimits::new(2, 2).expect("nonzero fixed counts"),
-            4096,
-            16384,
-        )
+        crate::profile::body_limits()
     }
 
     /// Returns the inclusive complete proof byte bound.
     pub const fn max_proof_bytes(&self) -> usize {
-        2_097_152
+        crate::profile::MAX_PROOF_BYTES
     }
 }
 

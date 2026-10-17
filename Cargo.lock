@@ -244,6 +244,9 @@ name = "houseki-proofs"
 version = "0.1.0"
 dependencies = [
  "houseki-types",
+ "p3-field",
+ "p3-goldilocks",
+ "sha3",
  "thiserror",
 ]
 
