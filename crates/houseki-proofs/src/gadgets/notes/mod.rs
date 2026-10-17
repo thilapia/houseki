@@ -5,10 +5,6 @@ mod recipient_key;
 
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use opening::Input as OpeningInput;
-#[cfg_attr(
-    not(test),
-    expect(unused_imports, reason = "family AIR composition follows")
-)]
 pub(crate) use opening::Opening;
 #[cfg(any(test, feature = "prover"))]
 #[cfg_attr(

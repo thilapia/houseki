@@ -59,11 +59,12 @@ pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 )]
 pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
+pub(crate) use notes::Opening;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use notes::OpeningInput;
 #[cfg(test)]
 pub(crate) use notes::{
-    Opening, OpeningAir, OpeningError, OpeningFixture, PaymentOpeningAir, RecipientPairAir,
+    OpeningAir, OpeningError, OpeningFixture, PaymentOpeningAir, RecipientPairAir,
 };
 #[cfg_attr(
     not(test),
