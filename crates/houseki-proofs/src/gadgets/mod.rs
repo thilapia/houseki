@@ -62,7 +62,9 @@ pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use notes::OpeningInput;
 #[cfg(test)]
-pub(crate) use notes::{Opening, OpeningAir, OpeningError, OpeningFixture, RecipientPairAir};
+pub(crate) use notes::{
+    Opening, OpeningAir, OpeningError, OpeningFixture, PaymentOpeningAir, RecipientPairAir,
+};
 #[cfg_attr(
     not(test),
     expect(

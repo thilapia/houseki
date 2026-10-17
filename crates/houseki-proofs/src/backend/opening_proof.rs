@@ -53,13 +53,14 @@ fn prove(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProofRuntime, backend::verifier};
+    use crate::{ProofRuntime, backend::verifier, gadgets::PaymentOpeningAir};
     use p3_air::{
         BaseAir,
         symbolic::{AirLayout, get_max_constraint_degree, get_symbolic_constraints},
     };
     use p3_field::PrimeCharacteristicRing;
     use p3_goldilocks::Goldilocks;
+    use p3_matrix::dense::RowMajorMatrix;
     use p3_uni_stark::get_log_num_quotient_chunks;
     use std::time::Instant;
 
@@ -138,6 +139,78 @@ mod tests {
                 &lease,
                 &changed.prefix,
                 &OpeningAir::new(),
+                &proof,
+                &changed.public_values
+            )
+            .is_err()
+        );
+    }
+
+    /// Every supported payment shape binds each output slot without treating its amount as public.
+    #[test]
+    fn gadgets_payment_openings_bind_every_output_slot() {
+        let fixture = OpeningFixture::new(2);
+        let trace = trace(&fixture);
+        let matrix = RowMajorMatrix::new(trace.values().to_vec(), LAYOUT.width);
+        for inputs in 1..=2 {
+            for outputs in 1..=2 {
+                for selected in 0..outputs {
+                    let air = PaymentOpeningAir::new(inputs, outputs, selected);
+                    let (_, expected) = statement(&fixture, inputs, outputs, selected, 7);
+                    assert!(
+                        p3_air::check_all_constraints(
+                            &air,
+                            &matrix,
+                            &expected.public_values,
+                            Some(1)
+                        )
+                        .is_ok()
+                    );
+                    let mut changed = expected.public_values.clone();
+                    changed[160 + 64 * (inputs + selected)] += Goldilocks::ONE;
+                    assert!(
+                        !p3_air::check_all_constraints(&air, &matrix, &changed, Some(1)).is_ok()
+                    );
+                }
+            }
+        }
+    }
+
+    /// The maximal payment shape accepts a real private output proof through native statement binding.
+    #[test]
+    fn gadgets_payment_output_proof_binds_native_statement() {
+        let fixture = OpeningFixture::new(2);
+        let (identity, expected) = statement(&fixture, 2, 2, 1, 7);
+        let air = PaymentOpeningAir::new(2, 2, 1);
+        let runtime = ProofRuntime::new();
+        let lease = runtime.acquire().unwrap();
+        let proof = gadget_proof::prove(
+            &lease,
+            Request {
+                prefix: &expected.prefix,
+                air: &air,
+                public: &expected.public_values,
+                identity: &identity,
+                layout: LAYOUT,
+            },
+            trace(&fixture),
+        )
+        .unwrap();
+        verifier::verify(
+            &lease,
+            &expected.prefix,
+            &air,
+            &proof,
+            &expected.public_values,
+        )
+        .unwrap();
+        let (_, changed) = statement(&fixture, 2, 2, 1, 8);
+        assert_eq!(expected.public_values, changed.public_values);
+        assert!(
+            verifier::verify(
+                &lease,
+                &changed.prefix,
+                &air,
                 &proof,
                 &changed.public_values
             )

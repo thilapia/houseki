@@ -11,6 +11,8 @@ mod fixture;
 #[cfg(any(test, feature = "prover"))]
 mod input;
 mod key_pair;
+#[cfg(test)]
+mod payment_air;
 
 #[cfg(test)]
 pub(crate) use air::OpeningAir;
@@ -20,6 +22,8 @@ pub(crate) use error::OpeningError;
 pub(crate) use fixture::OpeningFixture;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use input::Input;
+#[cfg(test)]
+pub(crate) use payment_air::PaymentOpeningAir;
 
 use crate::gadgets::{eval_amount, poseidon2::ScheduledHash};
 use key_pair::KeyPair;

@@ -17,7 +17,7 @@ pub(crate) use opening::Opening;
 )]
 pub(crate) use opening::OpeningError;
 #[cfg(test)]
-pub(crate) use opening::{OpeningAir, OpeningFixture};
+pub(crate) use opening::{OpeningAir, OpeningFixture, PaymentOpeningAir};
 #[cfg(test)]
 pub(crate) use recipient_key::RecipientPairAir;
 pub(crate) use recipient_key::eval_pair as eval_recipient_pair;
