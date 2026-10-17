@@ -10,21 +10,21 @@ publish.workspace = true
 houseki-types = { workspace = true }
 
 # cryptography
-crypto-bigint.workspace = true
 getrandom.workspace = true
-aes.workspace = true
+crypto-bigint.workspace = true
+ml-kem.workspace = true
+ml-dsa.workspace = true
 aes-gcm-siv.workspace = true
-polyval.workspace = true
 sha3.workspace = true
 sha2.workspace = true
 hkdf.workspace = true
-hmac.workspace = true
-ml-dsa.workspace = true
-ml-kem.workspace = true
+zeroize.workspace = true
+
+# zero-knowledge
 p3-field.workspace = true
 p3-goldilocks.workspace = true
 p3-symmetric.workspace = true
-zeroize.workspace = true
+
 
 # error handling
 thiserror.workspace = true

@@ -6,7 +6,12 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+# internal
 houseki-crypto.workspace = true
 houseki-types.workspace = true
+
+# cryptography
 zeroize.workspace = true
+
+# error handling
 thiserror.workspace = true

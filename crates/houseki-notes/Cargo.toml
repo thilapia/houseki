@@ -12,10 +12,12 @@ houseki-types.workspace = true
 houseki-state.workspace = true
 
 # cryptography
-base64ct.workspace = true
-crypto-bigint.workspace = true
 getrandom.workspace = true
+crypto-bigint.workspace = true
 zeroize.workspace = true
+
+# encoding
+base64ct.workspace = true
 
 # error handling
 thiserror.workspace = true
