@@ -9,6 +9,18 @@ pub(crate) use framing::Frame;
 /// Only registered roles can select a cryptographic domain.
 #[derive(Clone, Copy)]
 pub(crate) enum Domain {
+    /// Separates an empty application note tree leaf from occupied commitments.
+    NoteTreeEmpty,
+
+    /// Binds an occupied application leaf to the complete network and commitment.
+    NoteTreeLeaf,
+
+    /// Binds an ordered pair of application tree nodes and its exact parent level.
+    NoteTreeNode,
+
+    /// Binds the depth 64 application top node and complete occupied count.
+    NoteTreeRoot,
+
     /// Detects transcription changes in one complete binary recipient descriptor.
     AddressChecksum,
 
@@ -56,6 +68,10 @@ impl Domain {
     /// Returns the exact ASCII label encoded in this domain's transcript.
     pub(crate) fn label(&self) -> &'static [u8] {
         match self {
+            Self::NoteTreeEmpty => b"houseki/v1/note-tree/empty",
+            Self::NoteTreeLeaf => b"houseki/v1/note-tree/leaf",
+            Self::NoteTreeNode => b"houseki/v1/note-tree/node",
+            Self::NoteTreeRoot => b"houseki/v1/note-tree/root",
             Self::AddressChecksum => b"houseki/v1/address/checksum",
             Self::WithdrawalSignatureBody => b"houseki/v1/reward-withdrawal/body",
             Self::TransactionIdentity => b"houseki/v1/transaction/id",

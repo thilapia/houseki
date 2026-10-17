@@ -8,6 +8,7 @@ mod hash;
 mod identity;
 mod ml_dsa_87;
 mod ml_kem_1024;
+mod note_tree;
 mod ownership;
 mod random;
 mod suite;
@@ -21,6 +22,10 @@ pub use ml_dsa_87::{
 pub use ml_kem_1024::{
     MlKem1024DecapsulationKey, MlKem1024DecapsulationKeyError, MlKem1024EncapsulationError,
     MlKem1024EncapsulationKey, MlKem1024EncapsulationKeyError, MlKem1024SharedSecret,
+};
+pub use note_tree::{
+    NoteTreeHashError, note_membership_root, note_tree_empty_leaf, note_tree_leaf,
+    note_tree_parent, note_tree_root,
 };
 pub use ownership::{NullifierKey, NullifierKeyError, SpendingKey, SpendingKeyError};
 pub use suite::{
