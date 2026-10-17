@@ -27,6 +27,10 @@ mod framing_proof;
 mod gadget_proof;
 mod hash;
 #[cfg(test)]
+mod opening_proof;
+#[cfg(test)]
+mod opening_statement;
+#[cfg(test)]
 mod permutation_proof;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
