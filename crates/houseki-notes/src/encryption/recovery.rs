@@ -1119,4 +1119,106 @@ mod tests {
         }
         assert_eq!(position.value(), u64::MAX);
     }
+
+    /// Exercises linked ownership, both delivery operations and original position derivation together.
+    #[test]
+    fn linked_note_delivery_and_nullifier_derivation_share_the_same_opening() {
+        let network = context().network_id();
+        let spending = houseki_crypto::SpendingKey::from_bytes(&[0xa7; 32]);
+        let nullifier_key = houseki_crypto::NullifierKey::from_bytes(&[0x59; 32]);
+        let ownership = spending
+            .ownership_commitment(network, &nullifier_key)
+            .unwrap();
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, *ownership.as_bytes());
+        let original = opening(&recipient, (1_u128 << 64) + 3, 0xa5);
+        let commitment = original.commitment().unwrap();
+        let position = houseki_types::NotePosition::new((1_u64 << 48) + 7);
+        let expected = crate::derive_nullifier(&original, &nullifier_key, &position).unwrap();
+        let payment_core = core(vec![(commitment, CryptoSuite::V1)]);
+        let payment_output =
+            encrypt_payment_output(&payment_core, 0, &recipient, &original, 84).unwrap();
+        let payment_body = body(&payment_core, vec![payment_output]);
+        let withdrawal_core = withdrawal_core(commitment, (1_u128 << 64) + 3, 17);
+        let withdrawal_output =
+            encrypt_withdrawal_output(&withdrawal_core, &recipient, &original, 84).unwrap();
+        let withdrawal_body = withdrawal_body(&withdrawal_core, withdrawal_output);
+        let payment_opening =
+            recover_payment_output(&payment_body, 0, &recipient, &key, limits(), 84).unwrap();
+        let withdrawal_opening =
+            recover_withdrawal_output(&withdrawal_body, &recipient, &key, 84).unwrap();
+        for recovered in [&payment_opening, &withdrawal_opening] {
+            crate::check_withdrawal_output(&withdrawal_body, recovered).unwrap();
+            assert_eq!(
+                recovered.recipient().ownership_commitment(),
+                spending
+                    .ownership_commitment(network, &nullifier_key)
+                    .unwrap()
+            );
+            assert_eq!(recovered.commitment().unwrap(), commitment);
+            assert_eq!(
+                crate::derive_nullifier(recovered, &nullifier_key, &position).unwrap(),
+                expected
+            );
+            // A different derived marker is an inequality check, not a membership rejection.
+            assert_ne!(
+                crate::derive_nullifier(
+                    recovered,
+                    &nullifier_key,
+                    &houseki_types::NotePosition::new(position.value() + 1)
+                )
+                .unwrap(),
+                expected
+            );
+        }
+        let changed_key = houseki_crypto::NullifierKey::from_bytes(&[0x58; 32]);
+        assert_ne!(
+            spending
+                .ownership_commitment(network, &changed_key)
+                .unwrap(),
+            ownership
+        );
+        assert_ne!(
+            crate::derive_nullifier(&payment_opening, &changed_key, &position).unwrap(),
+            expected
+        );
+        let wrong_owner = self::recipient(
+            &key,
+            *spending
+                .ownership_commitment(network, &changed_key)
+                .unwrap()
+                .as_bytes(),
+        );
+        assert!(matches!(
+            recover_withdrawal_output(&withdrawal_body, &wrong_owner, &key, 84),
+            Err(NoteRecoveryError::CommitmentMismatch)
+        ));
+        let changed_amount = opening(&recipient, (1_u128 << 64) + 4, 0xa5);
+        assert!(matches!(
+            crate::check_withdrawal_output(&withdrawal_body, &changed_amount),
+            Err(crate::WithdrawalOutputRelationError::CommitmentMismatch)
+        ));
+        let wrong_key = MlKem1024DecapsulationKey::from_seed(&[12; 64]);
+        let wrong_recipient = self::recipient(&wrong_key, *ownership.as_bytes());
+        assert!(matches!(
+            recover_payment_output(&payment_body, 0, &wrong_recipient, &wrong_key, limits(), 84),
+            Err(NoteRecoveryError::Decryption(
+                NoteDecryptionError::AuthenticationFailed
+            ))
+        ));
+        let swapped = self::withdrawal_body(
+            &withdrawal_core,
+            payment_body.outputs().outputs()[0].clone(),
+        );
+        assert!(matches!(
+            recover_withdrawal_output(&swapped, &recipient, &key, 84),
+            Err(NoteRecoveryError::Decryption(
+                NoteDecryptionError::AuthenticationFailed
+            ))
+        ));
+        assert_eq!(
+            crate::derive_nullifier(&original, &nullifier_key, &position).unwrap(),
+            expected
+        );
+    }
 }
