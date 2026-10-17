@@ -23,9 +23,35 @@ impl ProofRuntime {
         Self::default()
     }
 
+    /// Checks allocator integration without importing witnesses or admitting a proof profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeError::Busy`] while another operation holds this runtime, then
+    /// [`RuntimeError::BackendUnavailable`] if the allocator adapter is absent, backend parallelism
+    /// is enabled or panic unwinding is disabled.
+    ///
+    /// A default consumer without a global [`crate::ProofAllocator`] fails this preflight.
+    ///
+    /// ```
+    /// use houseki_proofs::{ProofRuntime, RuntimeError};
+    /// let runtime = ProofRuntime::new();
+    /// assert!(matches!(runtime.check_prover_allocator(), Err(RuntimeError::BackendUnavailable)));
+    /// ```
+    #[cfg(feature = "prover")]
+    pub fn check_prover_allocator(&self) -> Result<(), RuntimeError> {
+        let _admission = self.acquire()?;
+        let token = crate::CancellationToken::new();
+        crate::memory::Scope::enter(&token)
+            .and_then(crate::memory::Scope::finish)
+            .map_err(|_| RuntimeError::BackendUnavailable)?;
+
+        Ok(())
+    }
+
     /// Acquires the combined work slot without waiting for another request.
     #[cfg_attr(
-        not(test),
+        not(any(test, feature = "prover")),
         expect(dead_code, reason = "used by private proof execution")
     )]
     pub(crate) fn acquire(&self) -> Result<Admission<'_>, RuntimeError> {
@@ -57,6 +83,38 @@ mod tests {
         drop(lease);
 
         assert!(runtime.acquire().is_ok());
+    }
+
+    /// Requires the same admission slot for allocator preflight and recognizes the installed adapter.
+    #[cfg(feature = "prover")]
+    #[test]
+    fn prover_allocator_preflight_respects_admission() {
+        let runtime = ProofRuntime::new();
+        runtime.check_prover_allocator().unwrap();
+
+        let lease = runtime.acquire().unwrap();
+
+        assert!(matches!(
+            runtime.check_prover_allocator(),
+            Err(RuntimeError::Busy)
+        ));
+
+        drop(lease);
+
+        runtime.check_prover_allocator().unwrap();
+    }
+
+    /// Detects feature unification that would move private allocations outside the worker boundary.
+    #[cfg(feature = "prover")]
+    #[test]
+    fn compiled_backend_mode_matches_preflight() {
+        let result = ProofRuntime::new().check_prover_allocator();
+
+        if p3_maybe_rayon::PARALLEL_ENABLED || !cfg!(panic = "unwind") {
+            assert_eq!(result, Err(RuntimeError::BackendUnavailable));
+        } else {
+            assert_eq!(result, Ok(()));
+        }
     }
 
     /// Returns the slot during unwinding without storing any caller request.

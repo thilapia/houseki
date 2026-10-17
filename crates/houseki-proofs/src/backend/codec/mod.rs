@@ -1,7 +1,5 @@
 //! Canonical fixed shape proof encoding with validation before decoded allocation.
 
-#[cfg(test)]
-mod allocation;
 mod decode;
 mod encode;
 mod error;
@@ -9,13 +7,18 @@ mod layout;
 mod reader;
 mod writer;
 
-pub(crate) use error::CodecError;
-pub(crate) use layout::Layout;
 #[cfg_attr(
     not(test),
     expect(unused_imports, reason = "reserved for private family dispatch")
 )]
-pub(crate) use {decode::decode, encode::encode};
+pub(crate) use decode::decode;
+#[cfg_attr(
+    not(any(test, feature = "prover")),
+    expect(unused_imports, reason = "reserved for private family dispatch")
+)]
+pub(crate) use encode::encode;
+pub(crate) use error::CodecError;
+pub(crate) use layout::Layout;
 
 /// Complete fixed header including the payload length.
 const HEADER_BYTES: usize = 96;
@@ -28,6 +31,7 @@ const MAX_DECODED_BYTES: usize = 16 * 1024 * 1024;
 mod tests {
     use super::decode::decode_pass;
     use super::*;
+    use crate::test_allocator as allocation;
     use crate::{
         ProofRuntime,
         backend::{

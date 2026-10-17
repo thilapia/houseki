@@ -9,7 +9,11 @@ mod prover;
 mod random;
 #[cfg(test)]
 mod square_air;
+#[cfg(any(test, feature = "prover"))]
+mod trace;
 mod verifier;
+#[cfg(feature = "prover")]
+mod witness;
 
 pub(crate) use error::BackendError;
 

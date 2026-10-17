@@ -39,6 +39,30 @@ impl<'a> SpendWitness<'a> {
             membership,
         }
     }
+
+    /// Borrows the original protected opening without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn opening(&self) -> &'a NoteOpening {
+        self.opening
+    }
+
+    /// Borrows the original protected spending key without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn spending_key(&self) -> &'a SpendingKey {
+        self.spending_key
+    }
+
+    /// Borrows the original protected nullifier key without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn nullifier_key(&self) -> &'a NullifierKey {
+        self.nullifier_key
+    }
+
+    /// Borrows the original protected membership witness without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn membership(&self) -> &'a NoteMembershipWitness {
+        self.membership
+    }
 }
 
 impl fmt::Debug for SpendWitness<'_> {

@@ -1,9 +1,9 @@
 //! Synthetic relation shared by private backend and codec tests.
 
+use super::trace::Trace;
 use p3_air::{Air, AirBuilder, BaseAir, WindowAccess};
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
-use p3_matrix::dense::RowMajorMatrix;
 
 /// A private square root linked to its public square on every trace row.
 pub(crate) struct SquareAir;
@@ -14,14 +14,14 @@ impl<F> BaseAir<F> for SquareAir {
         1
     }
 
-    /// Exposes exactly the expected square.
-    fn num_public_values(&self) -> usize {
-        1
-    }
-
     /// Bounds the polynomial square and linear continuity constraints.
     fn max_constraint_degree(&self) -> Option<usize> {
         Some(2)
+    }
+
+    /// Exposes exactly the expected square.
+    fn num_public_values(&self) -> usize {
+        1
     }
 }
 
@@ -39,6 +39,9 @@ impl<AB: AirBuilder> Air<AB> for SquareAir {
 }
 
 /// Creates the synthetic witness without a public product dispatch route.
-pub(crate) fn trace() -> RowMajorMatrix<Goldilocks> {
-    RowMajorMatrix::new(vec![Goldilocks::from_u64(17); 512], 1)
+pub(crate) fn trace() -> Trace {
+    let mut trace = Trace::new(512, 1, 512).unwrap();
+    trace.values_mut().fill(Goldilocks::from_u64(17));
+
+    trace
 }

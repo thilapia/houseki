@@ -180,8 +180,8 @@ impl<'a> Reader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::backend::codec::allocation;
     use crate::backend::codec::writer::Writer;
+    use crate::test_allocator as allocation;
     use p3_field::PrimeField64;
 
     /// Preserves extension basis order and full digest bits under independent literal bytes.

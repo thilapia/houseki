@@ -7,4 +7,9 @@ pub enum RuntimeError {
     /// Another proving or verification operation already owns this runtime.
     #[error("proof runtime is busy")]
     Busy,
+
+    /// The process allocator does not provide the required private attempt cleanup boundary.
+    #[cfg(feature = "prover")]
+    #[error("protected prover allocator is unavailable")]
+    BackendUnavailable,
 }

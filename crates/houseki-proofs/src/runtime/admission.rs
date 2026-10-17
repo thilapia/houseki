@@ -6,7 +6,7 @@ use super::ProofRuntime;
 
 /// Releases admission on success, failure or normal unwinding.
 #[cfg_attr(
-    not(test),
+    not(any(test, feature = "prover")),
     expect(dead_code, reason = "used by private proof execution")
 )]
 pub(crate) struct Admission<'a> {

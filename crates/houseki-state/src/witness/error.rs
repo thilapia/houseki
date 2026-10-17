@@ -22,3 +22,13 @@ pub enum NoteMembershipError {
         CryptoFramingError,
     ),
 }
+
+/// Failure to select a sibling without exposing private path material.
+#[cfg(feature = "proofs")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum ProofPathAccessError {
+    /// The requested sibling level is outside the fixed depth 64 path.
+    #[error("invalid proof path level")]
+    InvalidLevel,
+}

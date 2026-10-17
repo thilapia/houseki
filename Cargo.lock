@@ -76,6 +76,7 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "rand_core",
+ "zeroize",
 ]
 
 [[package]]
@@ -260,7 +261,11 @@ dependencies = [
 name = "houseki-proofs"
 version = "0.1.0"
 dependencies = [
+ "chacha20",
  "getrandom",
+ "houseki-crypto",
+ "houseki-notes",
+ "houseki-state",
  "houseki-types",
  "p3-air",
  "p3-challenger",
@@ -270,12 +275,15 @@ dependencies = [
  "p3-fri",
  "p3-goldilocks",
  "p3-matrix",
+ "p3-maybe-rayon",
  "p3-merkle-tree",
  "p3-symmetric",
  "p3-uni-stark",
+ "p3-util",
  "rand",
  "sha3",
  "thiserror",
+ "tracing",
  "zeroize",
 ]
 
@@ -442,13 +450,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "once_cell"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+
+[[package]]
 name = "p3-air"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be7a317aa82ba3d758229db6dd1e2baa75f9aa6f1179d98b3b1e0c2c6b930d59"
 dependencies = [
  "p3-field",
  "p3-matrix",
+ "p3-util",
  "serde",
  "thiserror",
  "tracing",
@@ -487,8 +500,6 @@ dependencies = [
 [[package]]
 name = "p3-dft"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03c2282e0a50da4b65c508fdcf4b12ce9db65aa0efa9b521a361b8565815d2b8"
 dependencies = [
  "itertools",
  "p3-field",
@@ -518,8 +529,6 @@ dependencies = [
 [[package]]
 name = "p3-fri"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9571ee760e131fc7f63115ded567d3b3d0f6d587c35b16818e266c9d6bd3bc9d"
 dependencies = [
  "itertools",
  "p3-challenger",
@@ -677,8 +686,6 @@ dependencies = [
 [[package]]
 name = "p3-uni-stark"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0992185743e8e406eeb1dd8ca4704d1f5246ccf2790f9b521c5455585bfa479"
 dependencies = [
  "itertools",
  "p3-air",
@@ -697,8 +704,6 @@ dependencies = [
 [[package]]
 name = "p3-util"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2deb6b0e30be32c696ab3cd443cc6f10b2ffce0faa31d37bd59e58789dd6df1"
 dependencies = [
  "p3-maybe-rayon",
  "serde",
@@ -959,6 +964,9 @@ name = "tracing-core"
 version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "typenum"

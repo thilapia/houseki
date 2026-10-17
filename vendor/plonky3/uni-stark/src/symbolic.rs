@@ -1,0 +1,291 @@
+//! STARK-specific quotient polynomial degree calculations.
+
+use p3_air::Air;
+use p3_air::symbolic::{
+    AirLayout, SymbolicAirBuilder, get_all_symbolic_constraints,
+    get_max_constraint_degree_extension,
+};
+use p3_commit::PolynomialSpace;
+use p3_field::{ExtensionField, Field};
+use p3_util::log2_ceil_usize;
+use tracing::instrument;
+
+/// Size the quotient using the trace domain's transition-selector degree.
+///
+/// Two-adic domains retain the cached symbolic degree fast path. Circle uses
+/// full trace-space degrees for selectors and periodic columns. Its symbolic
+/// degree is checked even with a hint, since the hint does not encode how many
+/// transition factors occur in a constraint.
+pub fn get_log_num_quotient_chunks_for_domain<F, A>(
+    air: &A,
+    layout: AirLayout,
+    domain: impl PolynomialSpace<Val = F>,
+    is_zk: usize,
+) -> usize
+where
+    F: Field,
+    A: Air<SymbolicAirBuilder<F>>,
+{
+    let transition_degree = domain.transition_degree_multiple();
+    if transition_degree == 0 {
+        return get_log_num_quotient_chunks(air, layout, domain.size(), is_zk);
+    }
+
+    assert!(is_zk <= 1, "is_zk must be either 0 or 1");
+    let (base, extension) = get_all_symbolic_constraints::<F, F, A>(air, layout);
+    let degree = base
+        .iter()
+        .map(|c| c.degree_multiple_with_transition(transition_degree))
+        .chain(
+            extension
+                .iter()
+                .map(|c| c.degree_multiple_with_transition(transition_degree)),
+        )
+        .max()
+        .unwrap_or(0)
+        .max(air.max_constraint_degree().unwrap_or(0));
+
+    // Circle STARKs, section 5.3: an odd constraint degree d gives a quotient
+    // in the FFT subspace L^-_{(d-1)N}. For even d >= 4, rounding d-1 up to a
+    // power of two provides strict room; d <= 2 uses Circle's doubled disjoint
+    // domain. Thus the same chunk formula applies once d counts all selectors.
+    log2_ceil_usize((degree + is_zk).max(2) - 1)
+}
+
+/// Two-adic quotient sizing; use [`get_log_num_quotient_chunks_for_domain`] for other domains.
+#[instrument(skip_all, level = "debug")]
+pub fn get_log_num_quotient_chunks<F, A>(
+    air: &A,
+    layout: AirLayout,
+    trace_len: usize,
+    is_zk: usize,
+) -> usize
+where
+    F: Field,
+    A: Air<SymbolicAirBuilder<F>>,
+{
+    get_log_quotient_degree_extension(air, layout, trace_len, is_zk)
+}
+
+/// Two-adic quotient sizing, including extension constraints.
+#[instrument(
+    name = "infer log of base and extension constraint degree",
+    skip_all,
+    level = "debug"
+)]
+pub fn get_log_quotient_degree_extension<F, EF, A>(
+    air: &A,
+    layout: AirLayout,
+    trace_len: usize,
+    is_zk: usize,
+) -> usize
+where
+    F: Field,
+    EF: ExtensionField<F>,
+    A: Air<SymbolicAirBuilder<F, EF>>,
+{
+    assert!(is_zk <= 1, "is_zk must be either 0 or 1");
+
+    let degree = get_max_constraint_degree_extension::<F, EF, A>(air, layout, trace_len)
+        .max(air.max_constraint_degree().unwrap_or(0));
+    // We pad to at least degree 2, since a quotient argument doesn't make sense with smaller degrees.
+    let constraint_degree = (degree + is_zk).max(2);
+
+    // We bound the degree of the quotient polynomial by constraint_degree - 1,
+    // then choose the number of quotient chunks as the smallest power of two
+    // >= (constraint_degree - 1). This function returns log2(#chunks).
+    log2_ceil_usize(constraint_degree - 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+    use alloc::vec::Vec;
+
+    use p3_air::symbolic::{AirLayout, SymbolicAirBuilder, SymbolicVariable};
+    use p3_air::{AirBuilder, BaseAir, BaseEntry};
+    use p3_baby_bear::BabyBear;
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct MockAir {
+        constraints: Vec<SymbolicVariable<BabyBear>>,
+        width: usize,
+    }
+
+    impl BaseAir<BabyBear> for MockAir {
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
+
+    impl Air<SymbolicAirBuilder<BabyBear>> for MockAir {
+        fn eval(&self, builder: &mut SymbolicAirBuilder<BabyBear>) {
+            for constraint in &self.constraints {
+                builder.assert_zero(*constraint);
+            }
+        }
+    }
+
+    fn air_layout(air: &impl BaseAir<BabyBear>, preprocessed_width: usize) -> AirLayout {
+        AirLayout {
+            preprocessed_width,
+            main_width: air.width(),
+            num_public_values: air.num_public_values(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_get_log_num_quotient_chunks_no_constraints() {
+        let air = MockAir {
+            constraints: vec![],
+            width: 4,
+        };
+        let log_degree = get_log_num_quotient_chunks(&air, air_layout(&air, 3), 8, 0);
+        assert_eq!(log_degree, 0);
+    }
+
+    #[test]
+    fn test_get_log_num_quotient_chunks_single_constraint() {
+        let air = MockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+        };
+        let log_degree = get_log_num_quotient_chunks(&air, air_layout(&air, 3), 8, 0);
+        assert_eq!(log_degree, log2_ceil_usize(1));
+    }
+
+    #[test]
+    fn test_get_log_num_quotient_chunks_multiple_constraints() {
+        let air = MockAir {
+            constraints: vec![
+                SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0),
+                SymbolicVariable::new(BaseEntry::Main { offset: 1 }, 1),
+                SymbolicVariable::new(BaseEntry::Main { offset: 2 }, 2),
+            ],
+            width: 4,
+        };
+        let log_degree = get_log_num_quotient_chunks(&air, air_layout(&air, 3), 8, 0);
+        assert_eq!(log_degree, log2_ceil_usize(1));
+    }
+
+    /// A mock AIR with a configurable `max_constraint_degree` hint.
+    #[derive(Debug)]
+    struct HintedMockAir {
+        constraints: Vec<SymbolicVariable<BabyBear>>,
+        width: usize,
+        degree_hint: Option<usize>,
+    }
+
+    impl BaseAir<BabyBear> for HintedMockAir {
+        fn width(&self) -> usize {
+            self.width
+        }
+
+        fn max_constraint_degree(&self) -> Option<usize> {
+            self.degree_hint
+        }
+    }
+
+    impl Air<SymbolicAirBuilder<BabyBear>> for HintedMockAir {
+        fn eval(&self, builder: &mut SymbolicAirBuilder<BabyBear>) {
+            for constraint in &self.constraints {
+                builder.assert_zero(*constraint);
+            }
+        }
+    }
+
+    #[test]
+    fn test_max_constraint_degree_hint_is_used() {
+        // Actual degree is 1 (single variable), hint says 3.
+        // The hint should be used, giving log2_ceil(max(3, 2) - 1) = log2_ceil(2) = 1.
+        let air = HintedMockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+            degree_hint: Some(3),
+        };
+        let log_chunks = get_log_num_quotient_chunks(&air, air_layout(&air, 0), 8, 0);
+        assert_eq!(log_chunks, log2_ceil_usize(2));
+    }
+
+    #[test]
+    fn test_max_constraint_degree_hint_none_falls_back() {
+        // No hint provided — should fall back to symbolic evaluation.
+        // Actual degree is 1, so log2_ceil(max(1, 2) - 1) = log2_ceil(1) = 0.
+        let air = HintedMockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+            degree_hint: None,
+        };
+        let log_chunks = get_log_num_quotient_chunks(&air, air_layout(&air, 0), 8, 0);
+        assert_eq!(log_chunks, 0);
+    }
+
+    #[test]
+    fn test_max_constraint_degree_hint_exact_match() {
+        // Hint matches actual degree exactly.
+        let air = HintedMockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+            degree_hint: Some(1),
+        };
+        let with_hint = get_log_num_quotient_chunks(&air, air_layout(&air, 0), 8, 0);
+
+        let air_no_hint = HintedMockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+            degree_hint: None,
+        };
+        let without_hint =
+            get_log_num_quotient_chunks(&air_no_hint, air_layout(&air_no_hint, 0), 8, 0);
+
+        assert_eq!(with_hint, without_hint);
+    }
+
+    #[test]
+    fn test_max_constraint_degree_hint_too_small_uses_symbolic_degree() {
+        let air = HintedMockAir {
+            constraints: vec![SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0)],
+            width: 4,
+            degree_hint: Some(0),
+        };
+        assert_eq!(
+            get_log_num_quotient_chunks(&air, air_layout(&air, 0), 8, 0),
+            0
+        );
+    }
+
+    #[test]
+    fn undersized_cubic_hint_preserves_quotient_chunks() {
+        struct CubicAir;
+        impl BaseAir<BabyBear> for CubicAir {
+            fn width(&self) -> usize {
+                1
+            }
+            fn max_constraint_degree(&self) -> Option<usize> {
+                Some(1)
+            }
+        }
+        impl Air<SymbolicAirBuilder<BabyBear>> for CubicAir {
+            fn eval(&self, builder: &mut SymbolicAirBuilder<BabyBear>) {
+                let x = SymbolicVariable::new(BaseEntry::Main { offset: 0 }, 0);
+                builder.assert_zero(x * x * x);
+            }
+        }
+        let layout = air_layout(&CubicAir, 0);
+        for (is_zk, expected) in [(0, 1), (1, 2)] {
+            assert_eq!(
+                get_log_num_quotient_chunks(&CubicAir, layout, 8, is_zk),
+                expected
+            );
+            assert_eq!(
+                get_log_quotient_degree_extension::<BabyBear, BabyBear, _>(
+                    &CubicAir, layout, 8, is_zk
+                ),
+                expected
+            );
+        }
+    }
+}
