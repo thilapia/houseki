@@ -4,6 +4,7 @@ mod error;
 
 pub use error::ContextError;
 
+use crate::profile::ExpectedIdentity;
 use houseki_types::{BodyCodecLimits, TransactionContext};
 
 /// Recognized rules paired with the caller's complete expected transaction context.
@@ -11,10 +12,16 @@ use houseki_types::{BodyCodecLimits, TransactionContext};
 /// Recognition does not authenticate network activation, fee correctness or checkpoint eligibility.
 ///
 /// Only profiles admitted by the compiled registry can be constructed.
+///
+/// The `experimental-profiles` feature permits the explicitly experimental withdrawal profile
+/// for qualification work without asserting production security or network activation.
 #[derive(Debug)]
 pub struct ProofContext {
     /// Exact public context required by subsequent statement construction.
     expected: TransactionContext,
+
+    /// Exact relation identity resolved independently of any supplied proof bytes.
+    identity: ExpectedIdentity,
 }
 
 impl ProofContext {
@@ -28,12 +35,31 @@ impl ProofContext {
             return Err(ContextError::UnsupportedProtocol);
         }
 
+        #[cfg(feature = "experimental-profiles")]
+        if expected.proof_profile_id()
+            == crate::profile::reward_withdrawal::EXPERIMENTAL_REWARD_WITHDRAWAL_PROFILE
+        {
+            return Ok(Self {
+                expected,
+                identity: crate::profile::reward_withdrawal::identity(),
+            });
+        }
+
         Err(ContextError::UnsupportedProfile)
     }
 
     /// Returns the complete expected context without asserting ledger eligibility.
     pub const fn expected(&self) -> TransactionContext {
         self.expected
+    }
+
+    /// Returns the immutable registry identity without interpreting an untrusted proof header.
+    #[expect(
+        dead_code,
+        reason = "family facade consumes the resolved identity next"
+    )]
+    pub(crate) const fn identity(&self) -> &ExpectedIdentity {
+        &self.identity
     }
 
     /// Returns the representation bounds applied before allocating a canonical body.
@@ -86,6 +112,20 @@ mod tests {
         for id in [0, 1, 2, 0xffff0003, 0xffff0004, u32::MAX] {
             assert!(matches!(
                 ProofContext::new(declared(1, id)),
+                Err(ContextError::UnsupportedProfile)
+            ));
+        }
+    }
+
+    /// Candidate admission requires an explicit build opt-in and never admits neighboring IDs.
+    #[test]
+    fn reward_withdrawal_candidate_requires_explicit_opt_in() {
+        let identity = crate::profile::reward_withdrawal::identity();
+        let result = ProofContext::new(declared(1, identity.profile.value()));
+        assert_eq!(result.is_ok(), cfg!(feature = "experimental-profiles"));
+        for profile in [0xffff0006, 0xffff0008] {
+            assert!(matches!(
+                ProofContext::new(declared(1, profile)),
                 Err(ContextError::UnsupportedProfile)
             ));
         }

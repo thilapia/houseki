@@ -30,5 +30,7 @@ pub use context::{ContextError, ProofContext};
 pub use memory::ProofAllocator;
 #[cfg(feature = "prover")]
 pub use payment::{PaymentWitness, WitnessShapeError};
+#[cfg(feature = "experimental-profiles")]
+pub use profile::reward_withdrawal::EXPERIMENTAL_REWARD_WITHDRAWAL_PROFILE;
 pub use runtime::{ProofRuntime, RuntimeError};
 pub use statement::StatementError;

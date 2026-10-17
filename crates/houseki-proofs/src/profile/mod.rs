@@ -2,6 +2,7 @@
 
 mod identity;
 mod relation;
+pub(crate) mod reward_withdrawal;
 
 pub(crate) use identity::ExpectedIdentity;
 pub(crate) use relation::Relation;

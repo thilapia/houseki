@@ -47,6 +47,7 @@ mod verifier;
 #[cfg(feature = "prover")]
 mod witness;
 
+pub(crate) use codec::Layout;
 pub(crate) use error::BackendError;
 #[cfg(feature = "prover")]
 pub(crate) use trace::Trace;

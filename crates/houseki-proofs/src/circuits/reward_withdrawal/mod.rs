@@ -6,8 +6,4 @@ mod fixture;
 #[cfg(feature = "prover")]
 mod trace;
 
-#[cfg_attr(
-    not(feature = "prover"),
-    expect(unused_imports, reason = "verifier facade follows")
-)]
 pub(crate) use air::WithdrawalAir;
