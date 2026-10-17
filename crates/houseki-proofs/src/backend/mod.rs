@@ -2,9 +2,13 @@
 
 #[cfg(test)]
 mod byte_proof;
+#[cfg(test)]
+mod bytes_proof;
 mod codec;
 mod config;
 mod error;
+#[cfg(test)]
+mod gadget_proof;
 mod hash;
 #[cfg(any(test, feature = "prover"))]
 mod prover;

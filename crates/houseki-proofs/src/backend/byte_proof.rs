@@ -1,13 +1,9 @@
 //! Real backend exercises for the shared byte gadget using public test fixtures.
 
 use super::{
-    BackendError, codec,
-    config::BackendProof,
-    prover::{self, Request},
-    trace::Trace,
+    BackendError, codec, config::BackendProof, gadget_proof, prover::Request, trace::Trace,
 };
 use crate::{
-    CancellationToken,
     gadgets::{ByteAir, assign_byte},
     profile::{ExpectedIdentity, Relation},
     runtime::Admission,
@@ -51,7 +47,7 @@ fn prove(
         shape: 1,
         manifest: [0x62; 64],
     };
-    let encoded = prover::prove_encoded(
+    gadget_proof::prove(
         admission,
         Request {
             prefix: PREFIX,
@@ -61,10 +57,7 @@ fn prove(
             layout: LAYOUT,
         },
         trace,
-        &CancellationToken::new(),
-    )?;
-
-    codec::decode(&identity, LAYOUT, encoded.as_bytes()).map_err(|_| BackendError::InvalidProof)
+    )
 }
 
 /// Real proof acceptance, binding and malformed witness rejection.
