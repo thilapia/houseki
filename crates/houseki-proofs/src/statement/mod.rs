@@ -6,15 +6,14 @@ mod withdrawal;
 
 pub use error::StatementError;
 
+use crate::profile::{ExpectedIdentity, Relation};
 use houseki_types::{BodyCodecError, TransactionContext};
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
 
-use crate::profile::{ExpectedIdentity, Relation};
-
 /// Independently reconstructed public effects and their complete transcript binding.
 pub(crate) struct Statement {
-    /// Byte-valued semantic inputs in the selected family's exact order.
+    /// Byte valued semantic inputs in the selected family's exact order.
     pub(crate) public_values: Vec<Goldilocks>,
 
     /// Complete initial challenger state including the canonical body.
@@ -214,6 +213,7 @@ mod tests {
         for value in [1_u32, 0xffff0003, 4] {
             bytes.extend_from_slice(&value.to_le_bytes());
         }
+
         bytes.extend_from_slice(&5_u64.to_le_bytes());
         bytes.extend_from_slice(&8_u64.to_le_bytes());
 
@@ -223,6 +223,7 @@ mod tests {
             for index in 0..inputs {
                 bytes.extend_from_slice(&[9 + index as u8; 64]);
             }
+
             bytes.extend_from_slice(&17_u128.to_le_bytes());
             bytes.extend_from_slice(&(outputs as u64).to_le_bytes());
         } else {
@@ -323,6 +324,7 @@ mod tests {
                     Statement::withdrawal(&body, body.context(), &identity(2, 0, 1)).unwrap()
                 }
             };
+
             let original = make(&bytes);
 
             for offset in offsets {

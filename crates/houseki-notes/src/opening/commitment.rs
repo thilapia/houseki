@@ -1,10 +1,9 @@
 //! Commitment derivation from retained validated context and borrowed private note material.
 
-use houseki_crypto::{CryptoFramingError, CryptoSuite};
-use houseki_types::NoteCommitment;
-
 use super::NoteOpening;
 use crate::NoteFormat;
+use houseki_crypto::{CryptoFramingError, CryptoSuite};
+use houseki_types::NoteCommitment;
 
 impl NoteOpening {
     /// Derives the fixed commitment from this opening's retained fields.
@@ -40,13 +39,12 @@ impl NoteOpening {
 /// Independent positive V1 vectors, complete retained context and borrowed private input checks.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteRecipient};
     use houseki_crypto::CryptoSuite;
     use houseki_types::{
         AddressContext, AddressFormatVersion, Amount, EncodedMlKem1024PublicKey, NetworkId,
         OwnershipCommitment, RecipientDescriptor,
     };
-
-    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteRecipient};
 
     /// Builds canonical public key bytes with zero polynomial coefficients and a repeated seed.
     fn key(seed: u8) -> [u8; 1568] {

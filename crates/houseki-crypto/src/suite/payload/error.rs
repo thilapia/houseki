@@ -1,8 +1,7 @@
 //! Errors from bounded note payload inspection before cryptographic recovery.
 
-use thiserror::Error;
-
 use crate::CryptoSuiteError;
+use thiserror::Error;
 
 /// A failure to resolve a suite from the public layout of a note payload.
 #[derive(Debug, Error)]

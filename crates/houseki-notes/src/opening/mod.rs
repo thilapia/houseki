@@ -117,13 +117,12 @@ impl fmt::Debug for NoteOpening {
 /// Positive amount rules, complete retention, owned recipient lifetimes and fixed diagnostics.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteOpeningError, NoteRecipient};
     use houseki_crypto::CryptoSuite;
     use houseki_types::{
         AddressContext, AddressFormatVersion, Amount, EncodedMlKem1024PublicKey, NetworkId,
         OwnershipCommitment, RecipientDescriptor,
     };
-
-    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteOpeningError, NoteRecipient};
 
     /// Builds a checked descriptor with distinctive network, ownership and key seed bytes.
     fn recipient(pattern: u8) -> NoteRecipient {

@@ -1,10 +1,9 @@
 //! Bounded field storage with explicit cleanup before the allocator releases it.
 
+use super::BackendError;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
 use std::sync::atomic::{Ordering, compiler_fence};
-
-use super::BackendError;
 
 /// A single bounded field allocation without cloning or value diagnostics.
 pub(crate) struct Trace {

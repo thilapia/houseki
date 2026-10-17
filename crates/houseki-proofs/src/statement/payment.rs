@@ -1,12 +1,11 @@
 //! Native payment body checks and semantic public value construction.
 
-use houseki_types::{NoteTreeAnchor, PaymentBody, TransactionContext};
-
 use super::{Statement, StatementError, bind, require_identity, reserve};
 use crate::{
     context::require_context,
     profile::{ExpectedIdentity, Relation},
 };
+use houseki_types::{NoteTreeAnchor, PaymentBody, TransactionContext};
 
 impl Statement {
     /// Derives payment effects only after checking expected context, shape and anchor.
@@ -27,6 +26,7 @@ impl Statement {
         if anchor.network_id() != expected.network_id() || anchor.root() != body.inputs().anchor() {
             return Err(StatementError::AnchorMismatch);
         }
+
         if anchor.count().value() == 0 {
             return Err(StatementError::EmptyAnchor);
         }
@@ -51,6 +51,7 @@ impl Statement {
         for marker in nullifiers {
             public.extend_from_slice(marker.as_bytes());
         }
+
         for output in body.outputs().outputs() {
             public.extend_from_slice(output.commitment().as_bytes());
         }

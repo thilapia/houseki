@@ -1,9 +1,8 @@
 //! Internal nullifier key commitments for the ownership relation.
 
-use houseki_types::NetworkId;
-
 use super::NullifierKey;
 use crate::{CryptoFramingError, domain::Domain, hash::poseidon2_secret};
+use houseki_types::NetworkId;
 
 /// The public digest binding one nullifier secret to its network and cryptographic role.
 ///

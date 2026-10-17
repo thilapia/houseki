@@ -150,9 +150,8 @@ impl TryFrom<&[u8]> for Amount {
 /// Construction, conversion and rejection properties of [`Amount`].
 #[cfg(test)]
 mod tests {
-    use zeroize::{Zeroize, Zeroizing};
-
     use super::{Amount, AmountError};
+    use zeroize::{Zeroize, Zeroizing};
 
     /// Checks that explicit clearing handles both integer halves and retains a valid amount.
     #[test]

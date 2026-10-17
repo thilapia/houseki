@@ -88,9 +88,8 @@ impl TryFrom<CryptoSuiteId> for CryptoSuite {
 /// Suite identifier recognition and unsupported value rejection.
 #[cfg(test)]
 mod tests {
-    use houseki_types::CryptoSuiteId;
-
     use super::{CryptoSuite, CryptoSuiteError};
+    use houseki_types::CryptoSuiteId;
 
     /// Checks the exact numeric assignment of the fixed V1 suite.
     #[test]

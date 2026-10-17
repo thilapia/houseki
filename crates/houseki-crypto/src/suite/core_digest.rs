@@ -1,14 +1,12 @@
 //! Canonical digest derivation for typed transaction cores.
 
-use houseki_types::TransactionContext;
-
+use super::{PaymentEncryptionCore, RewardWithdrawalEncryptionCore};
 use crate::{
     CryptoFramingError,
     domain::{Domain, Frame},
     hash::sha3_512,
 };
-
-use super::{PaymentEncryptionCore, RewardWithdrawalEncryptionCore};
+use houseki_types::TransactionContext;
 
 impl PaymentEncryptionCore {
     /// Derives the 64 byte SHA3-512 digest of the complete encryption core.
@@ -164,18 +162,17 @@ fn frame_context(
 /// Independent core codec vectors and complete field binding.
 #[cfg(test)]
 mod tests {
+    use super::{
+        CryptoFramingError, PaymentEncryptionCore, RewardWithdrawalEncryptionCore,
+        payment_part_count,
+    };
+    use crate::CryptoSuite;
     use houseki_types::{
         Amount, CheckpointSequence, EncodedMlDsa87PublicKey, FeeScheduleId, NetworkId,
         NoteCommitment, NoteRoot, Nullifier, PaymentCountLimits, PaymentInputs, ProofProfileId,
         ProtocolVersion, RewardAccountId, TransactionContext, ValidityCheckpointRange,
         WithdrawalNonce,
     };
-
-    use super::{
-        CryptoFramingError, PaymentEncryptionCore, RewardWithdrawalEncryptionCore,
-        payment_part_count,
-    };
-    use crate::CryptoSuite;
 
     /// Builds a declared context fixture for this module's binding checks.
     fn context(changed_field: Option<usize>) -> TransactionContext {

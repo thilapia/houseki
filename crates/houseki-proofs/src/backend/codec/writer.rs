@@ -1,11 +1,10 @@
 //! Checked canonical proof output sized before a single final byte allocation.
 
+use super::CodecError;
+use crate::{backend::config::Challenge, profile::MAX_PROOF_BYTES};
 use p3_field::{BasedVectorSpace, PrimeField64};
 use p3_goldilocks::Goldilocks;
 use p3_symmetric::MerkleCap;
-
-use super::CodecError;
-use crate::{backend::config::Challenge, profile::MAX_PROOF_BYTES};
 
 /// Size only or retaining output with a fixed complete proof cap.
 pub(super) struct Writer {
@@ -27,6 +26,7 @@ impl Writer {
             if capacity > MAX_PROOF_BYTES {
                 return Err(CodecError::ProofTooLarge);
             }
+
             bytes
                 .try_reserve_exact(capacity)
                 .map_err(|_| CodecError::AllocationFailed)?;

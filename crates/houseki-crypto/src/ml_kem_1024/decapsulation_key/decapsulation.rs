@@ -1,11 +1,10 @@
 //! Shared secret recovery with ML-KEM-1024 implicit rejection.
 
+use super::MlKem1024DecapsulationKey;
+use crate::MlKem1024SharedSecret;
 use houseki_types::EncodedMlKem1024Ciphertext;
 use ml_kem::Decapsulate;
 use zeroize::Zeroizing;
-
-use super::MlKem1024DecapsulationKey;
-use crate::MlKem1024SharedSecret;
 
 impl MlKem1024DecapsulationKey {
     /// Decapsulates an encoded ciphertext into a protected shared secret without randomness.
@@ -30,10 +29,9 @@ impl MlKem1024DecapsulationKey {
 /// NIST recovery vectors, implicit rejection and KEM agreement.
 #[cfg(test)]
 mod tests {
-    use houseki_types::EncodedMlKem1024Ciphertext;
-
     use super::MlKem1024DecapsulationKey;
     use crate::ml_kem_1024::shared_secret::{assert_secret_eq, assert_secrets_eq};
+    use houseki_types::EncodedMlKem1024Ciphertext;
 
     // Public NIST ACVP seed-format decapsulation fixtures.
     // https://github.com/usnistgov/ACVP-Server/tree/ad33b3d9504491767f1aa76382464f3b3fa2359e/gen-val/json-files/ML-KEM-encapDecap-FIPS203-tr1
@@ -173,6 +171,7 @@ mod tests {
         ] {
             let mut bytes =
                 decode_hex::<{ EncodedMlKem1024Ciphertext::BYTE_LENGTH }>(VALID_CIPHERTEXT);
+
             bytes[index] ^= 1;
 
             let ciphertext = EncodedMlKem1024Ciphertext::from_bytes(bytes);

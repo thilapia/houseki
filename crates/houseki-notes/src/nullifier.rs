@@ -1,9 +1,8 @@
 //! Fixed note nullifier orchestration from a protected opening and original position.
 
+use crate::{NoteFormat, NoteOpening};
 use houseki_crypto::{CryptoFramingError, CryptoSuite, NullifierKey};
 use houseki_types::{NotePosition, Nullifier};
-
-use crate::{NoteFormat, NoteOpening};
 
 /// Derives the fixed nullifier from this opening and its original insertion position.
 ///
@@ -43,13 +42,12 @@ pub fn derive_nullifier(
 /// Independent complete positive V1 vectors and separation of original note identity.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteRecipient, derive_nullifier};
     use houseki_crypto::{CryptoSuite, NullifierKey};
     use houseki_types::{
         AddressContext, AddressFormatVersion, Amount, EncodedMlKem1024PublicKey, NetworkId,
         NotePosition, OwnershipCommitment, RecipientDescriptor,
     };
-
-    use crate::{NoteBlinding, NoteFormat, NoteOpening, NoteRecipient, derive_nullifier};
 
     /// Uses the minimum positive V1 fixture with canonical zero public coefficients and seed.
     fn opening(network: [u8; 64], atoms: u128, blinding: u8) -> NoteOpening {

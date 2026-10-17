@@ -1,15 +1,14 @@
 //! Verification constructed without private state or an entropy source.
 
-use p3_air::{Air, symbolic::SymbolicAirBuilder};
-use p3_goldilocks::Goldilocks;
-use p3_uni_stark::VerifierConstraintFolder;
-
 use super::{
     BackendError,
     config::{self, BackendProof, Config},
     random::BackendRng,
 };
 use crate::runtime::Admission;
+use p3_air::{Air, symbolic::SymbolicAirBuilder};
+use p3_goldilocks::Goldilocks;
+use p3_uni_stark::VerifierConstraintFolder;
 
 /// Checks a decoded proof with a new challenger and generators that cannot emit bytes.
 ///

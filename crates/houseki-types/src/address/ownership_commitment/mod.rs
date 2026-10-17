@@ -6,14 +6,11 @@ pub use error::OwnershipCommitmentError;
 
 /// The 64 byte digest representation of a recipient ownership commitment.
 ///
-/// The proposed recipient descriptor carries this value alongside its address context and full
+/// The recipient descriptor carries this value alongside its address context and full
 /// encapsulation public key.
 ///
-/// This container follows the existing Poseidon2 and 512 effective digest bit direction without
-/// selecting the exact ownership construction.
-///
-/// The committed fields, secret opening relation and encryption key context binding remain to be
-/// specified.
+/// The cryptographic consumer selects the ownership construction, committed fields and secret
+/// opening relation independently of this byte container.
 ///
 /// Construction preserves every byte pattern without deriving the commitment or establishing
 /// that anyone can open it.

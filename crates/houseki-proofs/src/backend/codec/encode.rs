@@ -1,9 +1,5 @@
 //! Canonical proof encoding with a complete validation and sizing pass.
 
-use houseki_types::EncodedTransactionProof;
-use p3_field::PrimeCharacteristicRing;
-use p3_goldilocks::Goldilocks;
-
 use super::{
     CodecError, HEADER_BYTES, Layout,
     writer::{Writer, exact},
@@ -12,6 +8,9 @@ use crate::{
     backend::config::{BackendProof, EXTENSION_DEGREE, QUERIES, SALT_ELEMENTS},
     profile::{ExpectedIdentity, MAX_PROOF_BYTES},
 };
+use houseki_types::EncodedTransactionProof;
+use p3_field::PrimeCharacteristicRing;
+use p3_goldilocks::Goldilocks;
 
 /// Validates the complete object before allocating its canonical output bytes.
 pub(crate) fn encode(
@@ -70,6 +69,7 @@ fn encode_payload(
     for chunk in &opened.quotient_chunks {
         writer.extensions(chunk, EXTENSION_DEGREE)?;
     }
+
     writer.extensions(
         opened.random.as_ref().ok_or(CodecError::InvalidShape)?,
         EXTENSION_DEGREE,
@@ -98,6 +98,7 @@ fn encode_payload(
     {
         return Err(CodecError::InvalidShape);
     }
+
     for cap in &fri.commit_phase_commits {
         writer.commitment(cap)?;
     }
@@ -119,6 +120,7 @@ fn encode_payload(
                 writer.fields(salt, SALT_ELEMENTS)?;
             }
         }
+
         writer.siblings(
             &opening.opening_proof.1.sibling_hashes,
             QUERIES * layout.input_height(),
@@ -137,6 +139,7 @@ fn encode_payload(
             exact(query.len(), 1)?;
             writer.fields(&query[0], SALT_ELEMENTS)?;
         }
+
         writer.siblings(
             &opening.opening_proof.1.sibling_hashes,
             QUERIES * (layout.input_height() - round - 1),

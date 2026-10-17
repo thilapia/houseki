@@ -1,10 +1,9 @@
 //! Domain separated hashing of canonical field elements.
 
+use super::{ByteHash, words};
 use p3_field::PrimeField64;
 use p3_goldilocks::Goldilocks;
 use p3_symmetric::CryptographicHasher;
-
-use super::{ByteHash, words};
 
 /// Domain separated hashing of canonical field words for leaf commitments.
 #[derive(Clone, Debug)]

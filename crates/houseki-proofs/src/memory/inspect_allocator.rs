@@ -21,6 +21,7 @@ unsafe impl GlobalAlloc for InspectAllocator {
     unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
         // Safety: The fixture uses alignment 64 with a payload spanning the remainder.
         let bytes = unsafe { std::slice::from_raw_parts(pointer.add(64), layout.size() - 64) };
+
         if bytes.iter().any(|byte| *byte != 0) {
             SAW_ZEROES.store(false, Ordering::Relaxed);
         }

@@ -4,10 +4,9 @@ mod error;
 
 pub use error::WithdrawalOutputRelationError;
 
+use crate::{NoteFormat, NoteOpening};
 use houseki_crypto::CryptoSuite;
 use houseki_types::RewardWithdrawalBody;
-
-use crate::{NoteFormat, NoteOpening};
 
 /// Checks supported output rules, network, commitment and positive public amount equality.
 ///
@@ -53,8 +52,10 @@ pub fn check_withdrawal_output(
 /// Positive output equality and the explicit separation from authenticated delivery.
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-
+    use crate::{
+        NoteBlinding, NoteFormat, NoteOpening, NoteRecipient, WithdrawalOutputRelationError,
+        check_withdrawal_output,
+    };
     use houseki_crypto::{CryptoSuite, MlKem1024DecapsulationKey};
     use houseki_types::{
         AddressContext, AddressFormatVersion, Amount, CheckpointSequence, EncodedMlDsa87PublicKey,
@@ -63,11 +64,7 @@ mod tests {
         RecipientDescriptor, RewardAccountId, RewardWithdrawalBody, TransactionContext,
         ValidityCheckpointRange, WithdrawalNonce,
     };
-
-    use crate::{
-        NoteBlinding, NoteFormat, NoteOpening, NoteRecipient, WithdrawalOutputRelationError,
-        check_withdrawal_output,
-    };
+    use std::error::Error;
 
     /// Creates a positive protected opening with distinctive full network and ownership values.
     fn opening(network: NetworkId, atoms: u128, blinding: u8) -> NoteOpening {

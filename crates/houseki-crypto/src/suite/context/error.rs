@@ -1,8 +1,7 @@
 //! Errors from selecting and preparing an output context.
 
-use thiserror::Error;
-
 use crate::CryptoFramingError;
+use thiserror::Error;
 
 /// A failure to prepare one output's note encryption context.
 #[derive(Debug, Error)]

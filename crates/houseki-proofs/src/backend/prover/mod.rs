@@ -4,28 +4,26 @@ mod request;
 
 pub(crate) use request::Request;
 
-use houseki_types::EncodedTransactionProof;
-use p3_air::{Air, DebugConstraintBuilder};
-use p3_goldilocks::Goldilocks;
-use p3_matrix::dense::RowMajorMatrix;
-use p3_uni_stark::QuotientAir;
-use std::panic::{AssertUnwindSafe, catch_unwind};
-
 use super::{
     BackendError, codec,
     config::{self, Config},
     random,
     trace::Trace,
 };
+#[cfg(test)]
+use crate::profile::ExpectedIdentity;
 use crate::{
     CancellationToken,
     memory::{self, MemoryError, Scope},
     profile::MAX_PROOF_BYTES,
     runtime::Admission,
 };
-
-#[cfg(test)]
-use crate::profile::ExpectedIdentity;
+use houseki_types::EncodedTransactionProof;
+use p3_air::{Air, DebugConstraintBuilder};
+use p3_goldilocks::Goldilocks;
+use p3_matrix::dense::RowMajorMatrix;
+use p3_uni_stark::QuotientAir;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 /// Produces only public canonical bytes after every private backend allocation is released.
 ///
@@ -192,6 +190,7 @@ mod tests {
                 identity: &identity,
                 layout: test_layout(),
             };
+
             let token = CancellationToken::new();
 
             memory::interrupt_at(phase, 8, false);

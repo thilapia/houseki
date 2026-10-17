@@ -1,13 +1,12 @@
 //! Encryption of canonical private openings after matching the selected public output.
 
+use super::NoteOutputEncryptionError;
+use crate::{NoteFormat, NoteOpening, NoteRecipient};
 use houseki_crypto::{
     CryptoSuite, NoteEncryptionContext, NoteEncryptionContextError, PaymentEncryptionCore,
     RewardWithdrawalEncryptionCore,
 };
 use houseki_types::{NetworkId, NoteCommitment, NoteOutput};
-
-use super::NoteOutputEncryptionError;
-use crate::{NoteFormat, NoteOpening, NoteRecipient};
 
 /// Matches an opening to one payment output and encrypts its canonical private record.
 ///
@@ -172,8 +171,11 @@ fn seal_opening(
 /// Delivery, complete recipient agreement, selection precedence and transaction binding.
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-
+    use crate::{
+        NoteBlinding, NoteFormat, NoteOpening, NoteOutputEncryptionError, NoteRecipient,
+        encrypt_payment_output, encrypt_withdrawal_output, payment_encryption_core,
+        withdrawal_encryption_core,
+    };
     use houseki_crypto::{
         CryptoSuite, MlKem1024DecapsulationKey, NoteDecryptionError, NoteEncryptionContext,
         NoteEncryptionContextError, NoteEncryptionError, PaymentEncryptionCore,
@@ -186,13 +188,8 @@ mod tests {
         ProtocolVersion, RecipientDescriptor, RewardAccountId, RewardWithdrawalBody,
         TransactionContext, ValidityCheckpointRange, WithdrawalNonce,
     };
+    use std::error::Error;
     use zeroize::Zeroizing;
-
-    use crate::{
-        NoteBlinding, NoteFormat, NoteOpening, NoteOutputEncryptionError, NoteRecipient,
-        encrypt_payment_output, encrypt_withdrawal_output, payment_encryption_core,
-        withdrawal_encryption_core,
-    };
 
     /// Builds the declared payment context with distinct full identifiers and checkpoint bounds.
     fn context() -> TransactionContext {

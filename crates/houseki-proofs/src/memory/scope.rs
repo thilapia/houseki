@@ -1,5 +1,9 @@
 //! Thread bound ownership spanning private backend work and release accounting.
 
+#[cfg(test)]
+use super::LAST_USAGE;
+use super::{ACTIVE, Account, MemoryError, Usage, checkpoint::backend_checkpoint};
+use crate::CancellationToken;
 use std::{
     marker::PhantomData,
     ptr,
@@ -9,11 +13,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
     },
 };
-
-#[cfg(test)]
-use super::LAST_USAGE;
-use super::{ACTIVE, Account, MemoryError, Usage, checkpoint::backend_checkpoint};
-use crate::CancellationToken;
 
 /// Thread bound ownership boundary spanning all private backend allocations.
 pub(crate) struct Scope {
@@ -50,6 +49,7 @@ impl Scope {
             wiped: AtomicUsize::new(0),
             cancelled: Arc::clone(&token.cancelled),
         });
+
         ACTIVE.with(|active| active.set(Arc::as_ptr(&account)));
         let scope = Self {
             account,

@@ -1,11 +1,10 @@
 //! Canonical binary payload encoding and checked decoding for recipient descriptors.
 
+use super::{NoteRecipient, NoteRecipientError, validate_address_format};
 use houseki_types::{
     AddressContext, AddressFormatVersion, CryptoSuiteId, EncodedMlKem1024PublicKey, NetworkId,
     OwnershipCommitment, RecipientDescriptor,
 };
-
-use super::{NoteRecipient, NoteRecipientError, validate_address_format};
 
 /// First network byte after the complete address format identifier.
 const NETWORK_OFFSET: usize = 4;
@@ -67,6 +66,7 @@ impl NoteRecipient {
         let ownership = OwnershipCommitment::from_bytes(std::array::from_fn(|index| {
             bytes[OWNERSHIP_OFFSET + index]
         }));
+
         let key = EncodedMlKem1024PublicKey::from_bytes(std::array::from_fn(|index| {
             bytes[KEY_OFFSET + index]
         }));
@@ -97,13 +97,12 @@ impl NoteRecipient {
 /// Complete byte fixtures, exact length bounds and binary parsing error precedence.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteRecipient, NoteRecipientError};
     use houseki_crypto::{CryptoSuite, CryptoSuiteError, MlKem1024EncapsulationKeyError};
     use houseki_types::{
         AddressContext, AddressFormatVersion, CryptoSuiteId, EncodedMlKem1024PublicKey, NetworkId,
         OwnershipCommitment, RecipientDescriptor,
     };
-
-    use crate::{NoteRecipient, NoteRecipientError};
 
     /// Builds a network with distinct bytes at every encoded position.
     fn network() -> NetworkId {

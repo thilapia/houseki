@@ -4,9 +4,8 @@ mod error;
 
 pub use error::NotePayloadError;
 
-use houseki_types::CryptoSuiteId;
-
 use super::CryptoSuite;
+use houseki_types::CryptoSuiteId;
 
 impl CryptoSuite {
     /// Resolves a note payload's suite after checking its byte limit and minimum layout.
@@ -52,11 +51,13 @@ impl CryptoSuite {
                     actual: payload.len(),
                     minimum: 4,
                 })?;
+
         let suite = Self::try_from(CryptoSuiteId::new(u32::from_le_bytes(*header)))?;
 
         let minimum = match suite {
             Self::V1 => 4 + 12 + 16,
         };
+
         if payload.len() < minimum {
             return Err(NotePayloadError::TruncatedPayload {
                 actual: payload.len(),
@@ -71,9 +72,8 @@ impl CryptoSuite {
 /// Payload limits, suite recognition and minimum layout boundaries.
 #[cfg(test)]
 mod tests {
-    use houseki_types::{CryptoSuiteId, EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope};
-
     use crate::{CryptoSuite, CryptoSuiteError, NotePayloadError};
+    use houseki_types::{CryptoSuiteId, EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope};
 
     /// Constructs opaque payload bytes with a complete suite header.
     fn payload(id: u32, length: usize) -> Vec<u8> {

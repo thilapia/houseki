@@ -104,6 +104,7 @@ impl NoteTree {
             } else {
                 (sibling, &changed[level])
             };
+
             changed[level + 1] = note_tree_parent(self.network, u32::from(height), left, right)?;
             index >>= 1;
         }

@@ -3,18 +3,19 @@
 //! Part contents may be sensitive, while domains, counts and lengths remain public inputs
 //! that determine framing, memory access boundaries and the number of permutations.
 
-use crypto_bigint::{U64, U512, Word};
-use zeroize::Zeroizing;
+mod sponge;
 
 use super::{
     emit_frame,
     encoding::BytePacker,
     field::FieldElement,
     frame_length,
-    permutation::permute,
-    profile::{MODULUS, OUTPUT_ELEMENTS, RATE, WIDTH},
+    profile::{MODULUS, OUTPUT_ELEMENTS},
 };
 use crate::{CryptoFramingError, domain::Domain};
+use crypto_bigint::{U64, U512, Word};
+use sponge::Sponge;
+use zeroize::Zeroizing;
 
 /// Hashes sensitive part bytes while retaining the result in guarded storage.
 ///
@@ -38,56 +39,17 @@ pub(crate) fn poseidon2_secret(
         state: std::array::from_fn(|_| FieldElement::default()),
         used: 0,
     };
+
     let mut packer = BytePacker::default();
     packer.update(&length.to_le_bytes(), &mut |word| sponge.absorb(word));
 
     emit_frame(domain, parts, &mut |chunk| {
         packer.update(chunk, &mut |word| sponge.absorb(word));
     })?;
+
     packer.finish(&mut |word| sponge.absorb(word));
 
     Ok(sponge.finish())
-}
-
-/// Owned guarded field state for one additive sponge transcript.
-struct Sponge {
-    /// Rate and capacity elements whose individual guards clear their storage on drop.
-    state: [FieldElement; WIDTH],
-
-    /// Public count of occupied rate elements since the last permutation.
-    used: usize,
-}
-
-impl Sponge {
-    /// Adds a borrowed packed word or padding value and permutes each completed rate block.
-    fn absorb(&mut self, word: &u64) {
-        self.state[self.used] = self.state[self.used].add(&FieldElement::from_word(word));
-        self.used += 1;
-        if self.used == RATE {
-            permute(&mut self.state);
-            self.used = 0;
-        }
-    }
-
-    /// Applies padding and extracts eleven samples while the caller retains guarded state.
-    fn finish(&mut self) -> Zeroizing<[u8; 64]> {
-        self.absorb(&1);
-        while self.used != 0 {
-            self.absorb(&0);
-        }
-
-        let mut values = Zeroizing::new([0; OUTPUT_ELEMENTS]);
-        for (value, field) in values[..RATE].iter_mut().zip(&self.state[..RATE]) {
-            *value = *field.canonical_word();
-        }
-
-        permute(&mut self.state);
-        for (value, field) in values[RATE..].iter_mut().zip(&self.state) {
-            *value = *field.canonical_word();
-        }
-
-        extract_digest(&values)
-    }
 }
 
 /// Extracts the low 512 bits of the integer represented by canonical base p samples.

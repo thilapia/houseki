@@ -4,7 +4,7 @@ use super::{ACTIVE, Account};
 
 /// Restores allocation tagging after copying an explicitly public result.
 pub(super) struct Suspension {
-    /// Still-live attempt restored when this stack guard leaves scope.
+    /// Still live attempt restored when this stack guard leaves scope.
     pub(super) account: *const Account,
 }
 

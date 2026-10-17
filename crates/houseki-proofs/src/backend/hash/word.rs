@@ -1,8 +1,7 @@
 //! Domain separated hashing of complete commitment digests.
 
-use p3_symmetric::CryptographicHasher;
-
 use super::{ByteHash, words};
+use p3_symmetric::CryptographicHasher;
 
 /// Domain separated hashing of complete digest words for internal tree nodes.
 #[derive(Clone, Debug)]

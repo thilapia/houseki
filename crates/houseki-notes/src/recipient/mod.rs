@@ -120,13 +120,12 @@ fn validate_address_format(version: AddressFormatVersion) -> Result<(), NoteReci
 /// Recipient retention, complete context checks and public key validation precedence.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteRecipient, NoteRecipientError};
     use houseki_crypto::{CryptoSuite, CryptoSuiteError, MlKem1024EncapsulationKeyError};
     use houseki_types::{
         AddressContext, AddressFormatVersion, CryptoSuiteId, EncodedMlKem1024PublicKey, NetworkId,
         OwnershipCommitment, RecipientDescriptor,
     };
-
-    use crate::{NoteRecipient, NoteRecipientError};
 
     /// Builds a declared context with the supported address format and suite.
     fn context() -> AddressContext {

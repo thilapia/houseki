@@ -87,9 +87,8 @@ impl Drop for NoteBlinding {
 /// Complete entropy acquisition, failure handling and private material redaction.
 #[cfg(test)]
 mod tests {
-    use getrandom::rand_core::{TryCryptoRng, TryRng};
-
     use super::{NoteBlinding, NoteBlindingError};
+    use getrandom::rand_core::{TryCryptoRng, TryRng};
 
     /// Checks that every sampled byte is retained without rejecting any complete bit pattern.
     #[test]

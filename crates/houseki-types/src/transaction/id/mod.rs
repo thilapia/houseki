@@ -6,8 +6,8 @@ pub use error::TransactionIdError;
 
 /// A 64 byte SHA3-512 identifier of the canonical transaction body and kind.
 ///
-/// Derivation runs outside proofs under a dedicated domain and canonical body encoding, which
-/// remain to be specified.
+/// Derivation runs outside proofs under a dedicated domain and canonical body encoding supplied
+/// by the cryptographic consumer.
 ///
 /// The body includes its context and complete ordered effects, including encrypted note
 /// envelopes.

@@ -57,9 +57,8 @@ impl TryFrom<&EncodedMlKem1024PublicKey> for MlKem1024EncapsulationKey {
 /// Canonical coefficient bounds and lossless public key encoding.
 #[cfg(test)]
 mod tests {
-    use houseki_types::EncodedMlKem1024PublicKey;
-
     use crate::{MlKem1024EncapsulationKey, MlKem1024EncapsulationKeyError};
+    use houseki_types::EncodedMlKem1024PublicKey;
 
     /// Checks acceptance of zero coefficients with arbitrary matrix seed bytes.
     #[test]

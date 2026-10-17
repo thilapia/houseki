@@ -149,6 +149,7 @@ mod tests {
     #[test]
     fn incomplete_and_excess_parts_are_rejected() {
         let mut sink = |_: &[u8]| {};
+
         let mut incomplete = Frame::new(Domain::NoteEncryptionCore, 2, &mut sink);
         incomplete.part(b"first").unwrap();
 

@@ -65,6 +65,7 @@ mod tests {
         let mut bytes = vec![0; if withdrawal { 4439 } else { 3610 }];
         bytes[0] = 1;
         bytes[4] = if withdrawal { 2 } else { 1 };
+
         bytes[8..72].fill(7);
         bytes[72] = 2;
         bytes[76] = 3;
@@ -88,6 +89,7 @@ mod tests {
             bytes[316] = 2;
             &[324, 1967]
         };
+
         for &start in offsets {
             bytes[start..start + 64].fill(11);
             bytes[start + 64..start + 1632].fill(12);

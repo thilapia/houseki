@@ -1,12 +1,11 @@
 //! Fixed note commitment hashing with an internally derived recipient binding.
 
-use houseki_types::{Amount, NetworkId, NoteCommitment, NoteVersion, OwnershipCommitment};
-use zeroize::Zeroizing;
-
 use super::CryptoSuite;
 use crate::{
     CryptoFramingError, MlKem1024EncapsulationKey, domain::Domain, hash::poseidon2_secret,
 };
+use houseki_types::{Amount, NetworkId, NoteCommitment, NoteVersion, OwnershipCommitment};
+use zeroize::Zeroizing;
 
 impl CryptoSuite {
     /// Derives a note commitment from its typed fields and borrowed private opening material.
@@ -194,6 +193,7 @@ mod tests {
                 .note_commitment(network, version, ownership, &key, &amount, &[0xa7; 32])
                 .unwrap()
         };
+
         let original = derive(network, version, ownership);
 
         for index in 0..64 {
@@ -235,6 +235,7 @@ mod tests {
                 .note_commitment(network, version, ownership, key, &amount, &[0xa7; 32])
                 .unwrap()
         };
+
         let original = derive(&key(0));
 
         for index in [0, 384, 768, 1152, 1535, 1536, 1567] {
@@ -263,6 +264,7 @@ mod tests {
                 .note_commitment(network, version, ownership, &key, amount, blinding)
                 .unwrap()
         };
+
         let original = derive(&amount, &blinding);
 
         for index in 0..13 {

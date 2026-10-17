@@ -1,9 +1,8 @@
 //! Errors from checking private note opening storage and internal plaintext records.
 
+use crate::NoteFormatError;
 use houseki_types::AmountError;
 use thiserror::Error;
-
-use crate::NoteFormatError;
 
 /// A failure to establish the storage invariants of an ordinary note opening.
 #[derive(Debug, Error)]

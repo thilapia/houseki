@@ -3,7 +3,6 @@
 mod measurement;
 
 use measurement::Measurement;
-
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
@@ -42,14 +41,6 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
         unsafe { System.alloc(layout) }
     }
 
-    /// Preserves the system allocator's zero initialization contract.
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        record(layout.size());
-
-        // Safety: The caller supplies the layout required by GlobalAlloc.
-        unsafe { System.alloc_zeroed(layout) }
-    }
-
     /// Releases the original system allocation without counting a new request.
     unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
         let _ = WATCH.try_with(|watch| {
@@ -58,6 +49,7 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
                 if start >= base && start + length <= base + layout.size() {
                     // Safety: The test registers initialized bytes within this still-live allocation.
                     let bytes = unsafe { std::slice::from_raw_parts(start as *const u8, length) };
+
                     watch.set(Some((start, length, bytes.iter().all(|byte| *byte == 0))));
                 }
             }
@@ -65,6 +57,14 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
 
         // Safety: Both values are forwarded unchanged from the allocator caller.
         unsafe { System.dealloc(pointer, layout) }
+    }
+
+    /// Preserves the system allocator's zero initialization contract.
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        record(layout.size());
+
+        // Safety: The caller supplies the layout required by GlobalAlloc.
+        unsafe { System.alloc_zeroed(layout) }
     }
 
     /// Records the complete replacement request without changing reallocation semantics.
@@ -82,6 +82,7 @@ pub(crate) fn measure<T>(operation: impl FnOnce() -> T) -> (T, usize, usize) {
         assert!(counts.get().is_none());
         counts.set(Some((0, 0)));
     });
+
     let measurement = Measurement;
 
     let result = operation();

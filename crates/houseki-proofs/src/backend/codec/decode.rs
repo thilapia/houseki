@@ -1,16 +1,15 @@
 //! Two pass decoding that validates all canonical bytes before allocating.
 
-use p3_field::PrimeCharacteristicRing;
-use p3_fri::{BatchMultiOpening, CommitPhaseMultiStep, FriProof};
-use p3_goldilocks::Goldilocks;
-use p3_merkle_tree::PrunedMerklePaths;
-use p3_uni_stark::{Commitments, OpenedValues};
-
 use super::{CodecError, HEADER_BYTES, Layout, reader::Reader, writer::exact};
 use crate::{
     backend::config::{BackendProof, EXTENSION_DEGREE, QUERIES, SALT_ELEMENTS},
     profile::{ExpectedIdentity, MAX_PROOF_BYTES},
 };
+use p3_field::PrimeCharacteristicRing;
+use p3_fri::{BatchMultiOpening, CommitPhaseMultiStep, FriProof};
+use p3_goldilocks::Goldilocks;
+use p3_merkle_tree::PrunedMerklePaths;
+use p3_uni_stark::{Commitments, OpenedValues};
 
 /// Validates a fixed envelope against an identity resolved before untrusted decoding.
 fn payload<'a>(identity: &ExpectedIdentity, bytes: &'a [u8]) -> Result<&'a [u8], CodecError> {
@@ -22,9 +21,11 @@ fn payload<'a>(identity: &ExpectedIdentity, bytes: &'a [u8]) -> Result<&'a [u8],
     if &header[..8] != b"HKPROOF1" {
         return Err(CodecError::IdentityMismatch);
     }
+
     if header[8..12] != 1_u32.to_le_bytes() {
         return Err(CodecError::UnsupportedVersion);
     }
+
     if header[..88] != identity.to_bytes() {
         return Err(CodecError::IdentityMismatch);
     }
@@ -74,9 +75,11 @@ pub(super) fn decode_pass(
     } else {
         None
     };
+
     let quotient_chunks = reader.list(layout.quotient_chunks, |reader, _| {
         reader.extensions(EXTENSION_DEGREE)
     })?;
+
     let random_values = reader.extensions(EXTENSION_DEGREE)?;
 
     let hiding = reader.list(3, |reader, batch| {
@@ -101,6 +104,7 @@ pub(super) fn decode_pass(
                 reader.fields(SALT_ELEMENTS)
             })
         })?;
+
         let sibling_hashes = reader.siblings(QUERIES * layout.input_height())?;
 
         Ok(BatchMultiOpening {
@@ -114,6 +118,7 @@ pub(super) fn decode_pass(
         let salts = reader.list(QUERIES, |reader, _| {
             reader.list(1, |reader, _| reader.fields(SALT_ELEMENTS))
         })?;
+
         let sibling_hashes = reader.siblings(QUERIES * (layout.input_height() - round - 1))?;
 
         Ok(CommitPhaseMultiStep {

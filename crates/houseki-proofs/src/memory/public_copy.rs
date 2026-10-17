@@ -1,8 +1,7 @@
 //! Explicit escape for canonical public proof bytes after private processing.
 
-use std::ptr;
-
 use super::{ACTIVE, MemoryError, suspension::Suspension};
+use std::ptr;
 
 /// Copies only canonical public proof bytes outside the private allocation lifetime.
 ///

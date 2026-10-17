@@ -67,9 +67,8 @@ impl TryFrom<NoteVersion> for NoteFormat {
 /// Exact format recognition and preservation of unsupported version identifiers.
 #[cfg(test)]
 mod tests {
-    use houseki_types::NoteVersion;
-
     use crate::{NoteFormat, NoteFormatError};
+    use houseki_types::NoteVersion;
 
     /// Checks the assigned format resolves and exposes its version in constant contexts.
     #[test]

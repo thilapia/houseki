@@ -1,11 +1,10 @@
 //! Allocation free structural scanning followed by fallible decoded allocation.
 
+use super::{CodecError, MAX_DECODED_BYTES};
+use crate::backend::config::Challenge;
 use p3_field::{BasedVectorSpace, PrimeCharacteristicRing};
 use p3_goldilocks::Goldilocks;
 use p3_symmetric::MerkleCap;
-
-use super::{CodecError, MAX_DECODED_BYTES};
-use crate::backend::config::Challenge;
 
 /// A fixed SHA3-512 commitment represented without truncation.
 type Commitment = MerkleCap<Goldilocks, [u64; 8]>;

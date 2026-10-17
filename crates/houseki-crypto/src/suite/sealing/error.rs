@@ -1,8 +1,7 @@
 //! Failures while sealing a bounded note envelope.
 
-use thiserror::Error;
-
 use crate::CryptoFramingError;
+use thiserror::Error;
 
 /// A failure to encrypt note bytes into a complete envelope.
 #[derive(Debug, Error)]

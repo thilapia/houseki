@@ -2,10 +2,9 @@
 //!
 //! Callers cannot select parameters.
 
-use std::sync::OnceLock;
-
 use p3_goldilocks::{Goldilocks, Poseidon2Goldilocks, default_goldilocks_poseidon2_16};
 use p3_symmetric::Permutation;
+use std::sync::OnceLock;
 
 /// Prime modulus of the Goldilocks field.
 pub(super) const MODULUS: u64 = 0xffff_ffff_0000_0001;

@@ -107,6 +107,7 @@ mod tests {
                 .unwrap()
             })
         });
+
         let [first, second] = requests.map(|request| request.join().unwrap());
 
         assert_ne!(first.commitments.trace, second.commitments.trace);
@@ -125,7 +126,7 @@ mod tests {
         }
     }
 
-    /// Stops before a backend invocation whenever any per-attempt seed cannot be acquired.
+    /// Stops before a backend invocation whenever any per attempt seed cannot be acquired.
     #[test]
     fn entropy_failure_has_no_deterministic_fallback() {
         for failed_seed in 0..3 {

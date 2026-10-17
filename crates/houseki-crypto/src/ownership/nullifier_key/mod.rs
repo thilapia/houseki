@@ -101,9 +101,8 @@ impl Drop for NullifierKey {
 /// Exact key import, complete entropy acquisition and redacted diagnostics.
 #[cfg(test)]
 mod tests {
-    use getrandom::rand_core::{TryCryptoRng, TryRng};
-
     use super::{NullifierKey, NullifierKeyError};
+    use getrandom::rand_core::{TryCryptoRng, TryRng};
 
     /// Copies every secret byte into independently guarded caller storage.
     #[cfg(feature = "proofs")]

@@ -90,12 +90,10 @@ impl fmt::Debug for MlKem1024DecapsulationKey {
 /// Seed conformance, entropy failures and private key redaction.
 #[cfg(test)]
 mod tests {
-    use std::fmt;
-
-    use getrandom::rand_core::{TryCryptoRng, TryRng};
-
     use super::{MlKem1024DecapsulationKey, MlKem1024DecapsulationKeyError};
     use crate::MlKem1024EncapsulationKey;
+    use getrandom::rand_core::{TryCryptoRng, TryRng};
+    use std::fmt;
 
     // Public NIST ACVP fixture, ML-KEM-keyGen-FIPS203, tgId 3, tcId 51.
     // https://github.com/usnistgov/ACVP-Server/tree/15c0f3deeefbfa8cb6cd32a99e1ca3b738c66bf0/gen-val/json-files/ML-KEM-keyGen-FIPS203
