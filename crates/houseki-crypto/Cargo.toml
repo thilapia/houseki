@@ -19,6 +19,7 @@ sha3.workspace = true
 sha2.workspace = true
 hkdf.workspace = true
 hmac.workspace = true
+ml-dsa.workspace = true
 ml-kem.workspace = true
 p3-field.workspace = true
 p3-goldilocks.workspace = true

@@ -21,6 +21,7 @@ sha3 = { version = "=0.11.0", default-features = false }
 sha2 = { version = "=0.11.1", default-features = false, features = ["zeroize"] }
 hkdf = { version = "=0.13.0", default-features = false }
 hmac = { version = "=0.13.0", default-features = false, features = ["zeroize"] }
+ml-dsa = { version = "=0.1.1", default-features = false, features = ["alloc", "rand_core", "zeroize"] }
 ml-kem = { version = "=0.3.2", default-features = false, features = ["zeroize"] }
 p3-field = { version = "=0.8.0", default-features = false }
 p3-goldilocks = { version = "=0.8.0", default-features = false }
