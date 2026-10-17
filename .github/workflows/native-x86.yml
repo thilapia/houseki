@@ -93,6 +93,26 @@ jobs:
       - name: Run native release crypto, notes and state tests
         run: cargo test -p houseki-crypto -p houseki-notes -p houseki-state --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
 
+      - name: Check proof capability boundaries
+        run: |
+          cargo check -p houseki-proofs --lib --no-default-features --locked \
+            2>&1 | tee validation-logs/proofs-verifier-check.log
+          cargo clippy -p houseki-proofs --all-targets --all-features --locked -- \
+            -D warnings -D missing_docs -D clippy::missing_docs_in_private_items \
+            2>&1 | tee validation-logs/proofs-all-features-clippy.log
+          RUSTDOCFLAGS="-D warnings" cargo doc -p houseki-proofs --no-deps \
+            --document-private-items --all-features --locked \
+            2>&1 | tee validation-logs/proofs-all-features-rustdoc.log
+
+      - name: Test proof capabilities in debug and release
+        run: |
+          cargo test -p houseki-proofs --features prover --locked \
+            2>&1 | tee validation-logs/proofs-prover-tests.log
+          cargo test -p houseki-proofs --release --no-default-features --locked \
+            2>&1 | tee validation-logs/proofs-verifier-release-tests.log
+          cargo test -p houseki-proofs --release --features prover --locked \
+            2>&1 | tee validation-logs/proofs-prover-release-tests.log
+
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
