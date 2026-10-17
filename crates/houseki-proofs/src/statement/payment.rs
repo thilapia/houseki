@@ -1,6 +1,6 @@
 //! Native payment body checks and semantic public value construction.
 
-use super::{Statement, StatementError, bind, require_identity, reserve};
+use super::{PaymentValues, Statement, StatementError, bind, require_identity, reserve};
 use crate::{
     context::require_context,
     profile::{ExpectedIdentity, Relation},
@@ -43,7 +43,8 @@ impl Statement {
             }
         }
 
-        let mut public = reserve(160 + 64 * (inputs + outputs))?;
+        let mut public =
+            reserve(PaymentValues::<u8>::length(inputs, outputs).expect("validated shape"))?;
         public.extend_from_slice(expected.network_id().as_bytes());
         public.extend_from_slice(anchor.root().as_bytes());
         public.extend_from_slice(&anchor.count().value().to_le_bytes());

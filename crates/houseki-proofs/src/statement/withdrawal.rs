@@ -1,6 +1,6 @@
 //! Native withdrawal body checks and semantic public value construction.
 
-use super::{Statement, StatementError, bind, require_identity, reserve};
+use super::{Statement, StatementError, WithdrawalValues, bind, require_identity, reserve};
 use crate::{
     context::require_context,
     profile::{ExpectedIdentity, Relation},
@@ -19,7 +19,7 @@ impl Statement {
 
         let body_bytes = body.to_bytes(crate::profile::body_limits())?;
 
-        let mut public = reserve(144)?;
+        let mut public = reserve(WithdrawalValues::<u8>::LENGTH)?;
         public.extend_from_slice(expected.network_id().as_bytes());
         public.extend_from_slice(&body.public_amount().atoms().to_le_bytes());
         public.extend_from_slice(body.output().commitment().as_bytes());

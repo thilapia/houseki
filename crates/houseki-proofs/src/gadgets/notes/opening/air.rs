@@ -1,6 +1,7 @@
 //! Test-only complete opening relation with the frozen withdrawal semantic endpoints.
 
 use super::Opening;
+use crate::statement::WithdrawalValues;
 use p3_air::{Air, AirBuilder, BaseAir, DebugConstraintBuilder, WindowAccess};
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
@@ -93,7 +94,7 @@ impl BaseAir<Goldilocks> for OpeningAir {
 
     /// Network, public amount and final commitment preserve the frozen byte layout.
     fn num_public_values(&self) -> usize {
-        144
+        WithdrawalValues::<Goldilocks>::LENGTH
     }
 }
 
@@ -107,8 +108,11 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for OpeningAir {
             .iter()
             .map(|value| (*value).into())
             .collect();
-        let network = std::array::from_fn(|index| builder.public_values()[index].into());
-        let commitment = std::array::from_fn(|index| builder.public_values()[80 + index].into());
+        let public =
+            WithdrawalValues::new(builder.public_values()).expect("fixed withdrawal shape");
+        let network = public.network().map(Into::into);
+        let commitment = public.commitment().map(Into::into);
+        let amount = *public.amount();
         self.opening.eval(
             builder,
             row,
@@ -119,7 +123,7 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for OpeningAir {
         );
 
         for (index, byte) in Opening::amount(row).iter().enumerate() {
-            let expected = builder.public_values()[64 + index];
+            let expected = amount[index];
             builder
                 .when(selectors[76].clone())
                 .assert_eq(*byte, expected);

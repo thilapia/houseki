@@ -2,9 +2,22 @@
 
 mod error;
 mod payment;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "family AIR endpoint consumers follow")
+)]
+mod payment_values;
 mod withdrawal;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "family AIR endpoint consumers follow")
+)]
+mod withdrawal_values;
 
 pub use error::StatementError;
+
+pub(crate) use payment_values::PaymentValues;
+pub(crate) use withdrawal_values::WithdrawalValues;
 
 use crate::profile::{ExpectedIdentity, Relation};
 use houseki_types::{BodyCodecError, TransactionContext};
