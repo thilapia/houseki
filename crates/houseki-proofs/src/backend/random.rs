@@ -5,7 +5,6 @@ use std::{convert::Infallible, fmt};
 use chacha20::ChaCha12Rng;
 use rand::{Rng, SeedableRng, TryCryptoRng, TryRng};
 use zeroize::Zeroize;
-#[cfg(any(test, feature = "prover"))]
 use zeroize::Zeroizing;
 
 #[cfg(any(test, feature = "prover"))]
@@ -68,11 +67,11 @@ impl TryCryptoRng for BackendRng {}
 
 impl SeedableRng for BackendRng {
     /// Full cryptographic seed passed by protected acquisition or upstream stream derivation.
-    type Seed = [u8; 32];
+    type Seed = Zeroizing<[u8; 32]>;
 
     /// Creates a private stream without retaining the input seed array separately.
     fn from_seed(mut seed: Self::Seed) -> Self {
-        let generator = ChaCha12Rng::from_seed(seed);
+        let generator = ChaCha12Rng::from_seed(*seed);
         seed.zeroize();
         Self {
             generator: Some(generator),
@@ -89,7 +88,7 @@ pub(super) fn generators_with(
     for generator in &mut generators {
         let mut seed = Zeroizing::new([0; 32]);
         fill(&mut seed)?;
-        *generator = BackendRng::from_seed(*seed);
+        *generator = BackendRng::from_seed(seed);
     }
     Ok(generators)
 }
@@ -105,6 +104,19 @@ pub(super) fn fresh_generators() -> Result<[BackendRng; 3], BackendError> {
 mod tests {
     use super::*;
 
+    /// Keeps upstream derived stream seeds under a guarded associated seed type.
+    #[test]
+    fn derived_generators_require_guarded_seed_storage() {
+        let seed: <BackendRng as SeedableRng>::Seed = Zeroizing::new([83; 32]);
+        let mut actual = BackendRng::from_seed(seed);
+        let mut expected = rand::rngs::StdRng::from_seed([83; 32]);
+        let mut derived = BackendRng::from_rng(&mut actual);
+        let mut expected_derived = rand::rngs::StdRng::from_rng(&mut expected);
+        for _ in 0..1024 {
+            assert_eq!(derived.try_next_u64().unwrap(), expected_derived.next_u64());
+        }
+    }
+
     /// Requires drop cleanup from both stack state implementations and preserves the pinned stream.
     #[test]
     fn private_random_and_hash_state_support_drop_cleanup() {
@@ -113,7 +125,7 @@ mod tests {
         clears_on_drop::<chacha20::ChaCha12Rng>();
         clears_on_drop::<sha3::Sha3_512>();
         let mut expected = rand::rngs::StdRng::from_seed([0x74; 32]);
-        let mut actual = BackendRng::from_seed([0x74; 32]);
+        let mut actual = BackendRng::from_seed(Zeroizing::new([0x74; 32]));
         for _ in 0..1024 {
             assert_eq!(actual.try_next_u64().unwrap(), expected.next_u64());
         }
