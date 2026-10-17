@@ -2,8 +2,10 @@
 
 mod codec;
 mod error;
+mod text;
 
 pub use error::NoteRecipientError;
+pub use text::NoteAddressError;
 
 use houseki_crypto::{CryptoSuite, MlKem1024EncapsulationKey};
 use houseki_types::{
@@ -24,8 +26,8 @@ use houseki_types::{
 /// [`Self::from_bytes`] checks the canonical binary descriptor payload, while [`Self::to_bytes`]
 /// encodes the retained public fields without a text alphabet or checksum.
 ///
-/// Display and checksum checks belong to transport consumers, while opening construction
-/// checks compatibility with its note format.
+/// [`Self::to_address`] and [`Self::from_address`] provide the canonical complete text and
+/// transcription checksum, while opening construction checks compatibility with its note format.
 ///
 /// Commitment consumers derive recipient binding internally through crypto from this snapshot's
 /// network, suite and key.

@@ -9,6 +9,9 @@ pub(crate) use framing::Frame;
 /// Only registered roles can select a cryptographic domain.
 #[derive(Clone, Copy)]
 pub(crate) enum Domain {
+    /// Detects transcription changes in one complete binary recipient descriptor.
+    AddressChecksum,
+
     /// Binds the complete withdrawal body and operation kind for direct contextual signing.
     WithdrawalSignatureBody,
 
@@ -53,6 +56,7 @@ impl Domain {
     /// Returns the exact ASCII label encoded in this domain's transcript.
     pub(crate) fn label(&self) -> &'static [u8] {
         match self {
+            Self::AddressChecksum => b"houseki/v1/address/checksum",
             Self::WithdrawalSignatureBody => b"houseki/v1/reward-withdrawal/body",
             Self::TransactionIdentity => b"houseki/v1/transaction/id",
             Self::RewardAccountIdentity => b"houseki/v1/reward/account",

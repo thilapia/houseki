@@ -2,6 +2,7 @@
 
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
+mod address_checksum;
 mod domain;
 mod hash;
 mod identity;
@@ -11,6 +12,7 @@ mod ownership;
 mod random;
 mod suite;
 
+pub use address_checksum::recipient_descriptor_checksum;
 pub use domain::CryptoFramingError;
 pub use identity::{BodyHashError, payment_transaction_id, withdrawal_transaction_id};
 pub use ml_dsa_87::{
