@@ -21,6 +21,9 @@ impl CryptoSuite {
     /// The caller selects note rules compatible with this fixed profile and checks version
     /// support in `houseki-notes`, since encoding a version here does not recognize its rules.
     ///
+    /// This primitive also accepts zero amounts, leaving ordinary note amount rules and
+    /// protocol activation with the consumer.
+    ///
     /// Amount and blinding remain borrowed, with encoded amount bytes guarded during hashing
     /// and the caller responsible for their original storage and fresh independent blinding.
     ///
@@ -31,7 +34,7 @@ impl CryptoSuite {
     ///
     /// Returns [`CryptoFramingError`] if recipient binding or the note transcript fails, with
     /// no note commitment returned and all present input lengths fixed and representable.
-    pub(crate) fn note_commitment(
+    pub fn note_commitment(
         &self,
         network: NetworkId,
         version: NoteVersion,
@@ -40,22 +43,26 @@ impl CryptoSuite {
         amount: &Amount,
         blinding: &[u8; 32],
     ) -> Result<NoteCommitment, CryptoFramingError> {
-        let recipient = self.recipient_key_binding(network, recipient_key)?;
-        let amount_bytes = Zeroizing::new(amount.to_le_bytes());
+        match self {
+            Self::V1 => {
+                let recipient = self.recipient_key_binding(network, recipient_key)?;
+                let amount_bytes = Zeroizing::new(amount.to_le_bytes());
 
-        let digest = poseidon2_secret(
-            Domain::NoteCommitment,
-            &[
-                network.as_bytes(),
-                &version.value().to_le_bytes(),
-                ownership.as_bytes(),
-                &recipient,
-                &amount_bytes[..],
-                blinding,
-            ],
-        )?;
+                let digest = poseidon2_secret(
+                    Domain::NoteCommitment,
+                    &[
+                        network.as_bytes(),
+                        &version.value().to_le_bytes(),
+                        ownership.as_bytes(),
+                        &recipient,
+                        &amount_bytes[..],
+                        blinding,
+                    ],
+                )?;
 
-        Ok(NoteCommitment::from_bytes(*digest))
+                Ok(NoteCommitment::from_bytes(*digest))
+            }
+        }
     }
 }
 

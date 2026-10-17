@@ -5,10 +5,6 @@ mod context;
 mod core_digest;
 mod error;
 mod key_derivation;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "Public note consumers are separate increments.")
-)]
 mod note_commitment;
 mod opening;
 mod payload;

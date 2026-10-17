@@ -8,17 +8,17 @@
     )
 )]
 mod codec;
+mod commitment;
 mod error;
 
 pub use error::NoteOpeningError;
 pub(crate) use error::NotePlaintextError;
 
+use crate::{NoteBlinding, NoteFormat, NoteRecipient};
 use houseki_crypto::CryptoSuite;
 use houseki_types::Amount;
 use std::fmt;
 use zeroize::Zeroizing;
-
-use crate::{NoteBlinding, NoteFormat, NoteRecipient};
 
 /// An owned private opening with a supported format, compatible recipient and positive amount.
 ///
@@ -36,7 +36,7 @@ pub struct NoteOpening {
     /// Recognized immutable rules checked for compatibility with the recipient suite.
     format: NoteFormat,
 
-    /// Independent validated recipient snapshot retained for later commitment and delivery use.
+    /// Independent validated recipient snapshot retained for commitment and delivery use.
     recipient: NoteRecipient,
 
     /// Positive private amount held in storage that clears its atom count when dropped.

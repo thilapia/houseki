@@ -45,7 +45,7 @@ impl NoteBlinding {
         Self::generate_with_rng(&mut SysRng)
     }
 
-    /// Borrows protected bytes for internal plaintext encoding without a public export.
+    /// Borrows protected bytes for internal note operations without a public export.
     pub(crate) fn as_bytes(&self) -> &[u8; Self::LENGTH] {
         &self.0
     }
