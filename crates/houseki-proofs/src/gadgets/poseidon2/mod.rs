@@ -13,8 +13,7 @@ mod permutation_air;
 mod profile;
 #[cfg(test)]
 mod recipient_hash_air;
-#[cfg(any(test, feature = "prover"))]
-mod scratch;
+mod scheduled;
 mod sponge;
 
 #[cfg(test)]
@@ -30,3 +29,12 @@ pub(crate) use hash_air::HashAir;
 pub(crate) use permutation_air::PermutationAir;
 #[cfg(test)]
 pub(crate) use recipient_hash_air::RecipientHashAir;
+
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "note consumers follow in the next semantic commit"
+    )
+)]
+pub(crate) use scheduled::ScheduledHash;

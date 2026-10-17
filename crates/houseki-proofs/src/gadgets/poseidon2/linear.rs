@@ -2,7 +2,7 @@
 
 use super::profile::WIDTH;
 #[cfg(any(test, feature = "prover"))]
-use super::scratch::Scratch;
+use crate::gadgets::Scratch;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::{Goldilocks, MATRIX_DIAG_16_GOLDILOCKS};
 

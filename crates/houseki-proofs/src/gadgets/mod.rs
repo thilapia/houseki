@@ -25,6 +25,8 @@ mod notes;
     )
 )]
 mod poseidon2;
+#[cfg(any(test, feature = "prover"))]
+mod scratch;
 
 #[cfg(test)]
 pub(crate) use amount::{AdditionAir, AmountAir};
@@ -72,3 +74,6 @@ pub(crate) use poseidon2::{
     BlockAir, ExtractionRowAir, FramedSpongeAir, FramingAir, HashAir, PermutationAir,
     RecipientHashAir,
 };
+
+#[cfg(any(test, feature = "prover"))]
+pub(crate) use scratch::Scratch;

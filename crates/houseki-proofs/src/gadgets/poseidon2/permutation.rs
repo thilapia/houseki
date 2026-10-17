@@ -3,7 +3,7 @@
 use super::linear;
 use super::profile::{SBOXES, WIDTH};
 #[cfg(any(test, feature = "prover"))]
-use super::scratch::Scratch;
+use crate::gadgets::Scratch;
 use p3_air::AirBuilder;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::{

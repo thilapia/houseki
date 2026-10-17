@@ -9,7 +9,7 @@ use std::sync::atomic::{Ordering, compiler_fence};
 ///
 /// Drop clears this storage on normal return and unwinding, but does not promise erasure of
 /// compiler generated arithmetic copies or registers.
-pub(super) struct Scratch<const N: usize> {
+pub(crate) struct Scratch<const N: usize> {
     /// Cells retained until the assignment operation finishes.
     values: [Goldilocks; N],
 }

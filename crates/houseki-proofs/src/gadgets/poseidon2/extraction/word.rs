@@ -83,7 +83,7 @@ pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
 ///
 /// The incoming carry must come from the preceding assignment or be zero initially.
 #[cfg(any(test, feature = "prover"))]
-pub(super) fn assign(
+pub(in crate::gadgets::poseidon2) fn assign(
     values: &[Goldilocks; SAMPLES],
     column: usize,
     incoming: &mut i64,

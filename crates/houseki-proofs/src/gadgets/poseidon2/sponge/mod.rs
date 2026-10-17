@@ -10,12 +10,12 @@ pub(super) use air::SpongeAir;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use error::SpongeError;
 
-#[cfg(any(test, feature = "prover"))]
-use super::scratch::Scratch;
 use super::{
     permutation,
     profile::{RATE, SAMPLES, SBOXES, WIDTH},
 };
+#[cfg(any(test, feature = "prover"))]
+use crate::gadgets::Scratch;
 use p3_air::AirBuilder;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;

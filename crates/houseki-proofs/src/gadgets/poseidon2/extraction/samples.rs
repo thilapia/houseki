@@ -28,7 +28,7 @@ pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
 
 /// Overwrites each borrowed encoding through its existing canonical assignment owner.
 #[cfg(any(test, feature = "prover"))]
-pub(super) fn assign(
+pub(in crate::gadgets::poseidon2) fn assign(
     values: &[Goldilocks; SAMPLES],
     encodings: &mut [[Goldilocks; ENCODING]; SAMPLES],
 ) {
