@@ -25,6 +25,14 @@ hkdf = { version = "=0.13.0", default-features = false }
 hmac = { version = "=0.13.0", default-features = false, features = ["zeroize"] }
 ml-dsa = { version = "=0.1.1", default-features = false, features = ["alloc", "rand_core", "zeroize"] }
 ml-kem = { version = "=0.3.2", default-features = false, features = ["zeroize"] }
+p3-air = { version = "=0.8.0", default-features = false }
+p3-challenger = { version = "=0.8.0", default-features = false }
+p3-commit = { version = "=0.8.0", default-features = false }
+p3-dft = { version = "=0.8.0", default-features = false }
+p3-fri = { version = "=0.8.0", default-features = false }
+p3-matrix = { version = "=0.8.0", default-features = false }
+p3-merkle-tree = { version = "=0.8.0", default-features = false }
+p3-uni-stark = { version = "=0.8.0", default-features = false }
 p3-field = { version = "=0.8.0", default-features = false }
 p3-goldilocks = { version = "=0.8.0", default-features = false }
 p3-symmetric = { version = "=0.8.0", default-features = false }
@@ -33,3 +41,6 @@ zeroize = { version = "=1.9.1", default-features = false, features = ["alloc"] }
 
 # error handling
 thiserror = { version = "2.0.21" }
+
+# private proof random generators
+rand = { version = "=0.10.1", default-features = false, features = ["std_rng"] }

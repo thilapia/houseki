@@ -2,6 +2,8 @@
 
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
+#[cfg_attr(not(test), allow(dead_code))]
+mod backend;
 mod context;
 #[cfg_attr(not(test), allow(dead_code))]
 mod profile;
