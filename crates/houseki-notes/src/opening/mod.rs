@@ -76,6 +76,21 @@ impl NoteOpening {
         })
     }
 
+    /// Copies the complete blinding into an already guarded caller destination without allocation.
+    ///
+    /// The opening retains its original owner, while the caller owns and clears the destination.
+    ///
+    /// ```compile_fail,E0308
+    /// use houseki_notes::NoteOpening;
+    /// fn copy(opening: &NoteOpening) {
+    ///     opening.write_proof_blinding(&mut [0; 32]);
+    /// }
+    /// ```
+    #[cfg(feature = "proofs")]
+    pub fn write_proof_blinding(&self, destination: &mut Zeroizing<[u8; 32]>) {
+        destination.copy_from_slice(self.blinding.as_bytes());
+    }
+
     /// Returns the supported immutable note rules retained by this opening.
     pub const fn format(&self) -> NoteFormat {
         self.format
@@ -126,6 +141,25 @@ mod tests {
         );
 
         NoteRecipient::validate(&descriptor, network).unwrap()
+    }
+
+    /// Copies the opening's blinding without returning an unguarded owned array.
+    #[cfg(feature = "proofs")]
+    #[test]
+    fn proof_blinding_copy_preserves_the_original_owner() {
+        let opening = NoteOpening::new(
+            NoteFormat::V1,
+            &recipient(7),
+            Amount::from_atoms(1).unwrap(),
+            NoteBlinding::from_bytes(&[39; 32]),
+        )
+        .unwrap();
+        let mut destination = zeroize::Zeroizing::new([255; 32]);
+        opening.write_proof_blinding(&mut destination);
+        assert_eq!(*destination, [39; 32]);
+        destination.fill(0);
+        opening.write_proof_blinding(&mut destination);
+        assert_eq!(*destination, [39; 32]);
     }
 
     /// Checks positive boundary values and exact format, recipient, amount and blinding retention.

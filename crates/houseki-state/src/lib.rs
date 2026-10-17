@@ -7,3 +7,6 @@ mod witness;
 
 pub use tree::{NoteTree, NoteTreeError};
 pub use witness::{NoteMembershipError, NoteMembershipWitness};
+
+#[cfg(feature = "proofs")]
+pub use witness::ProofPathAccessError;

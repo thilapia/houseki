@@ -26,6 +26,16 @@ pub enum NoteMembershipError {
     ),
 }
 
+/// Failure to select a sibling without exposing private path material.
+#[cfg(feature = "proofs")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum ProofPathAccessError {
+    /// The requested sibling level is outside the fixed depth 64 path.
+    #[error("invalid proof path level")]
+    InvalidLevel,
+}
+
 /// A protected original position and exactly 64 sibling digests in leaf to root order.
 ///
 /// Construction imports untrusted witness material without asserting membership or finality.
@@ -33,7 +43,9 @@ pub enum NoteMembershipError {
 /// Stored position and siblings are cleared on drop, including unwinding, while caller import
 /// buffers and every compiler or system copy remain outside this cleanup guarantee.
 ///
-/// No clone, detailed diagnostics or sibling byte export is provided.
+/// No cloning or detailed diagnostics are provided.
+///
+/// The `proofs` feature permits copying a single sibling into guarded caller storage.
 pub struct NoteMembershipWitness {
     /// Original insertion position under an owner that performs explicit drop cleanup.
     pub(crate) position: Zeroizing<NotePosition>,
@@ -56,6 +68,34 @@ impl NoteMembershipWitness {
     /// Explicit caller copies remain the caller's responsibility to protect and clear.
     pub fn original_position(&self) -> &NotePosition {
         &self.position
+    }
+
+    /// Copies one sibling in leaf to root order into an already guarded destination.
+    ///
+    /// The caller owns and clears the destination independently of this witness.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProofPathAccessError::InvalidLevel`] for level 64 or larger without writing.
+    ///
+    /// ```compile_fail,E0308
+    /// use houseki_state::NoteMembershipWitness;
+    /// fn copy(witness: &NoteMembershipWitness) {
+    ///     witness.write_proof_sibling(0, &mut [0; 64]).unwrap();
+    /// }
+    /// ```
+    #[cfg(feature = "proofs")]
+    pub fn write_proof_sibling(
+        &self,
+        level: usize,
+        destination: &mut Zeroizing<[u8; 64]>,
+    ) -> Result<(), ProofPathAccessError> {
+        let sibling = self
+            .siblings
+            .get(level)
+            .ok_or(ProofPathAccessError::InvalidLevel)?;
+        destination.copy_from_slice(sibling);
+        Ok(())
     }
 
     /// Verifies occupied position and the exact guarded root against declared anchor metadata.
@@ -106,6 +146,29 @@ mod tests {
     use crate::{NoteMembershipError, NoteMembershipWitness, NoteTree};
     use houseki_types::{NetworkId, NoteCommitment, NoteCount, NotePosition, NoteTreeAnchor};
     use zeroize::Zeroizing;
+
+    /// Copies all sibling levels and preserves the destination for every invalid level.
+    #[cfg(feature = "proofs")]
+    #[test]
+    fn proof_sibling_access_rejects_level_64_without_writing() {
+        let siblings = std::array::from_fn(|level| [level as u8; 64]);
+        let witness = NoteMembershipWitness::from_parts(&NotePosition::new(u64::MAX), &siblings);
+        let mut destination = Zeroizing::new([255; 64]);
+        for level in 0..64 {
+            witness
+                .write_proof_sibling(level, &mut destination)
+                .unwrap();
+            assert_eq!(*destination, [level as u8; 64]);
+        }
+        for level in [64, 65, usize::MAX] {
+            destination.fill(251);
+            assert!(matches!(
+                witness.write_proof_sibling(level, &mut destination),
+                Err(super::ProofPathAccessError::InvalidLevel)
+            ));
+            assert_eq!(*destination, [251; 64]);
+        }
+    }
 
     /// Requires the exact occupied prefix, network, commitment and each private sibling level.
     #[test]

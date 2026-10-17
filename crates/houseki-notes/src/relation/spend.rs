@@ -41,6 +41,29 @@ impl<'a> SpendWitness<'a> {
             membership,
         }
     }
+    /// Borrows the original protected opening without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn opening(&self) -> &'a NoteOpening {
+        self.opening
+    }
+
+    /// Borrows the original protected spending key without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn spending_key(&self) -> &'a SpendingKey {
+        self.spending_key
+    }
+
+    /// Borrows the original protected nullifier key without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn nullifier_key(&self) -> &'a NullifierKey {
+        self.nullifier_key
+    }
+
+    /// Borrows the original protected membership witness without extending its lifetime or copying it.
+    #[cfg(feature = "proofs")]
+    pub const fn membership(&self) -> &'a NoteMembershipWitness {
+        self.membership
+    }
 }
 
 impl fmt::Debug for SpendWitness<'_> {
@@ -171,6 +194,23 @@ mod tests {
             NoteBlinding::from_bytes(&[rho; 32]),
         )
         .unwrap()
+    }
+
+    /// Returns the original borrowed owners without allocating replacement witnesses.
+    #[cfg(feature = "proofs")]
+    #[test]
+    fn proof_accessors_borrow_the_original_owners() {
+        let spending = SpendingKey::from_bytes(&[17; 32]);
+        let nullifier = NullifierKey::from_bytes(&[29; 32]);
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(NetworkId::from_bytes([7; 64]), &spending, &nullifier, &key);
+        let opening = opening(&recipient, 1, 39);
+        let membership = NoteMembershipWitness::from_parts(&NotePosition::new(0), &[[0; 64]; 64]);
+        let witness = SpendWitness::new(&opening, &spending, &nullifier, &membership);
+        assert!(std::ptr::eq(witness.opening(), &opening));
+        assert!(std::ptr::eq(witness.spending_key(), &spending));
+        assert!(std::ptr::eq(witness.nullifier_key(), &nullifier));
+        assert!(std::ptr::eq(witness.membership(), &membership));
     }
 
     /// Verifies actually inserted duplicate commitments at distinct original positions and markers.

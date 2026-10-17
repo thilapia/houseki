@@ -53,6 +53,22 @@ impl SpendingKey {
         Self(*bytes)
     }
 
+    /// Copies the complete key into an already guarded caller destination without allocation.
+    ///
+    /// The destination is cleared by its owner, independently of this key's lifetime.
+    ///
+    /// Explicit copies made by the caller remain outside this cleanup guarantee.
+    ///
+    /// ```compile_fail,E0308
+    /// use houseki_crypto::SpendingKey;
+    /// let key = SpendingKey::from_bytes(&[7; 32]);
+    /// key.write_proof_bytes(&mut [0; 32]);
+    /// ```
+    #[cfg(feature = "proofs")]
+    pub fn write_proof_bytes(&self, destination: &mut zeroize::Zeroizing<[u8; 32]>) {
+        destination.copy_from_slice(&self.0);
+    }
+
     /// Acquires the complete key through guarded storage using an internal entropy source.
     ///
     /// Incomplete acquisition returns an error without constructing a key.
@@ -84,6 +100,20 @@ mod tests {
     use getrandom::rand_core::{TryCryptoRng, TryRng};
 
     use super::{SpendingKey, SpendingKeyError};
+
+    /// Copies every secret byte into independently guarded caller storage.
+    #[cfg(feature = "proofs")]
+    #[test]
+    fn proof_key_copy_requires_guarded_destination() {
+        let expected = std::array::from_fn(|index| index as u8);
+        let key = SpendingKey::from_bytes(&expected);
+        let mut destination = zeroize::Zeroizing::new([255; 32]);
+        key.write_proof_bytes(&mut destination);
+        assert_eq!(*destination, expected);
+        destination[0] = 99;
+        key.write_proof_bytes(&mut destination);
+        assert_eq!(*destination, expected);
+    }
 
     /// Checks exact import and independent ownership for representative complete byte values.
     #[test]
