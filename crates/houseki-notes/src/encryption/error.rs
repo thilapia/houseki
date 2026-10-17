@@ -1,8 +1,8 @@
-//! Failures while projecting completed bodies or encrypting checked note outputs.
+//! Failures during body projection, checked output encryption and authenticated recovery.
 
 use houseki_crypto::{
-    CryptoFramingError, NoteEncryptionContextError, NoteEncryptionError, NotePayloadError,
-    PaymentEncryptionCoreError, RewardWithdrawalEncryptionCoreError,
+    CryptoFramingError, NoteDecryptionError, NoteEncryptionContextError, NoteEncryptionError,
+    NotePayloadError, PaymentEncryptionCoreError, RewardWithdrawalEncryptionCoreError,
 };
 use thiserror::Error;
 
@@ -80,5 +80,56 @@ pub enum NoteOutputEncryptionError {
         /// Original bounded sealing failure from crypto.
         #[from]
         NoteEncryptionError,
+    ),
+}
+
+/// A failure to authenticate, parse and match a selected note output.
+///
+/// Private parsing failures share one fixed label, while safe crypto sources retain public
+/// metadata and grouped authentication failures without plaintext or private opening values.
+#[derive(Debug, Error)]
+pub enum NoteRecoveryError {
+    /// Counts or public payload layouts prevent complete body core reconstruction.
+    #[error("could not reconstruct note encryption core: {0}")]
+    Projection(
+        /// Original checked body projection failure.
+        #[from]
+        NoteContextError,
+    ),
+
+    /// The complete index or reconstructed core cannot form an output context.
+    #[error("could not prepare note recovery context: {0}")]
+    Context(
+        /// Original selection or core framing failure retaining public metadata.
+        #[from]
+        NoteEncryptionContextError,
+    ),
+
+    /// The expected recipient belongs to a different network than the completed body.
+    #[error("note recipient network does not match the transaction")]
+    NetworkMismatch,
+
+    /// Crypto rejected the public payload, context or key, or failed authentication.
+    #[error("could not recover note output: {0}")]
+    Decryption(
+        /// Original crypto failure preserving its grouped authentication result.
+        #[from]
+        NoteDecryptionError,
+    ),
+
+    /// Authenticated bytes do not form an exact supported positive ordinary note record.
+    #[error("invalid authenticated note plaintext")]
+    InvalidPlaintext,
+
+    /// The parsed opening does not derive the selected published commitment.
+    #[error("recovered note does not match the selected output commitment")]
+    CommitmentMismatch,
+
+    /// Recipient binding or commitment framing failed without returning a digest.
+    #[error("could not derive recovered note commitment: {0}")]
+    CommitmentFraming(
+        /// Original framing failure without private opening material.
+        #[from]
+        CryptoFramingError,
     ),
 }
