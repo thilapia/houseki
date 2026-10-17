@@ -1,11 +1,10 @@
 //! Compile time Montgomery parameters for the fixed Goldilocks modulus.
 
+use crate::hash::poseidon2::profile::MODULUS;
 use crypto_bigint::{
     U64,
     modular::{ConstMontyParams, FixedMontyParams},
 };
-
-use crate::hash::poseidon2::profile::MODULUS;
 
 /// Public parameters shared by every field value without carrying sensitive state.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

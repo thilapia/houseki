@@ -1,5 +1,11 @@
 //! Protected ML-KEM-1024 results for Houseki key derivation.
 
+#[cfg(test)]
+mod test_support;
+
+#[cfg(test)]
+pub(super) use test_support::{assert_secret_eq, assert_secrets_eq};
+
 use std::fmt;
 use zeroize::{Zeroize, Zeroizing};
 
@@ -58,30 +64,11 @@ impl Drop for MlKem1024SharedSecret {
     }
 }
 
-/// Compares stored secret bytes with a published test vector.
-#[cfg(test)]
-pub(super) fn assert_secret_eq(secret: &MlKem1024SharedSecret, expected: &[u8; 32]) {
-    assert_eq!(&secret.0, expected);
-}
-
-/// Compares two stored secrets inside the test boundary.
-#[cfg(test)]
-pub(super) fn assert_secrets_eq(left: &MlKem1024SharedSecret, right: &MlKem1024SharedSecret) {
-    assert_eq!(left.0, right.0);
-}
-
 /// Independent KDF vectors and shared secret redaction.
 #[cfg(test)]
 mod tests {
     use super::MlKem1024SharedSecret;
     use zeroize::Zeroizing;
-
-    impl MlKem1024SharedSecret {
-        /// Constructs synthetic shared material available only in tests.
-        pub(crate) fn fixture_secret() -> Self {
-            Self::from_backend(Zeroizing::new([0xa5; 32].into()))
-        }
-    }
 
     /// Checks HKDF output against independent HMAC-SHA512 vectors.
     #[test]

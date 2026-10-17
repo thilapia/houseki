@@ -1,8 +1,7 @@
 //! Portable identity bytes resolved before untrusted proof decoding.
 
-use houseki_types::ProofProfileId;
-
 use super::{IDENTITY_BYTES, Relation};
+use houseki_types::ProofProfileId;
 
 /// Expected identity selected by trusted configuration rather than decoded proof fields.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

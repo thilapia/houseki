@@ -1,9 +1,8 @@
 //! Composition of spending and nullifier capabilities into an ownership commitment.
 
-use houseki_types::{NetworkId, OwnershipCommitment};
-
 use super::{NullifierKey, SpendingKey};
 use crate::{CryptoFramingError, domain::Domain, hash::poseidon2};
+use houseki_types::{NetworkId, OwnershipCommitment};
 
 impl SpendingKey {
     /// Derives the ownership commitment for this spending key and the supplied nullifier key.

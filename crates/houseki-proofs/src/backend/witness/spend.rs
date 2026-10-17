@@ -1,11 +1,10 @@
 //! Guarded ownership and membership fields for one native spend.
 
+use super::{OpeningFields, part, write};
+use crate::backend::{BackendError, trace::Trace};
 use houseki_notes::SpendWitness;
 use p3_goldilocks::Goldilocks;
 use zeroize::Zeroizing;
-
-use super::{OpeningFields, part, write};
-use crate::backend::{BackendError, trace::Trace};
 
 /// Protected opening, ownership keys, original position and full membership path for one spend.
 pub(crate) struct SpendFields {

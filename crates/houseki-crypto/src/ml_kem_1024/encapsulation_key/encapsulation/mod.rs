@@ -4,12 +4,11 @@ mod error;
 
 pub use error::MlKem1024EncapsulationError;
 
+use super::MlKem1024EncapsulationKey;
+use crate::{MlKem1024SharedSecret, random::secret_bytes};
 use getrandom::{SysRng, rand_core::TryCryptoRng};
 use houseki_types::EncodedMlKem1024Ciphertext;
 use zeroize::Zeroizing;
-
-use super::MlKem1024EncapsulationKey;
-use crate::{MlKem1024SharedSecret, random::secret_bytes};
 
 impl MlKem1024EncapsulationKey {
     /// Encapsulates a fresh shared secret to this validated public key.
@@ -57,11 +56,10 @@ impl MlKem1024EncapsulationKey {
 /// NIST encapsulation vectors and entropy failure handling.
 #[cfg(test)]
 mod tests {
-    use getrandom::rand_core::{TryCryptoRng, TryRng};
-    use houseki_types::EncodedMlKem1024PublicKey;
-
     use super::{MlKem1024EncapsulationError, MlKem1024EncapsulationKey};
     use crate::ml_kem_1024::shared_secret::assert_secret_eq;
+    use getrandom::rand_core::{TryCryptoRng, TryRng};
+    use houseki_types::EncodedMlKem1024PublicKey;
 
     // Public NIST ACVP fixture, ML-KEM-encapDecap-FIPS203, tgId 3, tcId 51.
     // https://github.com/usnistgov/ACVP-Server/tree/15c0f3deeefbfa8cb6cd32a99e1ca3b738c66bf0/gen-val/json-files/ML-KEM-encapDecap-FIPS203

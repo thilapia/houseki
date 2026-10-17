@@ -3,13 +3,12 @@
 //! Public constants come from the pinned Plonky3 profile, while sensitive arithmetic stays
 //! within the protected field implementation.
 
+use super::{field::FieldElement, profile::WIDTH};
 use p3_field::PrimeField64;
 use p3_goldilocks::{
     GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_FINAL, GOLDILOCKS_POSEIDON2_RC_16_EXTERNAL_INITIAL,
     GOLDILOCKS_POSEIDON2_RC_16_INTERNAL, Goldilocks, MATRIX_DIAG_16_GOLDILOCKS,
 };
-
-use super::{field::FieldElement, profile::WIDTH};
 
 /// Applies the pinned permutation in place without exposing intermediate field values.
 ///
@@ -57,6 +56,7 @@ fn external_linear(state: &mut [FieldElement; WIDTH]) {
             .add(&state[i + 8])
             .add(&state[i + 12])
     });
+
     for (i, value) in state.iter_mut().enumerate() {
         *value = value.add(&sums[i % 4]);
     }
@@ -124,6 +124,7 @@ mod tests {
             (0..WIDTH)
                 .map(|column| {
                     let block_weight = if row / 4 == column / 4 { 2 } else { 1 };
+
                     input[column] * MATRIX[row % 4][column % 4] * block_weight
                 })
                 .sum::<u128>()
@@ -193,6 +194,7 @@ mod tests {
                     *value =
                         reference_sbox((*value + u128::from(constant.as_canonical_u64())) % PRIME);
                 }
+
                 reference_external(&mut expected);
                 full_round(&mut state, &constants);
 
@@ -213,6 +215,7 @@ mod tests {
                     *value =
                         reference_sbox((*value + u128::from(constant.as_canonical_u64())) % PRIME);
                 }
+
                 reference_external(&mut expected);
                 full_round(&mut state, &constants);
 
@@ -281,6 +284,7 @@ mod tests {
                     .rotate_left(i as u32 * 3)
                     ^ (i as u64).wrapping_mul(0xd1b5_4a32_d192_ed03)
             });
+
             let mut state = input.map(|word| FieldElement::from_word(&word));
             let mut expected = Goldilocks::new_array(input);
             for _ in 0..2 {

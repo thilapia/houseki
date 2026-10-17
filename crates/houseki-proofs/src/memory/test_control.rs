@@ -3,7 +3,7 @@
 use std::cell::Cell;
 
 thread_local! {
-    /// Test-only deterministic interruption inside a selected arithmetic phase.
+    /// Test only deterministic interruption inside a selected arithmetic phase.
     pub(super) static INTERRUPT: Cell<Option<(p3_util::prover_runtime::Phase, usize, bool)>> = const { Cell::new(None) };
 
     /// Time at which an inner checkpoint observed the synthetic request.

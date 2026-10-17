@@ -1,8 +1,7 @@
 //! Trusted public inputs and dimensions selected for a private proof attempt.
 
-use p3_goldilocks::Goldilocks;
-
 use crate::{backend::codec, profile::ExpectedIdentity};
+use p3_goldilocks::Goldilocks;
 
 /// Already selected public relation inputs and trusted output dimensions.
 pub(crate) struct Request<'a, A> {

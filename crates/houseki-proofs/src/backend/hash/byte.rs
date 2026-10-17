@@ -25,6 +25,7 @@ impl CryptographicHasher<u8, [u8; 64]> for ByteHash {
                 used = 0;
             }
         }
+
         hash.update(&buffer[..used]);
 
         hash.finalize().into()

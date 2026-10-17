@@ -1,11 +1,10 @@
 //! Checked transaction body projection for reconstructing note encryption inputs.
 
+use super::NoteContextError;
 use houseki_crypto::{
     CryptoSuite, PaymentEncryptionCore, PaymentEncryptionCoreError, RewardWithdrawalEncryptionCore,
 };
 use houseki_types::{PaymentBody, PaymentCountLimits, RewardWithdrawalBody};
-
-use super::NoteContextError;
 
 /// Projects a completed payment into its typed encryption core.
 ///
@@ -49,6 +48,7 @@ pub fn payment_encryption_core(
                 output_index,
                 source,
             })?;
+
         outputs.push((output.commitment(), suite));
     }
 
@@ -113,6 +113,7 @@ pub fn withdrawal_encryption_core(
 /// Exact core projection, active bounds and observable payload failure order.
 #[cfg(test)]
 mod tests {
+    use crate::{NoteContextError, payment_encryption_core, withdrawal_encryption_core};
     use houseki_crypto::{
         CryptoSuite, CryptoSuiteError, NotePayloadError, PaymentEncryptionCore,
         PaymentEncryptionCoreError, RewardWithdrawalEncryptionCore,
@@ -125,8 +126,6 @@ mod tests {
         ProtocolVersion, RewardAccountId, RewardWithdrawalBody, TransactionContext,
         ValidityCheckpointRange, WithdrawalNonce,
     };
-
-    use crate::{NoteContextError, payment_encryption_core, withdrawal_encryption_core};
 
     /// Builds a complete declared context with distinct identifiers and checkpoint bounds.
     fn context() -> TransactionContext {

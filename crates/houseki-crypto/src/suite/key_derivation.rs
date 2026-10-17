@@ -1,13 +1,12 @@
 //! Protected operation keys derived from KEM results and output context.
 
-use houseki_types::EncodedMlKem1024Ciphertext;
-use zeroize::Zeroizing;
-
 use super::NoteEncryptionContext;
 use crate::{
     CryptoFramingError, CryptoSuite, MlKem1024SharedSecret,
     domain::{Domain, Frame},
 };
+use houseki_types::EncodedMlKem1024Ciphertext;
+use zeroize::Zeroizing;
 
 /// One operation's protected key, nonce and the associated data used to derive it.
 ///

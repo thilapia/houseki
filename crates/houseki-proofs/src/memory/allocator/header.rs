@@ -1,8 +1,7 @@
 //! Aligned metadata retaining allocation cleanup ownership.
 
-use std::alloc::Layout;
-
 use super::super::Account;
+use std::alloc::Layout;
 
 /// Metadata preceding an aligned payload and retaining its accounting owner until deallocation.
 pub(super) struct Header {

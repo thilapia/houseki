@@ -6,9 +6,8 @@
 mod modulus;
 
 use crypto_bigint::{U64, modular::ConstMontyForm};
-use zeroize::{Zeroize, Zeroizing};
-
 use modulus::GoldilocksModulus;
+use zeroize::{Zeroize, Zeroizing};
 
 /// Provider representation used only inside guarded field storage.
 type Residue = ConstMontyForm<GoldilocksModulus, { U64::LIMBS }>;

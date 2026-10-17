@@ -108,19 +108,18 @@ fn payload_length(plaintext: usize, maximum: usize) -> Result<usize, NoteEncrypt
 /// Envelope layout, entropy failures, message bounds and authenticated recovery.
 #[cfg(test)]
 mod tests {
+    use super::payload_length;
+    use crate::{
+        CryptoSuite, MlKem1024DecapsulationKey, NoteEncryptionContext, NoteEncryptionError,
+        PaymentEncryptionCore, RewardWithdrawalEncryptionCore,
+        suite::key_derivation::derive_note_material,
+    };
     use getrandom::rand_core::{TryCryptoRng, TryRng};
     use houseki_types::{
         Amount, CheckpointSequence, EncodedMlDsa87PublicKey, EncryptedNoteEnvelope, FeeScheduleId,
         NetworkId, NoteCommitment, NoteRoot, Nullifier, PaymentCountLimits, PaymentInputs,
         ProofProfileId, ProtocolVersion, RewardAccountId, TransactionContext,
         ValidityCheckpointRange, WithdrawalNonce,
-    };
-
-    use super::payload_length;
-    use crate::{
-        CryptoSuite, MlKem1024DecapsulationKey, NoteEncryptionContext, NoteEncryptionError,
-        PaymentEncryptionCore, RewardWithdrawalEncryptionCore,
-        suite::key_derivation::derive_note_material,
     };
 
     /// Builds the transaction context shared by payment and withdrawal fixtures.

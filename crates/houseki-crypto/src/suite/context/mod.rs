@@ -5,10 +5,9 @@ mod error;
 
 pub use error::NoteEncryptionContextError;
 
-use houseki_types::{NoteCommitment, TransactionContext};
-
 use super::{CryptoSuite, PaymentEncryptionCore, RewardWithdrawalEncryptionCore};
 use crate::MlKem1024EncapsulationKey;
+use houseki_types::{NoteCommitment, TransactionContext};
 
 /// Immutable inputs for encrypting or recovering one note output.
 ///
@@ -174,16 +173,15 @@ impl NoteEncryptionContext {
 /// Output selection, immutable snapshots and derived digest binding.
 #[cfg(test)]
 mod tests {
-    use houseki_types::{
-        Amount, CheckpointSequence, EncodedMlDsa87PublicKey, EncodedMlKem1024PublicKey,
-        FeeScheduleId, NetworkId, NoteRoot, Nullifier, PaymentCountLimits, PaymentInputs,
-        ProofProfileId, ProtocolVersion, RewardAccountId, ValidityCheckpointRange, WithdrawalNonce,
-    };
-
     use super::{
         CryptoSuite, MlKem1024EncapsulationKey, NoteCommitment, NoteEncryptionContext,
         NoteEncryptionContextError, PaymentEncryptionCore, RewardWithdrawalEncryptionCore,
         TransactionContext,
+    };
+    use houseki_types::{
+        Amount, CheckpointSequence, EncodedMlDsa87PublicKey, EncodedMlKem1024PublicKey,
+        FeeScheduleId, NetworkId, NoteRoot, Nullifier, PaymentCountLimits, PaymentInputs,
+        ProofProfileId, ProtocolVersion, RewardAccountId, ValidityCheckpointRange, WithdrawalNonce,
     };
 
     // Independently assembled using the specified Houseki core layouts, Python int.to_bytes(n,

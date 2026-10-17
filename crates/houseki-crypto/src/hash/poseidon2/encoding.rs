@@ -1,10 +1,9 @@
 //! Byte packing and integer extraction for the fixed Poseidon2 profile.
 
+use super::profile::{MODULUS, OUTPUT_ELEMENTS, PACKED_BYTES};
 use p3_field::PrimeField64;
 use p3_goldilocks::Goldilocks;
 use zeroize::{Zeroize, Zeroizing};
-
-use super::profile::{MODULUS, OUTPUT_ELEMENTS, PACKED_BYTES};
 
 /// Streams bytes as seven byte little endian words across chunk boundaries.
 ///
@@ -124,6 +123,7 @@ mod tests {
                 packer.update(&[], &mut |x| result.push(*x));
                 packer.update(chunk, &mut |x| result.push(*x));
             }
+
             packer.finish(&mut |x| result.push(*x));
 
             assert_eq!(

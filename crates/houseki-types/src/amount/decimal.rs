@@ -1,8 +1,7 @@
 //! Exact decimal conversion in coin units.
 
-use core::{fmt, str::FromStr};
-
 use super::{Amount, AmountError};
+use core::{fmt, str::FromStr};
 
 impl FromStr for Amount {
     /// Error returned when decimal amount text cannot be parsed exactly.

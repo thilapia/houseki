@@ -22,10 +22,10 @@ pub use error::NoteRootError;
 /// A note root alone does not authenticate reward accounts, the spent set or the complete ledger
 /// state.
 ///
-/// The proposed root hash profile uses Poseidon2 with 512 effective digest bits.
+/// The cryptographic consumer supplies the complete Poseidon2 root hash profile.
 ///
 /// Tree shape, capacity, leaf and internal node domains, empty tree derivation and canonical
-/// output conversion remain to be specified.
+/// output conversion belong to that profile rather than this byte container.
 ///
 /// A 64 byte container does not establish the effective width or security of that profile, and
 /// no byte pattern is assigned the meaning of an empty tree by this type.

@@ -23,7 +23,7 @@ use std::fmt;
 /// }
 /// ```
 pub struct PaymentWitness<'a> {
-    /// Original spends with caller-owned keys, openings and paths.
+    /// Original spends with caller owned keys, openings and paths.
     inputs: &'a [SpendWitness<'a>],
 
     /// Original output openings without a second private owner.

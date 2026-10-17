@@ -81,6 +81,7 @@ mod tests {
 
                 // Safety: The main thread transfers one unique Box with the same complete layout.
                 drop(unsafe { Box::from_raw(pointer) });
+
                 completed.store(true, Ordering::Release);
             });
 
@@ -232,6 +233,7 @@ mod tests {
                 scope.finish().unwrap().wiped_bytes
             })
         });
+
         let [first, second] = jobs.map(|job| job.join().unwrap());
 
         assert_eq!(second - first, 4096);

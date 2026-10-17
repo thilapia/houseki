@@ -1,11 +1,10 @@
 //! Value safe errors for exact bounded canonical body codecs.
 
-use thiserror::Error;
-
 use crate::{
     AmountError, PaymentCountLimitsError, PaymentInputsError, PaymentOutputsError,
     PaymentShapeError, RewardWithdrawalBodyError, ValidityCheckpointRangeError,
 };
+use thiserror::Error;
 
 /// A failure to encode or decode one complete canonical transaction body.
 #[derive(Debug, Error)]

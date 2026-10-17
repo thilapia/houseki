@@ -4,12 +4,11 @@ mod error;
 
 pub use error::RewardWithdrawalEncryptionCoreError;
 
+use super::CryptoSuite;
 use houseki_types::{
     Amount, EncodedMlDsa87PublicKey, NoteCommitment, RewardAccountId, TransactionContext,
     TransactionKind, WithdrawalNonce,
 };
-
-use super::CryptoSuite;
 
 /// A reward withdrawal's declared fields before output encryption.
 ///
@@ -148,15 +147,14 @@ impl RewardWithdrawalEncryptionCore {
 /// Withdrawal amount bounds and declared field preservation.
 #[cfg(test)]
 mod tests {
-    use houseki_types::{
-        CheckpointSequence, FeeScheduleId, NetworkId, ProofProfileId, ProtocolVersion,
-        ValidityCheckpointRange,
-    };
-
     use super::{
         Amount, CryptoSuite, EncodedMlDsa87PublicKey, NoteCommitment, RewardAccountId,
         RewardWithdrawalEncryptionCore, RewardWithdrawalEncryptionCoreError, TransactionContext,
         TransactionKind, WithdrawalNonce,
+    };
+    use houseki_types::{
+        CheckpointSequence, FeeScheduleId, NetworkId, ProofProfileId, ProtocolVersion,
+        ValidityCheckpointRange,
     };
 
     /// Builds a declared context fixture for this module's binding checks.

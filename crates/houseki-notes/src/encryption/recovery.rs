@@ -1,15 +1,14 @@
 //! Authentication, guarded canonical parsing and commitment agreement for received notes.
 
+use super::{
+    NoteContextError, NoteRecoveryError, payment_encryption_core, withdrawal_encryption_core,
+};
+use crate::{NoteOpening, NoteRecipient};
 use houseki_crypto::{
     CryptoSuite, MlKem1024DecapsulationKey, NoteDecryptionError, NoteEncryptionContext,
     NoteEncryptionContextError, PaymentEncryptionCoreError,
 };
 use houseki_types::{NetworkId, NoteOutput, PaymentBody, PaymentCountLimits, RewardWithdrawalBody};
-
-use super::{
-    NoteContextError, NoteRecoveryError, payment_encryption_core, withdrawal_encryption_core,
-};
-use crate::{NoteOpening, NoteRecipient};
 
 /// Authenticates and validates one payment output before returning its protected opening.
 ///
@@ -181,8 +180,11 @@ fn recover_matched_opening(
 /// Exact recovery, bounded selection, authenticated malformed records and adversarial binding.
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-
+    use crate::{
+        NoteBlinding, NoteContextError, NoteFormat, NoteOpening, NoteRecipient, NoteRecoveryError,
+        encrypt_payment_output, encrypt_withdrawal_output, recover_payment_output,
+        recover_withdrawal_output, withdrawal_encryption_core,
+    };
     use houseki_crypto::{
         CryptoSuite, CryptoSuiteError, MlKem1024DecapsulationKey, NoteDecryptionError,
         NoteEncryptionContext, NoteEncryptionContextError, NotePayloadError, PaymentEncryptionCore,
@@ -196,13 +198,8 @@ mod tests {
         ProtocolVersion, RecipientDescriptor, RewardAccountId, RewardWithdrawalBody,
         TransactionContext, ValidityCheckpointRange, WithdrawalNonce,
     };
+    use std::error::Error;
     use zeroize::Zeroizing;
-
-    use crate::{
-        NoteBlinding, NoteContextError, NoteFormat, NoteOpening, NoteRecipient, NoteRecoveryError,
-        encrypt_payment_output, encrypt_withdrawal_output, recover_payment_output,
-        recover_withdrawal_output, withdrawal_encryption_core,
-    };
 
     /// Builds the declared context with distinctive complete identifiers and checkpoint bounds.
     fn context() -> TransactionContext {

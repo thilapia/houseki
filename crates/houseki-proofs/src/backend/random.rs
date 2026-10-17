@@ -1,13 +1,11 @@
-//! Unpredictable per-attempt generators and an entropy-free verification mode.
-
-use std::{convert::Infallible, fmt};
-
-use chacha20::ChaCha12Rng;
-use rand::{Rng, SeedableRng, TryCryptoRng, TryRng};
-use zeroize::{Zeroize, Zeroizing};
+//! Unpredictable per attempt generators and an entropy free verification mode.
 
 #[cfg(any(test, feature = "prover"))]
 use super::BackendError;
+use chacha20::ChaCha12Rng;
+use rand::{Rng, SeedableRng, TryCryptoRng, TryRng};
+use std::{convert::Infallible, fmt};
+use zeroize::{Zeroize, Zeroizing};
 
 /// Private generator whose verification mode cannot produce even predictable bytes.
 pub(super) struct BackendRng {

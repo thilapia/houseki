@@ -14,8 +14,8 @@ pub use error::NoteCommitmentError;
 /// Every byte pattern is representable, and construction checks neither membership nor spending
 /// authority.
 ///
-/// The selected field, permutation parameters, sponge capacity, domain framing and conversion of
-/// field outputs to digest bytes remain to be specified.
+/// The cryptographic consumer selects the field, permutation parameters, sponge capacity, domain
+/// framing and conversion of field outputs to digest bytes independently of this container.
 ///
 /// Serializing field elements into 64 bytes does not by itself meet the effective width
 /// requirement or establish a security level.

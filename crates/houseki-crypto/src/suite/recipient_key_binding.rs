@@ -1,9 +1,8 @@
 //! Recipient key binding under a fixed network and suite.
 
-use houseki_types::NetworkId;
-
 use super::CryptoSuite;
 use crate::{CryptoFramingError, MlKem1024EncapsulationKey, domain::Domain, hash::poseidon2};
+use houseki_types::NetworkId;
 
 impl CryptoSuite {
     /// Derives the 64 byte recipient key binding used by the note relation.

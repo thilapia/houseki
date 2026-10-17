@@ -104,6 +104,7 @@ pub(crate) fn amounts_balance<'input, 'output>(
     for amount in outputs {
         output_total.add_amount(amount)?;
     }
+
     output_total.add_amount(fee)?;
 
     Ok(input_total.matches(&output_total))
@@ -112,11 +113,10 @@ pub(crate) fn amounts_balance<'input, 'output>(
 /// Exact totals, conservation equations, capacity failure and private diagnostic behavior.
 #[cfg(test)]
 mod tests {
+    use super::{AmountTotal, AmountTotalError, amounts_balance};
     use crypto_bigint::U256;
     use houseki_types::Amount;
     use zeroize::Zeroizing;
-
-    use super::{AmountTotal, AmountTotalError, amounts_balance};
 
     /// Seeds a protected partial total from a fixed public hexadecimal test vector.
     fn partial_total(hex: &str) -> AmountTotal {

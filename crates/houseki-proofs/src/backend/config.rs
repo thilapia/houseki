@@ -1,5 +1,9 @@
 //! Pinned hiding backend types that never cross the public crate interface.
 
+use super::{
+    hash::{ByteHash, FieldHash, WordHash},
+    random::BackendRng,
+};
 use p3_challenger::{HashChallenger, SerializingChallenger64};
 use p3_commit::ExtensionMmcs;
 use p3_dft::Radix2DitParallel;
@@ -9,11 +13,6 @@ use p3_goldilocks::Goldilocks;
 use p3_merkle_tree::MerkleTreeHidingMmcs;
 use p3_symmetric::CompressionFunctionFromHasher;
 use p3_uni_stark::{Proof, StarkConfig};
-
-use super::{
-    hash::{ByteHash, FieldHash, WordHash},
-    random::BackendRng,
-};
 
 /// Number of queries in the internally evaluated candidate.
 pub(super) const QUERIES: usize = 128;

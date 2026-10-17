@@ -151,6 +151,7 @@ mod tests {
         for index in 0..text.len() {
             let mut bytes = text.as_bytes().to_vec();
             bytes[index] = if bytes[index] == b'A' { b'B' } else { b'A' };
+
             let changed = String::from_utf8(bytes).unwrap();
 
             assert!(

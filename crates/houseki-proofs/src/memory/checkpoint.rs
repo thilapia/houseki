@@ -1,10 +1,9 @@
 //! Cooperative cancellation inside private backend phases.
 
-use std::sync::atomic::Ordering;
-
 #[cfg(test)]
 use super::test_control::{INTERRUPT, INTERRUPTED_AT};
 use super::{ACTIVE, Cancelled};
+use std::sync::atomic::Ordering;
 
 /// Applies backend interruption without allocating diagnostics or exposing private values.
 pub(super) fn backend_checkpoint(phase: p3_util::prover_runtime::Phase) {
@@ -32,6 +31,7 @@ pub(super) fn backend_checkpoint(phase: p3_util::prover_runtime::Phase) {
             }
         }
     });
+
     #[cfg(not(test))]
     let _ = phase;
 
@@ -46,6 +46,7 @@ pub(crate) fn checkpoint() {
         // Safety: An active Scope on this thread keeps the account alive during the callback.
         !account.is_null() && unsafe { &*account }.cancelled.load(Ordering::Acquire)
     });
+
     if cancelled {
         std::panic::resume_unwind(Box::new(Cancelled));
     }

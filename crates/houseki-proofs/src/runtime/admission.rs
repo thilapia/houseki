@@ -1,8 +1,7 @@
 //! Scoped ownership of the shared proof operation slot.
 
-use std::sync::atomic::Ordering;
-
 use super::ProofRuntime;
+use std::sync::atomic::Ordering;
 
 /// Releases admission on success, failure or normal unwinding.
 #[cfg_attr(

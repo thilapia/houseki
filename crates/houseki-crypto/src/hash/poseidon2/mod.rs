@@ -8,6 +8,7 @@ mod field;
 mod guarded;
 mod permutation;
 mod profile;
+mod sponge;
 
 pub(crate) use guarded::poseidon2_secret;
 
@@ -15,10 +16,11 @@ use crate::{
     CryptoFramingError,
     domain::{Domain, Frame},
 };
-use encoding::{BytePacker, extract_digest};
+use encoding::BytePacker;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
-use profile::{OUTPUT_ELEMENTS, RATE, WIDTH, permute};
+use profile::WIDTH;
+use sponge::Sponge;
 
 /// Hashes canonical public parts under a registered domain.
 ///
@@ -35,12 +37,14 @@ pub(crate) fn poseidon2(domain: Domain, parts: &[&[u8]]) -> Result<[u8; 64], Cry
         state: [Goldilocks::ZERO; WIDTH],
         used: 0,
     };
+
     let mut packer = BytePacker::default();
     packer.update(&length.to_le_bytes(), &mut |word| sponge.absorb(*word));
 
     emit_frame(domain, parts, &mut |chunk| {
         packer.update(chunk, &mut |word| sponge.absorb(*word));
     })?;
+
     packer.finish(&mut |word| sponge.absorb(*word));
 
     Ok(sponge.finish())
@@ -83,47 +87,6 @@ fn add_frame_length(length: u64, chunk_length: usize) -> Result<u64, CryptoFrami
     length
         .checked_add(chunk_length)
         .ok_or(CryptoFramingError::FrameTooLong)
-}
-
-/// Fresh additive sponge state for one public transcript.
-struct Sponge {
-    /// Permutation state containing rate and capacity elements.
-    state: [Goldilocks; WIDTH],
-
-    /// Rate elements occupied since the last permutation.
-    used: usize,
-}
-
-impl Sponge {
-    /// Adds a packed word or padding value and permutes each completed rate block.
-    fn absorb(&mut self, word: u64) {
-        // Only seven byte words and the field padding values 0 and 1 enter.
-        debug_assert!(word < (1 << 56));
-
-        self.state[self.used] += Goldilocks::new(word);
-        self.used += 1;
-        if self.used == RATE {
-            permute(&mut self.state);
-            self.used = 0;
-        }
-    }
-
-    /// Appends mandatory field padding, squeezes eleven elements and extracts the digest.
-    fn finish(mut self) -> [u8; 64] {
-        // Always append one, including at an exact rate boundary.
-        self.absorb(1);
-        while self.used != 0 {
-            self.absorb(0);
-        }
-
-        let mut values = [Goldilocks::ZERO; OUTPUT_ELEMENTS];
-        values[..RATE].copy_from_slice(&self.state[..RATE]);
-
-        permute(&mut self.state);
-        values[RATE..].copy_from_slice(&self.state[..OUTPUT_ELEMENTS - RATE]);
-
-        extract_digest(values)
-    }
 }
 
 /// Complete sponge vectors, domain separation and frame length limits.

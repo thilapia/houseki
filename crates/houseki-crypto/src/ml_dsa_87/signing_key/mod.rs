@@ -162,6 +162,7 @@ mod tests {
             failure: None,
             position: 0,
         };
+
         let key = MlDsa87SigningKey::generate_with_rng(&mut rng).unwrap();
 
         assert_eq!(rng.position, 32);

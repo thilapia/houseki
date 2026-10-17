@@ -22,8 +22,8 @@ pub use error::NullifierError;
 /// This value preserves arbitrary bytes without deriving the nullifier or verifying
 /// authorization, membership or unspentness.
 ///
-/// The hash profile must provide 512 effective digest bits, with its field, permutation
-/// parameters, capacity, domains and output conversion still to be specified.
+/// The cryptographic consumer supplies the complete hash profile, including its field,
+/// permutation parameters, capacity, domains and output conversion.
 ///
 /// Merely storing 64 bytes does not establish that requirement or a security level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

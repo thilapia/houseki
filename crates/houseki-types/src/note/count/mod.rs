@@ -2,9 +2,9 @@
 
 mod error;
 
-use crate::NotePosition;
-
 pub use error::NoteCountError;
+
+use crate::NotePosition;
 
 /// A public occupied leaf count from zero through 2^64 inclusive.
 ///

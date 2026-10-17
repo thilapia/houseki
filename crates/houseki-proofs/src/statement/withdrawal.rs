@@ -1,12 +1,11 @@
 //! Native withdrawal body checks and semantic public value construction.
 
-use houseki_types::{RewardWithdrawalBody, TransactionContext};
-
 use super::{Statement, StatementError, bind, require_identity, reserve};
 use crate::{
     context::require_context,
     profile::{ExpectedIdentity, Relation},
 };
+use houseki_types::{RewardWithdrawalBody, TransactionContext};
 
 impl Statement {
     /// Derives the public amount and sole output without asserting account authorization.

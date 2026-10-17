@@ -1,12 +1,11 @@
 //! Canonical associated data derived from a prepared output context.
 
-use houseki_types::EncodedMlKem1024Ciphertext;
-
 use super::NoteEncryptionContext;
 use crate::{
     CryptoFramingError, CryptoSuite,
     domain::{Domain, Frame},
 };
+use houseki_types::EncodedMlKem1024Ciphertext;
 
 impl NoteEncryptionContext {
     /// Builds the canonical associated data for this output and operation.
@@ -69,17 +68,16 @@ impl NoteEncryptionContext {
 /// Exact associated data layouts and complete input binding.
 #[cfg(test)]
 mod tests {
+    use super::{EncodedMlKem1024Ciphertext, NoteEncryptionContext};
+    use crate::{
+        CryptoSuite, MlKem1024EncapsulationKey, PaymentEncryptionCore,
+        RewardWithdrawalEncryptionCore,
+    };
     use houseki_types::{
         Amount, CheckpointSequence, EncodedMlDsa87PublicKey, EncodedMlKem1024PublicKey,
         FeeScheduleId, NetworkId, NoteCommitment, NoteRoot, Nullifier, PaymentCountLimits,
         PaymentInputs, ProofProfileId, ProtocolVersion, RewardAccountId, TransactionContext,
         ValidityCheckpointRange, WithdrawalNonce,
-    };
-
-    use super::{EncodedMlKem1024Ciphertext, NoteEncryptionContext};
-    use crate::{
-        CryptoSuite, MlKem1024EncapsulationKey, PaymentEncryptionCore,
-        RewardWithdrawalEncryptionCore,
     };
 
     /// Constructs a canonical public key fixture with the supplied matrix seed.
@@ -173,6 +171,7 @@ mod tests {
         let encapsulation = EncodedMlKem1024Ciphertext::from_bytes(std::array::from_fn(|i| {
             u8::try_from(i % 256).unwrap()
         }));
+
         let nonce = std::array::from_fn(|i| u8::try_from(i + 128).unwrap());
 
         // Core hashes independently computed with Python hashlib.sha3_512 and the documented

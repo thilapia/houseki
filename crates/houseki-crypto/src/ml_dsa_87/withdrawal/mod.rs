@@ -4,12 +4,11 @@ mod error;
 
 pub use error::WithdrawalSignatureError;
 
+use super::{MlDsa87SigningKey, MlDsa87VerificationKey};
 use getrandom::{SysRng, rand_core::TryCryptoRng};
 use houseki_types::{
     BodyCodecError, BodyCodecLimits, EncodedMlDsa87Signature, RewardWithdrawalBody,
 };
-
-use super::{MlDsa87SigningKey, MlDsa87VerificationKey};
 
 /// Fixed FIPS 204 external direct signature context, independent of other signing roles.
 const CONTEXT: &[u8] = b"houseki/v1/reward-withdrawal";
@@ -301,6 +300,7 @@ mod tests {
             position: 0,
             bytes: [0xa5; 32],
         };
+
         let signature = key.sign_with_rng(&body, limits(), &mut rng).unwrap();
 
         assert_eq!(rng.position, 32);
@@ -526,6 +526,7 @@ mod tests {
         /// Complete synthetic signing bytes or the public NIST entropy fixture.
         bytes: [u8; 32],
     }
+
     impl TryCryptoRng for FixtureRng {}
     impl TryRng for FixtureRng {
         /// Fixed synthetic acquisition failure.

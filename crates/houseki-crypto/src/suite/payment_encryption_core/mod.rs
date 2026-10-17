@@ -4,12 +4,11 @@ mod error;
 
 pub use error::PaymentEncryptionCoreError;
 
+use super::CryptoSuite;
 use houseki_types::{
     Amount, NoteCommitment, PaymentCountLimits, PaymentInputs, PaymentShape, TransactionContext,
     TransactionKind,
 };
-
-use super::CryptoSuite;
 
 /// A payment's declared fields before output encryption.
 ///
@@ -71,6 +70,7 @@ impl PaymentEncryptionCore {
             outputs,
             public_fee,
         };
+
         limits.validate_shape(core.shape())?;
 
         Ok(core)
@@ -123,15 +123,14 @@ impl PaymentEncryptionCore {
 /// Payment core retention and count validation order.
 #[cfg(test)]
 mod tests {
-    use houseki_types::{
-        CheckpointSequence, FeeScheduleId, NetworkId, NoteRoot, Nullifier, PaymentCountLimitsError,
-        ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
-    };
-
     use super::{
         Amount, CryptoSuite, NoteCommitment, PaymentCountLimits, PaymentEncryptionCore,
         PaymentEncryptionCoreError, PaymentInputs, PaymentShape, TransactionContext,
         TransactionKind,
+    };
+    use houseki_types::{
+        CheckpointSequence, FeeScheduleId, NetworkId, NoteRoot, Nullifier, PaymentCountLimitsError,
+        ProofProfileId, ProtocolVersion, ValidityCheckpointRange,
     };
 
     /// Builds a declared context fixture for this module's binding checks.

@@ -1,10 +1,9 @@
 //! Keyed note nullifiers bound to the original insertion position.
 
-use houseki_types::{NetworkId, NoteCommitment, NotePosition, NoteVersion, Nullifier};
-use zeroize::Zeroizing;
-
 use super::NullifierKey;
 use crate::{CryptoFramingError, domain::Domain, hash::poseidon2_secret};
+use houseki_types::{NetworkId, NoteCommitment, NotePosition, NoteVersion, Nullifier};
+use zeroize::Zeroizing;
 
 impl NullifierKey {
     /// Derives the spend marker for the supplied note commitment and original position.
@@ -130,6 +129,7 @@ mod tests {
             key.nullifier(network, version, commitment, &position)
                 .unwrap()
         };
+
         let original = derive(network, version, commitment);
 
         for index in 0..64 {

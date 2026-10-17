@@ -74,6 +74,11 @@ impl NoteEncryptionContext {
 /// Public envelope recovery, malformed payload rejection and authenticated input binding.
 #[cfg(test)]
 mod tests {
+    use crate::{
+        CryptoSuite, CryptoSuiteError, MlKem1024DecapsulationKey, NoteDecryptionError,
+        NoteEncryptionContext, NotePayloadError, PaymentEncryptionCore,
+        RewardWithdrawalEncryptionCore,
+    };
     use houseki_types::{
         Amount, CheckpointSequence, EncodedMlDsa87PublicKey, EncodedMlKem1024Ciphertext,
         EncryptedNoteEnvelope, FeeScheduleId, NetworkId, NoteCommitment, NoteRoot, Nullifier,
@@ -81,12 +86,6 @@ mod tests {
         TransactionContext, ValidityCheckpointRange, WithdrawalNonce,
     };
     use zeroize::Zeroizing;
-
-    use crate::{
-        CryptoSuite, CryptoSuiteError, MlKem1024DecapsulationKey, NoteDecryptionError,
-        NoteEncryptionContext, NotePayloadError, PaymentEncryptionCore,
-        RewardWithdrawalEncryptionCore,
-    };
 
     /// Builds the declared transaction context with a selectable network.
     fn transaction_context(network: u8) -> TransactionContext {

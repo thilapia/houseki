@@ -3,11 +3,10 @@
 //! V1 contains a four byte little endian version, a sixteen byte little endian atom count
 //! and 32 blinding bytes, without padding or trailing fields.
 
-use houseki_types::{Amount, NoteVersion};
-use zeroize::Zeroizing;
-
 use super::{NoteOpening, NotePlaintextError};
 use crate::{NoteBlinding, NoteFormat, NoteRecipient};
+use houseki_types::{Amount, NoteVersion};
+use zeroize::Zeroizing;
 
 /// Exact length of the initial private record without padding or trailing fields.
 const PLAINTEXT_LENGTH: usize = 52;
@@ -93,17 +92,16 @@ impl NoteOpening {
 /// Canonical private bytes, bounded parsing, protected retention and recipient context scope.
 #[cfg(test)]
 mod tests {
+    use crate::{
+        NoteBlinding, NoteFormat, NoteFormatError, NoteOpening, NoteOpeningError, NoteRecipient,
+        opening::NotePlaintextError,
+    };
     use houseki_crypto::CryptoSuite;
     use houseki_types::{
         AddressContext, AddressFormatVersion, Amount, AmountError, EncodedMlKem1024PublicKey,
         NetworkId, NoteVersion, OwnershipCommitment, RecipientDescriptor,
     };
     use zeroize::Zeroizing;
-
-    use crate::{
-        NoteBlinding, NoteFormat, NoteFormatError, NoteOpening, NoteOpeningError, NoteRecipient,
-        opening::NotePlaintextError,
-    };
 
     /// Builds checked recipients with one network and differing ownership and public key seed.
     fn recipient(pattern: u8) -> NoteRecipient {

@@ -10,10 +10,9 @@ pub(crate) use opening::OpeningFields;
 )]
 pub(crate) use spend::SpendFields;
 
+use super::trace::Trace;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
-
-use super::trace::Trace;
 
 /// Writes one canonical byte per field element without integer reduction or temporary vectors.
 fn write(destination: &mut [Goldilocks], bytes: &[u8]) {
@@ -144,6 +143,7 @@ mod tests {
         let inputs = std::array::from_fn::<_, 3, _>(|_| {
             SpendWitness::new(&opening, &spending, &nullifier, &membership)
         });
+
         let outputs = [&opening; 3];
 
         for input_count in 0..=3 {
