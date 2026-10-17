@@ -8,6 +8,8 @@ mod random;
 #[cfg(any(test, feature = "prover"))]
 mod trace;
 mod verifier;
+#[cfg(feature = "prover")]
+mod witness;
 
 /// Redacted failures from private backend preparation or execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
