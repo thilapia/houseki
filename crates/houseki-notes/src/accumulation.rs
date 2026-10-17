@@ -1,4 +1,4 @@
-//! Guarded exact integer totals for future native payment conservation checks.
+//! Guarded exact integer totals for native payment conservation checks.
 //!
 //! On the supported 64 bit hosts, a list count fits `usize`, so at most `2^64` bounded
 //! amounts including the separate fee have a sum below `2^161` atoms.

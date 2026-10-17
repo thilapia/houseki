@@ -2,13 +2,6 @@
 
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Native payment relation consumers are separate increments."
-    )
-)]
 mod accumulation;
 mod blinding;
 mod encryption;
@@ -29,6 +22,6 @@ pub use nullifier::derive_nullifier;
 pub use opening::{NoteOpening, NoteOpeningError};
 pub use recipient::{NoteAddressError, NoteRecipient, NoteRecipientError};
 pub use relation::{
-    SpendRelationError, SpendWitness, WithdrawalOutputRelationError, check_spend,
-    check_withdrawal_output,
+    PaymentRelationError, SpendRelationError, SpendWitness, WithdrawalOutputRelationError,
+    check_payment, check_spend, check_withdrawal_output,
 };
