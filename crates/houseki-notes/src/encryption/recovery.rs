@@ -1045,4 +1045,38 @@ mod tests {
             }
         }
     }
+
+    /// Creates a deliverable recipient from actual linked keys and preserves their ownership.
+    #[test]
+    fn linked_ownership_keys_construct_a_recipient_that_receives_its_payment() {
+        let network = context().network_id();
+        let spending = houseki_crypto::SpendingKey::from_bytes(&[0xa7; 32]);
+        let nullifier = houseki_crypto::NullifierKey::from_bytes(&[0x59; 32]);
+        let ownership = spending.ownership_commitment(network, &nullifier).unwrap();
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&key, *ownership.as_bytes());
+        let (_, body) = delivered_body(&recipient, 23);
+        let recovered = recover_payment_output(&body, 0, &recipient, &key, limits(), 84).unwrap();
+        assert_eq!(recovered.recipient().ownership_commitment(), ownership);
+        assert_eq!(recovered.amount().atoms(), 23);
+        assert_eq!(
+            spending.ownership_commitment(network, &nullifier).unwrap(),
+            recovered.recipient().ownership_commitment()
+        );
+        assert_ne!(
+            houseki_crypto::SpendingKey::from_bytes(&[0xa6; 32])
+                .ownership_commitment(network, &nullifier)
+                .unwrap(),
+            ownership
+        );
+        assert_ne!(
+            spending
+                .ownership_commitment(
+                    network,
+                    &houseki_crypto::NullifierKey::from_bytes(&[0x58; 32])
+                )
+                .unwrap(),
+            ownership
+        );
+    }
 }

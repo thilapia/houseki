@@ -22,7 +22,7 @@ impl SpendingKey {
     ///
     /// Returns [`CryptoFramingError`] without an ownership commitment if either key commitment
     /// or the final transcript fails, although all parts currently have fixed lengths.
-    pub(crate) fn ownership_commitment(
+    pub fn ownership_commitment(
         &self,
         network: NetworkId,
         nullifier_key: &NullifierKey,
