@@ -45,7 +45,7 @@ jobs:
           } 2>&1 | tee validation-logs/environment.log
           test "$(uname -m)" = x86_64
 
-          git ls-files -z Cargo.toml Cargo.lock crates .github/workflows \
+          git ls-files -z Cargo.toml Cargo.lock crates vendor .github/workflows \
             | sort -z | xargs -0 sha256sum > validation-logs/source-sha256.txt
           cp Cargo.lock validation-logs/Cargo.lock
 
@@ -88,10 +88,10 @@ jobs:
             2>&1 | tee validation-logs/rustdoc.log
 
       - name: Test the locked workspace
-        run: cargo test --workspace --locked 2>&1 | tee validation-logs/workspace-tests.log
+        run: cargo test --workspace --all-features --locked 2>&1 | tee validation-logs/workspace-tests.log
 
       - name: Run native release crypto, notes and state tests
-        run: cargo test -p houseki-crypto -p houseki-notes -p houseki-state --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
+        run: cargo test -p houseki-crypto -p houseki-notes -p houseki-state --all-features --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
 
       - name: Check proof capability boundaries
         run: |
@@ -112,6 +112,12 @@ jobs:
             2>&1 | tee validation-logs/proofs-verifier-release-tests.log
           cargo test -p houseki-proofs --release --features prover --locked \
             2>&1 | tee validation-logs/proofs-prover-release-tests.log
+
+      - name: Reject parallel backend feature unification
+        run: |
+          cargo test -p houseki-proofs --lib --locked \
+            --features 'prover,p3-maybe-rayon/parallel' compiled_backend_mode_matches_preflight \
+            2>&1 | tee validation-logs/proofs-parallel-gate.log
 
       - name: Retain validation evidence
         if: always()

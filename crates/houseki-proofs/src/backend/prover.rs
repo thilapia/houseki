@@ -232,6 +232,39 @@ mod tests {
         .unwrap();
     }
 
+    /// Verifies in an isolated process that expected debug constraint failures bypass panic hooks.
+    #[cfg(debug_assertions)]
+    #[test]
+    fn private_constraint_failures_do_not_reach_panic_hooks() {
+        if std::env::var_os("HOUSEKI_PROOFS_PANIC_PROBE").is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "backend::prover::tests::private_constraint_failures_do_not_reach_panic_hooks",
+                ])
+                .env("HOUSEKI_PROOFS_PANIC_PROBE", "1")
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        // The child executes this test alone, so replacing its hook cannot affect another test.
+        std::panic::set_hook(Box::new(|_| std::process::exit(71)));
+        let runtime = ProofRuntime::new();
+        let lease = runtime.acquire().unwrap();
+        assert!(matches!(
+            prove(
+                &lease,
+                b"invalid private fixture",
+                &SquareAir,
+                trace(),
+                &[Goldilocks::from_u64(290)]
+            ),
+            Err(BackendError::ProvingFailed)
+        ));
+        assert!(memory::LAST_USAGE.with(|usage| usage.take()).is_some());
+    }
+
     /// Discards an unexpected unwind payload and all backend storage before returning a fixed error.
     #[test]
     fn backend_unwinding_releases_private_state() {

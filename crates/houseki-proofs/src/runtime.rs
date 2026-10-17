@@ -36,7 +36,7 @@ impl ProofRuntime {
     /// # Errors
     ///
     /// Returns [`RuntimeError::Busy`] while another operation holds this runtime, then
-    /// [`RuntimeError::BackendUnavailable`] if the required allocator adapter is absent.
+    /// [`RuntimeError::BackendUnavailable`] if the allocator adapter is absent, backend parallelism is enabled or panic unwinding is disabled.
     ///
     /// A default consumer without a global [`crate::ProofAllocator`] fails this preflight.
     ///
@@ -116,6 +116,18 @@ mod tests {
         ));
         drop(lease);
         runtime.check_prover_allocator().unwrap();
+    }
+
+    /// Detects feature unification that would move private allocations outside the worker boundary.
+    #[cfg(feature = "prover")]
+    #[test]
+    fn compiled_backend_mode_matches_preflight() {
+        let result = ProofRuntime::new().check_prover_allocator();
+        if p3_maybe_rayon::PARALLEL_ENABLED || !cfg!(panic = "unwind") {
+            assert_eq!(result, Err(RuntimeError::BackendUnavailable));
+        } else {
+            assert_eq!(result, Ok(()));
+        }
     }
 
     /// Returns the slot during unwinding without storing any caller request.

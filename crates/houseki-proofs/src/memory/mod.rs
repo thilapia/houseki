@@ -105,7 +105,7 @@ pub(crate) struct Scope {
 impl Scope {
     /// Claims one token and checks allocator installation before admitting private work.
     pub(crate) fn enter(token: &CancellationToken) -> Result<Self, MemoryError> {
-        if p3_maybe_rayon::PARALLEL_ENABLED {
+        if p3_maybe_rayon::PARALLEL_ENABLED || !cfg!(panic = "unwind") {
             return Err(MemoryError::BackendUnavailable);
         }
         if ACTIVE.with(|active| !active.get().is_null()) {
@@ -301,6 +301,65 @@ mod tests {
         assert!(result.is_err());
         drop(result);
         assert!(scope.finish().unwrap().wiped_bytes >= 4096);
+    }
+
+    /// Retains cleanup ownership when an allocation is released by a different thread.
+    #[test]
+    fn allocation_cleanup_follows_ownership_across_threads() {
+        let transfer = std::sync::atomic::AtomicPtr::<[u8; 8192]>::new(std::ptr::null_mut());
+        let completed = AtomicBool::new(false);
+        std::thread::scope(|workers| {
+            workers.spawn(|| {
+                let pointer = loop {
+                    let pointer = transfer.load(Ordering::Acquire);
+                    if !pointer.is_null() {
+                        break pointer;
+                    }
+                    std::thread::yield_now();
+                };
+                // Safety: The main thread transfers one unique Box with the same complete layout.
+                drop(unsafe { Box::from_raw(pointer) });
+                completed.store(true, Ordering::Release);
+            });
+            let token = CancellationToken::new();
+            let scope = Scope::enter(&token).unwrap();
+            transfer.store(Box::into_raw(Box::new([77_u8; 8192])), Ordering::Release);
+            while !completed.load(Ordering::Acquire) {
+                std::thread::yield_now();
+            }
+            assert!(scope.finish().unwrap().wiped_bytes >= 8192);
+        });
+    }
+
+    /// Preserves alignment, retained bytes and the original allocation when growth cannot be represented.
+    #[test]
+    fn allocator_preserves_layout_and_failed_reallocation() {
+        let token = CancellationToken::new();
+        let scope = Scope::enter(&token).unwrap();
+        let allocator = ProofAllocator::new(System);
+        for alignment in [1, 2, 8, 64, 4096] {
+            let original = Layout::from_size_align(17, alignment).unwrap();
+            // Safety: Nonzero allocations are checked, initialized and released with their actual layouts.
+            unsafe {
+                let pointer = allocator.alloc_zeroed(original);
+                assert!(!pointer.is_null());
+                assert_eq!(pointer as usize % alignment, 0);
+                assert_eq!(std::slice::from_raw_parts(pointer, 17), &[0; 17]);
+                pointer.write_bytes(41, 17);
+                assert!(allocator.realloc(pointer, original, usize::MAX).is_null());
+                assert_eq!(std::slice::from_raw_parts(pointer, 17), &[41; 17]);
+                let grown = allocator.realloc(pointer, original, 33);
+                assert!(!grown.is_null());
+                assert_eq!(grown as usize % alignment, 0);
+                assert_eq!(std::slice::from_raw_parts(grown, 17), &[41; 17]);
+                let shrunk =
+                    allocator.realloc(grown, Layout::from_size_align(33, alignment).unwrap(), 9);
+                assert!(!shrunk.is_null());
+                assert_eq!(std::slice::from_raw_parts(shrunk, 9), &[41; 9]);
+                allocator.dealloc(shrunk, Layout::from_size_align(9, alignment).unwrap());
+            }
+        }
+        assert!(scope.finish().unwrap().wiped_bytes >= 5 * (17 + 33 + 9));
     }
 
     /// Wipes the original and replacement allocations before either reaches the underlying allocator.
