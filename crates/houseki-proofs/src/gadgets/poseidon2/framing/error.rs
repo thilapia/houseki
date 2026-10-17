@@ -7,6 +7,10 @@ pub(crate) enum FramingError {
     #[error("hash frame layout is too large")]
     LayoutTooLarge,
 
+    /// A requested public block index falls outside the padded transcript.
+    #[error("hash frame block index is out of bounds")]
+    BlockIndexOutOfBounds,
+
     /// Input or destination lengths differ from the trusted circuit layout.
     #[error("hash frame storage does not match its layout")]
     ShapeMismatch,

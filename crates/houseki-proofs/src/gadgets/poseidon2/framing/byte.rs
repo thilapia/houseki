@@ -1,10 +1,17 @@
-//! Borrowed transcript positions without an owned private byte buffer.
+//! Public transcript positions without an owned private byte buffer.
 
-/// One public framing byte or borrowed field byte from an input part.
-pub(super) enum Byte<'a, V> {
+/// One fixed framing byte or public coordinate within an input part.
+#[derive(Clone, Copy)]
+pub(super) enum Byte {
     /// A fixed label or integer-prefix byte selected by the layout.
     Constant(u8),
 
-    /// An input cell whose byte range is established by the framing constraints.
-    Input(&'a V),
+    /// An input coordinate whose value is supplied and constrained by its consumer.
+    Input {
+        /// Index of the ordered transcript part.
+        part: usize,
+
+        /// Byte offset within that part.
+        offset: usize,
+    },
 }

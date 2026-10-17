@@ -2,11 +2,17 @@
 
 #[cfg(test)]
 mod air;
+mod block;
+#[cfg(test)]
+mod block_air;
 mod byte;
 mod error;
 
 #[cfg(test)]
 pub(crate) use air::FramingAir;
+pub(crate) use block::Block;
+#[cfg(test)]
+pub(crate) use block_air::BlockAir;
 pub(crate) use error::FramingError;
 
 use super::profile::RATE;
@@ -110,6 +116,18 @@ impl Frame {
         self.padded_words
     }
 
+    /// Selects one fixed absorption block without borrowing private input values.
+    ///
+    /// The index belongs to the trusted circuit schedule rather than a witness selector.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FramingError::BlockIndexOutOfBounds`] before constructing metadata if the index
+    /// is outside the complete padded transcript.
+    pub(crate) fn block(&self, index: usize) -> Result<Block, FramingError> {
+        Block::new(self, index)
+    }
+
     /// Constrains every input byte and links it to the exact padded packed words.
     ///
     /// Fixed metadata appears as constants and every input byte receives its own range check.
@@ -147,10 +165,10 @@ impl Frame {
         let mut reconstructed = AB::Expr::ZERO;
         let mut position = 0;
         let mut used = 0;
-        for byte in self.bytes(parts) {
+        for byte in self.bytes() {
             let value = match byte {
                 Byte::Constant(value) => AB::Expr::from_u8(value),
-                Byte::Input(value) => (*value).into(),
+                Byte::Input { part, offset } => parts[part][offset].into(),
             };
 
             reconstructed += value * Goldilocks::from_u64(1 << (8 * used));
@@ -214,10 +232,10 @@ impl Frame {
         let mut word = Zeroizing::new(0_u64);
         let mut position = 0;
         let mut used = 0;
-        for byte in self.bytes(parts) {
+        for byte in self.bytes() {
             let value = Zeroizing::new(match byte {
                 Byte::Constant(value) => u64::from(value),
-                Byte::Input(value) => value.as_canonical_u64(),
+                Byte::Input { part, offset } => parts[part][offset].as_canonical_u64(),
             });
 
             *word += *value << (8 * used);
@@ -255,8 +273,8 @@ impl Frame {
             && words == self.padded_words
     }
 
-    /// Streams public prefix bytes and borrowed input cells in exact native transcript order.
-    fn bytes<'a, V>(&'a self, parts: &'a [&'a [V]]) -> impl Iterator<Item = Byte<'a, V>> {
+    /// Streams fixed bytes and public input coordinates in exact native transcript order.
+    fn bytes(&self) -> impl Iterator<Item = Byte> {
         self.frame_length
             .to_le_bytes()
             .into_iter()
@@ -274,12 +292,12 @@ impl Frame {
                     .into_iter()
                     .map(Byte::Constant),
             )
-            .chain(self.lengths.iter().zip(parts).flat_map(|(length, part)| {
+            .chain(self.lengths.iter().enumerate().flat_map(|(part, length)| {
                 (*length as u64)
                     .to_le_bytes()
                     .into_iter()
                     .map(Byte::Constant)
-                    .chain(part.iter().map(Byte::Input))
+                    .chain((0..*length).map(move |offset| Byte::Input { part, offset }))
             }))
     }
 }

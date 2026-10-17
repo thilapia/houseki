@@ -21,7 +21,7 @@ pub(crate) use extraction::ExtractionRowAir;
 pub(crate) use framed_sponge_air::FramedSpongeAir;
 pub(crate) use framing::Frame;
 #[cfg(test)]
-pub(crate) use framing::FramingAir;
+pub(crate) use framing::{BlockAir, FramingAir};
 #[cfg(test)]
 pub(crate) use hash_air::HashAir;
 #[cfg(test)]
