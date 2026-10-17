@@ -76,9 +76,9 @@ jobs:
       - name: Lint the locked workspace
         run: cargo clippy --workspace --all-targets --locked -- -D warnings 2>&1 | tee validation-logs/clippy.log
 
-      - name: Check crypto and notes documentation coverage
+      - name: Check crypto, notes and state documentation coverage
         run: |
-          cargo clippy -p houseki-crypto -p houseki-notes --all-targets --no-deps --locked -- \
+          cargo clippy -p houseki-crypto -p houseki-notes -p houseki-state --all-targets --no-deps --locked -- \
             -D warnings -D missing_docs -D clippy::missing_docs_in_private_items \
             2>&1 | tee validation-logs/documentation-lints.log
 
@@ -90,8 +90,8 @@ jobs:
       - name: Test the locked workspace
         run: cargo test --workspace --locked 2>&1 | tee validation-logs/workspace-tests.log
 
-      - name: Run native release crypto and notes tests
-        run: cargo test -p houseki-crypto -p houseki-notes --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
+      - name: Run native release crypto, notes and state tests
+        run: cargo test -p houseki-crypto -p houseki-notes -p houseki-state --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
 
       - name: Retain validation evidence
         if: always()

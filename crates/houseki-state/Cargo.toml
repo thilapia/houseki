@@ -1,0 +1,12 @@
+[package]
+name = "houseki-state"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+houseki-crypto.workspace = true
+houseki-types.workspace = true
+zeroize.workspace = true
+thiserror.workspace = true

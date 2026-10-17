@@ -10,6 +10,7 @@ publish = false
 [workspace.dependencies]
 # internal
 houseki-crypto = { path = "crates/houseki-crypto" }
+houseki-state = { path = "crates/houseki-state" }
 houseki-types = { path = "crates/houseki-types" }
 
 # cryptography
