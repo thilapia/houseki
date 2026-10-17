@@ -14,6 +14,8 @@ mod error;
 #[cfg(test)]
 mod field_proof;
 #[cfg(test)]
+mod framing_proof;
+#[cfg(test)]
 mod gadget_proof;
 mod hash;
 #[cfg(any(test, feature = "prover"))]

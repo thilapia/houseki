@@ -9,6 +9,14 @@
 )]
 mod amount;
 mod encoding;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "circuit hash consumers follow in later increments"
+    )
+)]
+mod poseidon2;
 
 #[cfg(test)]
 pub(crate) use amount::{AdditionAir, AmountAir};
@@ -48,3 +56,13 @@ pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field
     )
 )]
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "circuit hash consumers follow in later increments"
+    )
+)]
+pub(crate) use poseidon2::Frame as HashFrame;
+#[cfg(test)]
+pub(crate) use poseidon2::FramingAir;

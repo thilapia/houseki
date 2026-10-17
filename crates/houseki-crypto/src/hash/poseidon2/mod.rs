@@ -92,7 +92,71 @@ fn add_frame_length(length: u64, chunk_length: usize) -> Result<u64, CryptoFrami
 /// Complete sponge vectors, domain separation and frame length limits.
 #[cfg(test)]
 mod tests {
-    use super::{CryptoFramingError, Domain, add_frame_length, poseidon2};
+    use super::{
+        BytePacker, CryptoFramingError, Domain, add_frame_length, emit_frame, frame_length,
+        poseidon2,
+    };
+
+    /// Checks native packing against the literal transcript vectors used by the constrained frame.
+    #[test]
+    fn framed_words_match_independent_constraint_vectors() {
+        for (parts, expected) in [
+            (
+                &[][..],
+                &[
+                    0x00000000000022,
+                    0x73756f68001c00,
+                    0x2f31762f696b65,
+                    0x65697069636572,
+                    0x2d6d656b2f746e,
+                    0x0000000079656b,
+                ][..],
+            ),
+            (
+                &[&b""[..], &b"ab"[..], &b"c"[..]][..],
+                &[
+                    0x0000000000003d,
+                    0x73756f68001c00,
+                    0x2f31762f696b65,
+                    0x65697069636572,
+                    0x2d6d656b2f746e,
+                    0x0000000379656b,
+                    0x00000000000000,
+                    0x00000000000200,
+                    0x00000162610000,
+                    0x00630000000000,
+                ][..],
+            ),
+            (
+                &[&[1, 2, 3, 4, 5, 6, 7, 8][..]][..],
+                &[
+                    0x00000000000032,
+                    0x73756f68001c00,
+                    0x2f31762f696b65,
+                    0x65697069636572,
+                    0x2d6d656b2f746e,
+                    0x0000000179656b,
+                    0x00000000000008,
+                    0x06050403020100,
+                    0x00000000000807,
+                ][..],
+            ),
+        ] {
+            let domain = Domain::RecipientKemKey;
+            let length = frame_length(domain, parts).unwrap();
+            let mut words = Vec::new();
+            let mut packer = BytePacker::default();
+            packer.update(&length.to_le_bytes(), &mut |word| words.push(*word));
+            emit_frame(domain, parts, &mut |bytes| {
+                packer.update(bytes, &mut |word| words.push(*word));
+            })
+            .unwrap();
+
+            packer.finish(&mut |word| words.push(*word));
+
+            assert_eq!(words, expected);
+        }
+    }
 
     /// Checks complete sponge vectors around packing and padding boundaries.
     #[test]
