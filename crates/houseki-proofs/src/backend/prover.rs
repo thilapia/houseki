@@ -1,37 +1,253 @@
-//! One-attempt proving with fresh private randomness and no persistent commitment cache.
+//! One-attempt proving with protected allocation ownership through canonical encoding.
 
+use houseki_types::EncodedTransactionProof;
 use p3_air::{Air, DebugConstraintBuilder};
 use p3_goldilocks::Goldilocks;
-use p3_matrix::{Matrix, dense::RowMajorMatrix};
+use p3_matrix::dense::RowMajorMatrix;
 use p3_uni_stark::QuotientAir;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use super::{
-    BackendError,
-    config::{self, BackendProof, Config},
+    BackendError, codec,
+    config::{self, Config},
     random,
+    trace::Trace,
 };
-use crate::runtime::Admission;
+use crate::{
+    CancellationToken,
+    memory::{self, MemoryError, Scope},
+    profile::{ExpectedIdentity, MAX_PROOF_BYTES},
+    runtime::Admission,
+};
 
-/// Proves only while the caller retains the shared operation lease.
+/// Already selected public relation inputs and trusted output dimensions.
+pub(crate) struct Request<'a, A> {
+    /// Complete public transcript prefix.
+    pub(crate) prefix: &'a [u8],
+
+    /// Internal relation selected by trusted dispatch.
+    pub(crate) air: &'a A,
+
+    /// Independently computed public field values.
+    pub(crate) public: &'a [Goldilocks],
+
+    /// Exact expected envelope identity.
+    pub(crate) identity: &'a ExpectedIdentity,
+
+    /// Trusted dimensions used by the bounded codec.
+    pub(crate) layout: codec::Layout,
+}
+
+/// Produces only public canonical bytes after every private backend allocation is released.
 ///
-/// Callers keep that lease through encoding and destroy attempt data before retrying.
-pub(crate) fn prove<A>(
+/// The guarded input remains owned through every return path and its backend copy is allocated
+/// only after the process allocator and serial execution mode have passed preflight.
+pub(crate) fn prove_encoded<A>(
     _admission: &Admission<'_>,
-    prefix: &[u8],
-    air: &A,
-    trace: RowMajorMatrix<Goldilocks>,
-    public: &[Goldilocks],
-) -> Result<BackendProof, BackendError>
+    request: Request<'_, A>,
+    trace: Trace,
+    token: &CancellationToken,
+) -> Result<EncodedTransactionProof, BackendError>
 where
     A: QuotientAir<Config> + for<'a> Air<DebugConstraintBuilder<'a, Goldilocks>>,
 {
-    if trace.width() != air.width()
-        || public.len() != air.num_public_values()
+    if trace.width() != request.air.width()
+        || request.public.len() != request.air.num_public_values()
         || !trace.height().is_power_of_two()
         || trace.height() < 512
+        || trace.height().ilog2() as usize != request.layout.log_rows
+        || trace.width() != request.layout.width
     {
         return Err(BackendError::InvalidTrace);
     }
-    let config = config::assemble(prefix, random::fresh_generators()?);
-    p3_uni_stark::prove(&config, air, trace, public).map_err(|_| BackendError::ProvingFailed)
+    // Subscriber setup occurs outside private allocation accounting and no application subscriber
+    // receives backend events while this attempt owns witnesses.
+    tracing::subscriber::with_default(tracing::subscriber::NoSubscriber::default(), || {
+        let scope = Scope::enter(token).map_err(memory_error)?;
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            memory::checkpoint();
+            let config = config::assemble(request.prefix, random::fresh_generators()?);
+            let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());
+            let proof = p3_uni_stark::prove(&config, request.air, matrix, request.public)
+                .map_err(|_| BackendError::ProvingFailed)?;
+            memory::checkpoint();
+            let encoded = codec::encode(request.identity, request.layout, &proof)
+                .map_err(|_| BackendError::ProvingFailed)?;
+            let public = memory::public_copy(encoded.as_bytes()).map_err(memory_error)?;
+            memory::checkpoint();
+            EncodedTransactionProof::new(public, MAX_PROOF_BYTES)
+                .map_err(|_| BackendError::ProvingFailed)
+        }));
+        let result = match result {
+            Ok(result) => result,
+            Err(payload) => {
+                let cancelled = payload.is::<memory::Cancelled>();
+                drop(payload);
+                Err(if cancelled {
+                    BackendError::Cancelled
+                } else {
+                    BackendError::ProvingFailed
+                })
+            }
+        };
+        scope.finish().map_err(memory_error)?;
+        if token.is_cancelled() {
+            return Err(BackendError::Cancelled);
+        }
+        result
+    })
+}
+
+/// Maps allocator and lifecycle failures to fixed backend diagnostics.
+fn memory_error(error: MemoryError) -> BackendError {
+    match error {
+        MemoryError::Cancelled => BackendError::Cancelled,
+        MemoryError::AllocationFailed => BackendError::AllocationFailed,
+        _ => BackendError::BackendUnavailable,
+    }
+}
+
+/// Runs the protected path for the internal synthetic test relation and decodes only public bytes.
+#[cfg(test)]
+pub(crate) fn prove<A>(
+    admission: &Admission<'_>,
+    prefix: &[u8],
+    air: &A,
+    trace: Trace,
+    public: &[Goldilocks],
+) -> Result<config::BackendProof, BackendError>
+where
+    A: QuotientAir<Config> + for<'a> Air<DebugConstraintBuilder<'a, Goldilocks>>,
+{
+    let identity = test_identity();
+    let layout = test_layout();
+    let encoded = prove_encoded(
+        admission,
+        Request {
+            prefix,
+            air,
+            public,
+            identity: &identity,
+            layout,
+        },
+        trace,
+        &CancellationToken::new(),
+    )?;
+    codec::decode(&identity, layout, encoded.as_bytes()).map_err(|_| BackendError::ProvingFailed)
+}
+
+/// Synthetic identity shared by protected execution tests without admitting a product profile.
+#[cfg(test)]
+pub(crate) fn test_identity() -> ExpectedIdentity {
+    ExpectedIdentity {
+        profile: houseki_types::ProofProfileId::new(0xffff0004),
+        relation: crate::profile::Relation::Payment,
+        shape: 0x0101,
+        manifest: [0x53; 64],
+    }
+}
+
+/// Exact quotient and trace geometry of the internal square AIR.
+#[cfg(test)]
+pub(crate) fn test_layout() -> codec::Layout {
+    codec::Layout {
+        log_rows: 9,
+        width: 1,
+        quotient_chunks: 4,
+        main_next: true,
+    }
+}
+
+/// Complete attempt interruption with real backend allocations.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ProofRuntime,
+        backend::tests::{SquareAir, trace},
+    };
+    use p3_field::PrimeCharacteristicRing;
+    use p3_util::prover_runtime::Phase;
+
+    /// Cancels during every long phase, verifies complete release, and rejects token reuse.
+    #[test]
+    fn cancelled_job_cannot_reuse_private_state() {
+        for phase in [
+            Phase::Random,
+            Phase::Transform,
+            Phase::Commitment,
+            Phase::Constraint,
+            Phase::Opening,
+            Phase::Fold,
+        ] {
+            let runtime = ProofRuntime::new();
+            let lease = runtime.acquire().unwrap();
+            let identity = test_identity();
+            let public = [Goldilocks::from_u64(289)];
+            let request = || Request {
+                prefix: b"houseki/test/cancellation/v1",
+                air: &SquareAir,
+                public: &public,
+                identity: &identity,
+                layout: test_layout(),
+            };
+            let token = CancellationToken::new();
+            memory::interrupt_at(phase, 8, false);
+            let result = prove_encoded(&lease, request(), trace(), &token);
+            assert!(
+                matches!(result, Err(BackendError::Cancelled)),
+                "{phase:?}: {result:?}"
+            );
+            let elapsed = memory::INTERRUPTED_AT.with(|time| time.take().unwrap().elapsed());
+            let usage = memory::LAST_USAGE.with(|usage| usage.take().unwrap());
+            assert!(usage.0 > 4096 && usage.1 >= usage.0);
+            eprintln!(
+                "cancel phase={phase:?} cleanup_us={} peak_bytes={} wiped_bytes={}",
+                elapsed.as_micros(),
+                usage.0,
+                usage.1
+            );
+            assert!(matches!(
+                prove_encoded(&lease, request(), trace(), &token),
+                Err(BackendError::Cancelled)
+            ));
+        }
+        let runtime = ProofRuntime::new();
+        let lease = runtime.acquire().unwrap();
+        let proof = prove(
+            &lease,
+            b"fresh retry",
+            &SquareAir,
+            trace(),
+            &[Goldilocks::from_u64(289)],
+        )
+        .unwrap();
+        crate::backend::verifier::verify(
+            &lease,
+            b"fresh retry",
+            &SquareAir,
+            &proof,
+            &[Goldilocks::from_u64(289)],
+        )
+        .unwrap();
+    }
+
+    /// Discards an unexpected unwind payload and all backend storage before returning a fixed error.
+    #[test]
+    fn backend_unwinding_releases_private_state() {
+        let runtime = ProofRuntime::new();
+        let lease = runtime.acquire().unwrap();
+        memory::interrupt_at(Phase::Opening, 8, true);
+        assert!(matches!(
+            prove(
+                &lease,
+                b"failure",
+                &SquareAir,
+                trace(),
+                &[Goldilocks::from_u64(289)]
+            ),
+            Err(BackendError::ProvingFailed)
+        ));
+        assert!(memory::LAST_USAGE.with(|usage| usage.take()).is_some());
+    }
 }

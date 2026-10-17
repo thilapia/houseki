@@ -2,7 +2,9 @@
 
 use std::{convert::Infallible, fmt};
 
-use rand::{Rng, SeedableRng, TryCryptoRng, TryRng, rngs::StdRng};
+use chacha20::ChaCha12Rng;
+use rand::{Rng, SeedableRng, TryCryptoRng, TryRng};
+use zeroize::Zeroize;
 #[cfg(any(test, feature = "prover"))]
 use zeroize::Zeroizing;
 
@@ -12,7 +14,7 @@ use super::BackendError;
 /// Private generator whose verification mode cannot produce even predictable bytes.
 pub(super) struct BackendRng {
     /// Seeded state present only for a proving attempt or a derived private stream.
-    generator: Option<StdRng>,
+    generator: Option<ChaCha12Rng>,
 }
 
 impl BackendRng {
@@ -22,7 +24,7 @@ impl BackendRng {
     }
 
     /// Borrows the private generator without allowing a deterministic verification fallback.
-    fn seeded(&mut self) -> &mut StdRng {
+    fn seeded(&mut self) -> &mut ChaCha12Rng {
         self.generator
             .as_mut()
             .expect("verification must not request randomness")
@@ -42,17 +44,22 @@ impl TryRng for BackendRng {
 
     /// Samples a full word only from a seeded private stream.
     fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        p3_util::prover_runtime::checkpoint(p3_util::prover_runtime::Phase::Random);
         Ok(self.seeded().next_u32())
     }
 
     /// Samples a full word only from a seeded private stream.
     fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        p3_util::prover_runtime::checkpoint(p3_util::prover_runtime::Phase::Random);
         Ok(self.seeded().next_u64())
     }
 
     /// Fills backend scratch only from a seeded private stream.
     fn try_fill_bytes(&mut self, destination: &mut [u8]) -> Result<(), Self::Error> {
-        self.seeded().fill_bytes(destination);
+        for chunk in destination.chunks_mut(4096) {
+            p3_util::prover_runtime::checkpoint(p3_util::prover_runtime::Phase::Random);
+            self.seeded().fill_bytes(chunk);
+        }
         Ok(())
     }
 }
@@ -64,9 +71,11 @@ impl SeedableRng for BackendRng {
     type Seed = [u8; 32];
 
     /// Creates a private stream without retaining the input seed array separately.
-    fn from_seed(seed: Self::Seed) -> Self {
+    fn from_seed(mut seed: Self::Seed) -> Self {
+        let generator = ChaCha12Rng::from_seed(seed);
+        seed.zeroize();
         Self {
-            generator: Some(StdRng::from_seed(seed)),
+            generator: Some(generator),
         }
     }
 }
@@ -89,4 +98,25 @@ pub(super) fn generators_with(
 #[cfg(any(test, feature = "prover"))]
 pub(super) fn fresh_generators() -> Result<[BackendRng; 3], BackendError> {
     generators_with(|seed| getrandom::fill(seed).map_err(|_| BackendError::EntropyUnavailable))
+}
+
+/// Pinned private generator and hash state cleanup contracts.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Requires drop cleanup from both stack state implementations and preserves the pinned stream.
+    #[test]
+    fn private_random_and_hash_state_support_drop_cleanup() {
+        /// Checks the upstream type's explicit destructor cleanup contract.
+        fn clears_on_drop<T: zeroize::ZeroizeOnDrop>() {}
+        clears_on_drop::<chacha20::ChaCha12Rng>();
+        clears_on_drop::<sha3::Sha3_512>();
+        let mut expected = rand::rngs::StdRng::from_seed([0x74; 32]);
+        let mut actual = BackendRng::from_seed([0x74; 32]);
+        for _ in 0..1024 {
+            assert_eq!(actual.try_next_u64().unwrap(), expected.next_u64());
+        }
+        assert_eq!(format!("{actual:?}"), "BackendRng([REDACTED])");
+    }
 }

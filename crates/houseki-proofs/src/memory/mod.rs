@@ -97,11 +97,17 @@ pub(crate) struct Scope {
 
     /// Prevents moving the active thread-local boundary to a different thread.
     thread: PhantomData<Rc<()>>,
+
+    /// Restores backend callbacks when this attempt leaves its worker thread.
+    _checkpoints: p3_util::prover_runtime::Guard,
 }
 
 impl Scope {
     /// Claims one token and checks allocator installation before admitting private work.
     pub(crate) fn enter(token: &CancellationToken) -> Result<Self, MemoryError> {
+        if p3_maybe_rayon::PARALLEL_ENABLED {
+            return Err(MemoryError::BackendUnavailable);
+        }
         if ACTIVE.with(|active| !active.get().is_null()) {
             return Err(MemoryError::NestedAttempt);
         }
@@ -120,6 +126,7 @@ impl Scope {
         let scope = Self {
             account,
             thread: PhantomData,
+            _checkpoints: p3_util::prover_runtime::install(backend_checkpoint),
         };
         let probe = Box::new(0_u8);
         std::hint::black_box(&probe);
@@ -135,6 +142,13 @@ impl Scope {
         if self.account.live.load(Ordering::Acquire) != 0 {
             return Err(MemoryError::OutstandingAllocations);
         }
+        #[cfg(test)]
+        LAST_USAGE.with(|usage| {
+            usage.set(Some((
+                self.account.peak.load(Ordering::Relaxed),
+                self.account.wiped.load(Ordering::Relaxed),
+            )))
+        });
         Ok(Usage {
             peak_bytes: self.account.peak.load(Ordering::Relaxed),
             wiped_bytes: self.account.wiped.load(Ordering::Relaxed),
@@ -147,6 +161,54 @@ impl Drop for Scope {
     fn drop(&mut self) {
         ACTIVE.with(|active| active.set(ptr::null()));
     }
+}
+
+/// Applies backend interruption without allocating diagnostics or exposing private values.
+fn backend_checkpoint(phase: p3_util::prover_runtime::Phase) {
+    #[cfg(test)]
+    INTERRUPT.with(|slot| {
+        if let Some((selected, left, failure)) = slot.get()
+            && selected == phase
+        {
+            if left == 0 {
+                slot.set(None);
+                INTERRUPTED_AT.with(|time| time.set(Some(std::time::Instant::now())));
+                if failure {
+                    std::panic::resume_unwind(Box::new(()));
+                }
+                ACTIVE.with(|active| {
+                    // Safety: Only an active Scope installs this callback on its own thread.
+                    unsafe { &*active.get() }
+                        .cancelled
+                        .store(true, Ordering::Release);
+                });
+            } else {
+                slot.set(Some((selected, left - 1, failure)));
+            }
+        }
+    });
+    #[cfg(not(test))]
+    let _ = phase;
+    checkpoint();
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test-only deterministic interruption inside a selected arithmetic phase.
+    static INTERRUPT: Cell<Option<(p3_util::prover_runtime::Phase, usize, bool)>> = const { Cell::new(None) };
+
+    /// Time at which an inner checkpoint observed the synthetic request.
+    pub(crate) static INTERRUPTED_AT: Cell<Option<std::time::Instant>> = const { Cell::new(None) };
+
+    /// Observed accounting from the last fully released attempt on this test thread.
+    pub(crate) static LAST_USAGE: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
+}
+
+/// Arms one synthetic interrupt without changing production cancellation behavior.
+#[cfg(test)]
+pub(crate) fn interrupt_at(phase: p3_util::prover_runtime::Phase, after: usize, failure: bool) {
+    INTERRUPT.with(|slot| slot.set(Some((phase, after, failure))));
+    LAST_USAGE.with(|usage| usage.set(None));
 }
 
 /// A typed cancellation unwind payload containing no witness values or backend diagnostics.
@@ -223,6 +285,22 @@ mod tests {
             // Safety: The original pointer and layout are forwarded unchanged.
             unsafe { System.dealloc(pointer, layout) }
         }
+    }
+
+    /// Propagates cancellation from inner transform work rather than an operation boundary.
+    #[test]
+    fn inner_backend_checkpoint_interrupts_an_attempt() {
+        let token = CancellationToken::new();
+        let scope = Scope::enter(&token).unwrap();
+        let result = std::panic::catch_unwind(|| {
+            let private = std::hint::black_box(vec![81_u8; 4096]);
+            token.cancel();
+            p3_util::prover_runtime::checkpoint(p3_util::prover_runtime::Phase::Transform);
+            drop(private);
+        });
+        assert!(result.is_err());
+        drop(result);
+        assert!(scope.finish().unwrap().wiped_bytes >= 4096);
     }
 
     /// Wipes the original and replacement allocations before either reaches the underlying allocator.

@@ -25,3 +25,11 @@ mod memory;
 pub use cancellation::CancellationToken;
 #[cfg(feature = "prover")]
 pub use memory::ProofAllocator;
+
+#[cfg(test)]
+mod test_allocator;
+
+#[cfg(feature = "prover")]
+mod payment;
+#[cfg(feature = "prover")]
+pub use payment::{PaymentWitness, WitnessShapeError};

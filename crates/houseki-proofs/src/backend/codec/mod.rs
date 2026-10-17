@@ -1,7 +1,7 @@
 //! Canonical fixed shape proof encoding with validation before decoded allocation.
 
 #[cfg(test)]
-mod allocation;
+use crate::test_allocator as allocation;
 mod reader;
 mod writer;
 

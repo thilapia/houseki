@@ -5,6 +5,8 @@ mod config;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
 mod random;
+#[cfg(any(test, feature = "prover"))]
+mod trace;
 mod verifier;
 
 /// Redacted failures from private backend preparation or execution.
@@ -12,6 +14,15 @@ mod verifier;
 pub(crate) enum BackendError {
     /// The operating system could not supply every required private seed.
     EntropyUnavailable,
+
+    /// A bounded storage request could not be allocated.
+    AllocationFailed,
+
+    /// Cancellation discarded this attempt or its token had already been consumed.
+    Cancelled,
+
+    /// Private allocation protection or complete release accounting was unavailable.
+    BackendUnavailable,
 
     /// Trace dimensions do not match the selected AIR or hiding floor.
     InvalidTrace,
@@ -26,12 +37,12 @@ pub(crate) enum BackendError {
 /// Real backend behavior under an internal synthetic relation.
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::trace::Trace;
     use super::*;
     use crate::ProofRuntime;
     use p3_air::{Air, AirBuilder, BaseAir, WindowAccess};
     use p3_field::PrimeCharacteristicRing;
     use p3_goldilocks::Goldilocks;
-    use p3_matrix::dense::RowMajorMatrix;
 
     /// A private square root linked to its public square on every trace row.
     pub(crate) struct SquareAir;
@@ -66,8 +77,10 @@ pub(crate) mod tests {
     }
 
     /// Creates the synthetic witness without a public product dispatch route.
-    pub(crate) fn trace() -> RowMajorMatrix<Goldilocks> {
-        RowMajorMatrix::new(vec![Goldilocks::from_u64(17); 512], 1)
+    pub(crate) fn trace() -> Trace {
+        let mut trace = Trace::new(512, 1, 512).unwrap();
+        trace.values_mut().fill(Goldilocks::from_u64(17));
+        trace
     }
 
     /// Verifies real independent randomized proofs and rejects a changed public statement.
