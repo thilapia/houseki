@@ -1,5 +1,6 @@
 //! Private hiding proof execution with separate proving and verification capabilities.
 
+mod codec;
 mod config;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
