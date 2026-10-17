@@ -32,6 +32,8 @@ where
     {
         return Err(BackendError::InvalidTrace);
     }
+
     let config = config::assemble(prefix, random::fresh_generators()?);
+
     p3_uni_stark::prove(&config, air, trace, public).map_err(|_| BackendError::ProvingFailed)
 }

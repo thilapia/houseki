@@ -1,46 +1,14 @@
 //! Sparse append state held in memory for the fixed depth 64 application note tree.
 
+mod error;
+
+pub use error::NoteTreeError;
+
 use crate::NoteMembershipWitness;
-use houseki_crypto::{
-    CryptoFramingError, NoteTreeHashError, note_tree_empty_leaf, note_tree_leaf, note_tree_parent,
-    note_tree_root,
-};
+use houseki_crypto::{note_tree_empty_leaf, note_tree_leaf, note_tree_parent, note_tree_root};
 use houseki_types::{NetworkId, NoteCommitment, NoteCount, NotePosition, NoteRoot, NoteTreeAnchor};
 use std::collections::HashMap;
-use thiserror::Error;
 use zeroize::Zeroizing;
-
-/// A failure to initialize, append or retrieve a concrete application tree path.
-#[derive(Debug, Error)]
-pub enum NoteTreeError {
-    /// All 2^64 leaf positions are occupied.
-    #[error("application note tree is full")]
-    Full,
-
-    /// The requested witness position has not been appended.
-    #[error("note position is not occupied")]
-    PositionNotOccupied,
-
-    /// Sparse public node storage could not be reserved before an append.
-    #[error("could not reserve application note tree storage")]
-    AllocationFailed,
-
-    /// Public parent hashing rejected its fixed tree inputs.
-    #[error("could not hash application note tree parent: {0}")]
-    Hash(
-        /// Original public tree hash failure.
-        #[from]
-        NoteTreeHashError,
-    ),
-
-    /// Fixed leaf or root framing failed before state mutation.
-    #[error("could not frame application note tree: {0}")]
-    Framing(
-        /// Original safe framing failure.
-        #[from]
-        CryptoFramingError,
-    ),
-}
 
 /// A concrete append tree retaining occupied public nodes for local witness retrieval.
 ///

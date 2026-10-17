@@ -194,6 +194,7 @@ mod tests {
         }
 
         let expected = decode_hex::<3168>(EXPANDED_KEY);
+
         assert_eq!(
             key.encapsulation_key().to_encoded().as_bytes().as_slice(),
             &expected[1536..3104]

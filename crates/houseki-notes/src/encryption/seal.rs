@@ -550,6 +550,7 @@ mod tests {
             let mut start = CheckpointSequence::new(5);
             let mut end = CheckpointSequence::new(8);
             let (mut anchor, mut nullifiers) = inputs.into_parts();
+
             match change {
                 0 => network = NetworkId::from_bytes([6; 64]),
                 1 => protocol = ProtocolVersion::new(0x0100_0003),
@@ -783,6 +784,7 @@ mod tests {
             let mut schedule = original.fee_schedule_id();
             let mut start = CheckpointSequence::new(5);
             let mut end = CheckpointSequence::new(8);
+
             match change {
                 0 => network = NetworkId::from_bytes([6; 64]),
                 1 => protocol = ProtocolVersion::new(0x0100_0003),

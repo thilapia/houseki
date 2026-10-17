@@ -31,6 +31,7 @@ impl Writer {
                 .try_reserve_exact(capacity)
                 .map_err(|_| CodecError::AllocationFailed)?;
         }
+
         Ok(Self {
             bytes,
             length: 0,
@@ -47,9 +48,11 @@ impl Writer {
         if self.length > MAX_PROOF_BYTES {
             return Err(CodecError::ProofTooLarge);
         }
+
         if self.materialize {
             self.bytes.extend_from_slice(bytes);
         }
+
         Ok(())
     }
 
@@ -68,6 +71,7 @@ impl Writer {
         for coefficient in value.as_basis_coefficients_slice() {
             self.field(*coefficient)?;
         }
+
         Ok(())
     }
 
@@ -76,6 +80,7 @@ impl Writer {
         for value in digest {
             self.bytes(&value.to_le_bytes())?;
         }
+
         Ok(())
     }
 
@@ -85,6 +90,7 @@ impl Writer {
         cap: &MerkleCap<Goldilocks, [u64; 8]>,
     ) -> Result<(), CodecError> {
         exact(cap.roots().len(), 1)?;
+
         self.digest(&cap.roots()[0])
     }
 
@@ -94,6 +100,7 @@ impl Writer {
         for value in values {
             self.field(*value)?;
         }
+
         Ok(())
     }
 
@@ -107,6 +114,7 @@ impl Writer {
         for value in values {
             self.extension(*value)?;
         }
+
         Ok(())
     }
 
@@ -119,10 +127,12 @@ impl Writer {
         if values.len() > maximum {
             return Err(CodecError::InvalidShape);
         }
+
         self.u32(u32::try_from(values.len()).map_err(|_| CodecError::InvalidShape)?)?;
         for value in values {
             self.digest(value)?;
         }
+
         Ok(())
     }
 }
@@ -132,5 +142,6 @@ pub(super) fn exact(actual: usize, expected: usize) -> Result<(), CodecError> {
     if actual != expected {
         return Err(CodecError::InvalidShape);
     }
+
     Ok(())
 }

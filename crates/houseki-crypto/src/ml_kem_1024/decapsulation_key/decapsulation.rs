@@ -33,7 +33,7 @@ mod tests {
     use houseki_types::EncodedMlKem1024Ciphertext;
 
     use super::MlKem1024DecapsulationKey;
-    use crate::ml_kem_1024::shared_secret::tests::{assert_secret_eq, assert_secrets_eq};
+    use crate::ml_kem_1024::shared_secret::{assert_secret_eq, assert_secrets_eq};
 
     // Public NIST ACVP seed-format decapsulation fixtures.
     // https://github.com/usnistgov/ACVP-Server/tree/ad33b3d9504491767f1aa76382464f3b3fa2359e/gen-val/json-files/ML-KEM-encapDecap-FIPS203-tr1

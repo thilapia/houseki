@@ -27,6 +27,8 @@ where
     if public.len() != air.num_public_values() {
         return Err(BackendError::InvalidProof);
     }
+
     let config = config::assemble(prefix, std::array::from_fn(|_| BackendRng::verification()));
+
     p3_uni_stark::verify(&config, air, proof, public).map_err(|_| BackendError::InvalidProof)
 }

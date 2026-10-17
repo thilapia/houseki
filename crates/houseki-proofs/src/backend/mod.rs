@@ -2,73 +2,25 @@
 
 mod codec;
 mod config;
+mod error;
+mod hash;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
 mod random;
+#[cfg(test)]
+mod square_air;
 mod verifier;
 
-/// Redacted failures from private backend preparation or execution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum BackendError {
-    /// The operating system could not supply every required private seed.
-    EntropyUnavailable,
-
-    /// Trace dimensions do not match the selected AIR or hiding floor.
-    InvalidTrace,
-
-    /// The pinned prover failed without returning a complete proof.
-    ProvingFailed,
-
-    /// Cryptographic verification or expected public dimensions failed.
-    InvalidProof,
-}
+pub(crate) use error::BackendError;
 
 /// Real backend behavior under an internal synthetic relation.
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
+    use super::square_air::{SquareAir, trace};
     use super::*;
     use crate::ProofRuntime;
-    use p3_air::{Air, AirBuilder, BaseAir, WindowAccess};
     use p3_field::PrimeCharacteristicRing;
     use p3_goldilocks::Goldilocks;
-    use p3_matrix::dense::RowMajorMatrix;
-
-    /// A private square root linked to its public square on every trace row.
-    pub(crate) struct SquareAir;
-
-    impl<F> BaseAir<F> for SquareAir {
-        /// Stores one private root per row.
-        fn width(&self) -> usize {
-            1
-        }
-
-        /// Exposes exactly the expected square.
-        fn num_public_values(&self) -> usize {
-            1
-        }
-
-        /// Bounds the polynomial square and linear continuity constraints.
-        fn max_constraint_degree(&self) -> Option<usize> {
-            Some(2)
-        }
-    }
-
-    impl<AB: AirBuilder> Air<AB> for SquareAir {
-        /// Constrains the public square and continuity independently of trace preparation.
-        fn eval(&self, builder: &mut AB) {
-            let main = builder.main();
-            let current = main.current_slice()[0];
-            let next = main.next_slice()[0];
-            let square = builder.public_values()[0];
-            builder.assert_eq(current * current, square);
-            builder.when_transition().assert_eq(current, next);
-        }
-    }
-
-    /// Creates the synthetic witness without a public product dispatch route.
-    pub(crate) fn trace() -> RowMajorMatrix<Goldilocks> {
-        RowMajorMatrix::new(vec![Goldilocks::from_u64(17); 512], 1)
-    }
 
     /// Verifies real independent randomized proofs and rejects a changed public statement.
     #[test]
@@ -76,6 +28,7 @@ pub(crate) mod tests {
         let runtime = ProofRuntime::new();
         let lease = runtime.acquire().unwrap();
         let public = [Goldilocks::from_u64(289)];
+
         let first = prover::prove(
             &lease,
             b"houseki/test/square/v1",
@@ -92,6 +45,7 @@ pub(crate) mod tests {
             &public,
         )
         .unwrap();
+
         assert_ne!(first.commitments.trace, second.commitments.trace);
         verifier::verify(
             &lease,
@@ -138,6 +92,7 @@ pub(crate) mod tests {
             std::thread::spawn(move || {
                 let runtime = ProofRuntime::new();
                 let lease = runtime.acquire().unwrap();
+
                 prover::prove(
                     &lease,
                     b"houseki/test/concurrent/v1",
@@ -149,7 +104,9 @@ pub(crate) mod tests {
             })
         });
         let [first, second] = requests.map(|request| request.join().unwrap());
+
         assert_ne!(first.commitments.trace, second.commitments.trace);
+
         let verifier_runtime = ProofRuntime::new();
         let lease = verifier_runtime.acquire().unwrap();
         for proof in [first, second] {
@@ -176,9 +133,11 @@ pub(crate) mod tests {
                     Err(BackendError::EntropyUnavailable)
                 } else {
                     bytes.fill(7);
+
                     Ok(())
                 }
             });
+
             assert!(matches!(result, Err(BackendError::EntropyUnavailable)));
             assert_eq!(calls, failed_seed + 1);
         }

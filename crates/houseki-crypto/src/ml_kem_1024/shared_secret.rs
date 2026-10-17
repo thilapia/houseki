@@ -58,9 +58,21 @@ impl Drop for MlKem1024SharedSecret {
     }
 }
 
+/// Compares stored secret bytes with a published test vector.
+#[cfg(test)]
+pub(super) fn assert_secret_eq(secret: &MlKem1024SharedSecret, expected: &[u8; 32]) {
+    assert_eq!(&secret.0, expected);
+}
+
+/// Compares two stored secrets inside the test boundary.
+#[cfg(test)]
+pub(super) fn assert_secrets_eq(left: &MlKem1024SharedSecret, right: &MlKem1024SharedSecret) {
+    assert_eq!(left.0, right.0);
+}
+
 /// Independent KDF vectors and shared secret redaction.
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     use super::MlKem1024SharedSecret;
     use zeroize::Zeroizing;
 
@@ -92,16 +104,6 @@ pub(crate) mod tests {
 
             assert_eq!(actual, expected);
         }
-    }
-
-    /// Compares stored secret bytes with a published test vector.
-    pub(crate) fn assert_secret_eq(secret: &MlKem1024SharedSecret, expected: &[u8; 32]) {
-        assert_eq!(&secret.0, expected);
-    }
-
-    /// Compares two stored secrets inside the test boundary.
-    pub(crate) fn assert_secrets_eq(left: &MlKem1024SharedSecret, right: &MlKem1024SharedSecret) {
-        assert_eq!(left.0, right.0);
     }
 
     /// Checks redaction in both shared secret debug formats.

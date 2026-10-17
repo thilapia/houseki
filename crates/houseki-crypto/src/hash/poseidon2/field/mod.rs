@@ -3,29 +3,12 @@
 //! Numeric operations use the provider's constant time interfaces, while parameter generation
 //! depends only on the public modulus and is evaluated at compile time.
 
-use crypto_bigint::{
-    U64,
-    modular::{ConstMontyForm, ConstMontyParams, FixedMontyParams},
-};
+mod modulus;
+
+use crypto_bigint::{U64, modular::ConstMontyForm};
 use zeroize::{Zeroize, Zeroizing};
 
-use super::profile::MODULUS;
-
-/// Public parameters shared by every field value without carrying sensitive state.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-struct GoldilocksModulus;
-
-impl ConstMontyParams<{ U64::LIMBS }> for GoldilocksModulus {
-    /// Number of machine limbs needed to represent a 64 bit field value.
-    const LIMBS: usize = U64::LIMBS;
-
-    /// Montgomery parameters computed from the existing public profile modulus.
-    const PARAMS: FixedMontyParams<{ U64::LIMBS }> = FixedMontyParams::new_vartime(
-        U64::from_u64(MODULUS)
-            .to_odd()
-            .expect_copied("the Goldilocks modulus is odd"),
-    );
-}
+use modulus::GoldilocksModulus;
 
 /// Provider representation used only inside guarded field storage.
 type Residue = ConstMontyForm<GoldilocksModulus, { U64::LIMBS }>;
@@ -49,6 +32,7 @@ impl FieldElement {
     /// canonical byte decoding or the sponge's bounded byte packing.
     pub(super) fn from_word(word: &u64) -> Self {
         let integer = Zeroizing::new(U64::from_u64(*word));
+
         Self {
             value: Zeroizing::new(Residue::new(&integer)),
         }

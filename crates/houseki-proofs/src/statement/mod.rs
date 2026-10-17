@@ -1,46 +1,16 @@
 //! Reconstructs semantic public values and complete transcript binding from native bodies.
 
-use houseki_types::{
-    BodyCodecError, NoteTreeAnchor, PaymentBody, RewardWithdrawalBody, TransactionContext,
-};
+mod error;
+mod payment;
+mod withdrawal;
+
+pub use error::StatementError;
+
+use houseki_types::{BodyCodecError, TransactionContext};
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
 
-use crate::context::require_context;
 use crate::profile::{ExpectedIdentity, Relation};
-
-/// Failure to derive a bounded statement from the actual body and expected metadata.
-#[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
-pub enum StatementError {
-    /// Some declared context component differs from the caller's expected value.
-    #[error("transaction context mismatch")]
-    ContextMismatch,
-
-    /// The actual input or output count has no supported layout.
-    #[error("unsupported payment shape")]
-    UnsupportedShape,
-
-    /// The expected anchor network or root differs from the body.
-    #[error("note anchor mismatch")]
-    AnchorMismatch,
-
-    /// An empty anchor cannot contain a spent note.
-    #[error("empty note anchor")]
-    EmptyAnchor,
-
-    /// Two public input markers are equal.
-    #[error("duplicate payment nullifier")]
-    DuplicateNullifier,
-
-    /// The trusted identity does not describe this body's profile, family or shape.
-    #[error("proof identity mismatch")]
-    IdentityMismatch,
-
-    /// The native body violates the selected representation bounds.
-    #[error(transparent)]
-    InvalidBody(#[from] BodyCodecError),
-}
 
 /// Independently reconstructed public effects and their complete transcript binding.
 pub(crate) struct Statement {
@@ -49,72 +19,6 @@ pub(crate) struct Statement {
 
     /// Complete initial challenger state including the canonical body.
     pub(crate) prefix: Vec<u8>,
-}
-
-impl Statement {
-    /// Derives payment effects only after checking expected context, shape and anchor.
-    pub(crate) fn payment(
-        body: &PaymentBody,
-        anchor: &NoteTreeAnchor,
-        expected: TransactionContext,
-        identity: &ExpectedIdentity,
-    ) -> Result<Self, StatementError> {
-        require_context(expected, body.context()).map_err(|_| StatementError::ContextMismatch)?;
-        let inputs = body.inputs().input_count();
-        let outputs = body.outputs().output_count();
-        if !(1..=2).contains(&inputs) || !(1..=2).contains(&outputs) {
-            return Err(StatementError::UnsupportedShape);
-        }
-        if anchor.network_id() != expected.network_id() || anchor.root() != body.inputs().anchor() {
-            return Err(StatementError::AnchorMismatch);
-        }
-        if anchor.count().value() == 0 {
-            return Err(StatementError::EmptyAnchor);
-        }
-        let shape = ((inputs as u32) << 8) | outputs as u32;
-        require_identity(identity, expected, Relation::Payment, shape)?;
-        let body_bytes = body.to_bytes(crate::profile::body_limits())?;
-        let nullifiers = body.inputs().nullifiers();
-        for index in 0..nullifiers.len() {
-            if nullifiers[..index].contains(&nullifiers[index]) {
-                return Err(StatementError::DuplicateNullifier);
-            }
-        }
-
-        let mut public = reserve(160 + 64 * (inputs + outputs))?;
-        public.extend_from_slice(expected.network_id().as_bytes());
-        public.extend_from_slice(anchor.root().as_bytes());
-        public.extend_from_slice(&anchor.count().value().to_le_bytes());
-        public.extend_from_slice(&body.public_fee().atoms().to_le_bytes());
-        for marker in nullifiers {
-            public.extend_from_slice(marker.as_bytes());
-        }
-        for output in body.outputs().outputs() {
-            public.extend_from_slice(output.commitment().as_bytes());
-        }
-        bind(
-            identity,
-            &body_bytes,
-            &anchor.count().value().to_le_bytes(),
-            &public,
-        )
-    }
-
-    /// Derives the public amount and sole output without asserting account authorization.
-    pub(crate) fn withdrawal(
-        body: &RewardWithdrawalBody,
-        expected: TransactionContext,
-        identity: &ExpectedIdentity,
-    ) -> Result<Self, StatementError> {
-        require_context(expected, body.context()).map_err(|_| StatementError::ContextMismatch)?;
-        require_identity(identity, expected, Relation::RewardWithdrawal, 1)?;
-        let body_bytes = body.to_bytes(crate::profile::body_limits())?;
-        let mut public = reserve(144)?;
-        public.extend_from_slice(expected.network_id().as_bytes());
-        public.extend_from_slice(&body.public_amount().atoms().to_le_bytes());
-        public.extend_from_slice(body.output().commitment().as_bytes());
-        bind(identity, &body_bytes, &[], &public)
-    }
 }
 
 /// Prevents the expected statement from crossing a profile, operation or layout boundary.
@@ -130,6 +34,7 @@ fn require_identity(
     {
         return Err(StatementError::IdentityMismatch);
     }
+
     Ok(())
 }
 
@@ -139,6 +44,7 @@ fn reserve<T>(count: usize) -> Result<Vec<T>, StatementError> {
     values
         .try_reserve_exact(count)
         .map_err(|_| BodyCodecError::AllocationFailed)?;
+
     Ok(values)
 }
 
@@ -151,6 +57,7 @@ fn bind(
 ) -> Result<Statement, StatementError> {
     let domain = b"houseki/proofs/statement/v1";
     let length = 2 + domain.len() + 88 + 8 + body.len() + 4 + metadata.len() + 4 + 8 * public.len();
+
     let mut prefix = reserve(length)?;
     prefix.extend_from_slice(&(domain.len() as u16).to_le_bytes());
     prefix.extend_from_slice(domain);
@@ -160,11 +67,13 @@ fn bind(
     prefix.extend_from_slice(&(metadata.len() as u32).to_le_bytes());
     prefix.extend_from_slice(metadata);
     prefix.extend_from_slice(&(public.len() as u32).to_le_bytes());
+
     let mut public_values = reserve(public.len())?;
     for byte in public {
         prefix.extend_from_slice(&u64::from(*byte).to_le_bytes());
         public_values.push(Goldilocks::from_u8(*byte));
     }
+
     Ok(Statement {
         public_values,
         prefix,
@@ -307,6 +216,7 @@ mod tests {
         }
         bytes.extend_from_slice(&5_u64.to_le_bytes());
         bytes.extend_from_slice(&8_u64.to_le_bytes());
+
         if relation == 1 {
             bytes.extend_from_slice(&[8; 64]);
             bytes.extend_from_slice(&(inputs as u64).to_le_bytes());
@@ -322,6 +232,7 @@ mod tests {
             bytes.extend_from_slice(&((1_u128 << 64) + 3).to_le_bytes());
             bytes.extend_from_slice(&17_u128.to_le_bytes());
         }
+
         for index in 0..outputs {
             bytes.extend_from_slice(&[11 + index as u8; 64]);
             bytes.extend_from_slice(&[21 + index as u8; 1568]);
@@ -332,6 +243,7 @@ mod tests {
                 bytes.extend(std::iter::repeat_n(255, payload_len));
             }
         }
+
         bytes
     }
 
@@ -359,7 +271,9 @@ mod tests {
         let limits = BodyCodecLimits::new(PaymentCountLimits::new(2, 2).unwrap(), 4096, 16384);
         for &(relation, inputs, outputs, count, payload, length, public_count, digest) in CASES {
             let bytes = body_bytes(relation, inputs, outputs, payload);
+
             assert_eq!(bytes.len(), length);
+
             let id = identity(relation, inputs, outputs);
             let statement = if relation == 1 {
                 let body = PaymentBody::from_bytes(&bytes, limits).unwrap();
@@ -368,16 +282,21 @@ mod tests {
                     NoteCount::new(count).unwrap(),
                     body.inputs().anchor(),
                 );
+
                 Statement::payment(&body, &anchor, body.context(), &id).unwrap()
             } else {
                 let body = RewardWithdrawalBody::from_bytes(&bytes, limits).unwrap();
+
                 Statement::withdrawal(&body, body.context(), &id).unwrap()
             };
+
             assert_eq!(statement.public_values.len(), public_count);
+
             let actual: String = Sha3_512::digest(&statement.prefix)
                 .iter()
                 .map(|byte| format!("{byte:02x}"))
                 .collect();
+
             assert_eq!(actual, digest);
         }
     }
@@ -396,17 +315,22 @@ mod tests {
                         NoteCount::new(137).unwrap(),
                         body.inputs().anchor(),
                     );
+
                     Statement::payment(&body, &anchor, body.context(), &identity(1, 1, 1)).unwrap()
                 } else {
                     let body = RewardWithdrawalBody::from_bytes(bytes, limits).unwrap();
+
                     Statement::withdrawal(&body, body.context(), &identity(2, 0, 1)).unwrap()
                 }
             };
             let original = make(&bytes);
+
             for offset in offsets {
                 let mut changed = bytes.clone();
                 changed[offset] ^= 1;
+
                 let changed = make(&changed);
+
                 assert_eq!(changed.public_values, original.public_values);
                 assert_ne!(changed.prefix, original.prefix);
             }
@@ -423,6 +347,7 @@ mod tests {
             NoteCount::new(137).unwrap(),
             body.inputs().anchor(),
         );
+
         assert!(matches!(
             Statement::payment(&body, &anchor, body.context(), &identity(2, 0, 1)),
             Err(StatementError::IdentityMismatch)
@@ -439,6 +364,7 @@ mod tests {
             NoteCount::new(137).unwrap(),
             body.inputs().anchor(),
         );
+
         assert!(matches!(
             Statement::payment(&body, &anchor, body.context(), &identity(1, 3, 1)),
             Err(StatementError::UnsupportedShape)

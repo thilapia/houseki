@@ -13,5 +13,4 @@ mod statement;
 
 pub use context::{ContextError, ProofContext};
 pub use runtime::{ProofRuntime, RuntimeError};
-
 pub use statement::StatementError;

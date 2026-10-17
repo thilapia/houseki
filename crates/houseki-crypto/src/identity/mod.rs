@@ -1,31 +1,11 @@
 //! Fixed identifiers derived from actual typed canonical bodies and operational public keys.
 
-use crate::{CryptoFramingError, MlDsa87VerificationKey};
-use houseki_types::{
-    BodyCodecError, BodyCodecLimits, NetworkId, PaymentBody, RewardAccountId, RewardWithdrawalBody,
-    TransactionId,
-};
-use thiserror::Error;
+mod account;
+mod error;
 
-/// A failure to encode or frame the actual body for transaction identification.
-#[derive(Debug, Error)]
-pub enum BodyHashError {
-    /// Active bounds or canonical representation prevented complete body encoding.
-    #[error("could not encode transaction body: {0}")]
-    Encoding(
-        /// Original bounded canonical codec failure.
-        #[from]
-        BodyCodecError,
-    ),
+pub use error::BodyHashError;
 
-    /// Fixed domain framing failed without returning an identifier.
-    #[error("could not frame transaction identity: {0}")]
-    Framing(
-        /// Original safe framing failure.
-        #[from]
-        CryptoFramingError,
-    ),
-}
+use houseki_types::{BodyCodecLimits, PaymentBody, RewardWithdrawalBody, TransactionId};
 
 /// Derives payment identity from the complete V1 body and its fixed operation tag.
 ///
@@ -55,31 +35,6 @@ pub fn withdrawal_transaction_id(
     identifier(2, &body.to_bytes(limits)?)
 }
 
-impl MlDsa87VerificationKey {
-    /// Derives the immutable account identifier for this operational authority under one network.
-    ///
-    /// The fixed Poseidon2 transcript binds the complete network, scheme 1 for ML-DSA-87 and
-    /// all 2592 public key bytes, independently of balance and nonce.
-    ///
-    /// This establishes neither possession, registration, account state nor withdrawal authority.
-    ///
-    /// # Errors
-    ///
-    /// Returns the original framing failure without a digest, although input lengths are fixed.
-    pub fn reward_account_id(
-        &self,
-        network: NetworkId,
-    ) -> Result<RewardAccountId, CryptoFramingError> {
-        let encoded = self.to_encoded();
-        let digest = crate::hash::poseidon2(
-            crate::domain::Domain::RewardAccountIdentity,
-            &[network.as_bytes(), &1_u32.to_le_bytes(), encoded.as_bytes()],
-        )?;
-
-        Ok(RewardAccountId::from_bytes(digest))
-    }
-}
-
 /// Hashes only an internally encoded body and the operation fixed by its typed caller.
 fn identifier(kind: u32, bytes: &[u8]) -> Result<TransactionId, BodyHashError> {
     let digest = crate::hash::sha3_512(|sink| {
@@ -97,9 +52,7 @@ fn identifier(kind: u32, bytes: &[u8]) -> Result<TransactionId, BodyHashError> {
 /// Independent canonical identity fixtures and exact role and field binding.
 #[cfg(test)]
 mod tests {
-    use crate::{
-        BodyHashError, MlDsa87VerificationKey, payment_transaction_id, withdrawal_transaction_id,
-    };
+    use crate::{BodyHashError, payment_transaction_id, withdrawal_transaction_id};
     use houseki_types::*;
 
     /// Returns bounds that admit the complete independently specified public fixtures.
@@ -170,6 +123,7 @@ mod tests {
         );
 
         let loose = BodyCodecLimits::new(PaymentCountLimits::new(3, 3).unwrap(), 99, 9999);
+
         assert_eq!(
             payment_transaction_id(&payment, limits()).unwrap(),
             payment_transaction_id(&payment, loose).unwrap()
@@ -218,47 +172,12 @@ mod tests {
         }
 
         let tight = BodyCodecLimits::new(limits().payment_counts(), 2, 5000);
+
         assert!(matches!(
             withdrawal_transaction_id(&body, tight),
             Err(BodyHashError::Encoding(
                 BodyCodecError::PayloadTooLong { .. }
             ))
         ));
-    }
-
-    /// Checks a complete account transcript with independent integer Poseidon2 and full input binding.
-    #[test]
-    fn account_identifiers_match_independent_vectors_and_bind_network_and_key() {
-        let network = NetworkId::from_bytes([7; 64]);
-        let encoded = EncodedMlDsa87PublicKey::from_bytes([14; 2592]);
-        let key = MlDsa87VerificationKey::from_encoded(&encoded);
-        let expected = key.reward_account_id(network).unwrap();
-
-        assert_eq!(
-            hex(expected.as_bytes()),
-            "2deed4beb8cc9a66425049ef33a0e1639b43da6657810edea2885197800f9eff972f04a1e95b97fad1e1c9432474709bb3e355712b834ead7e239c5f1e5aee29"
-        );
-
-        for index in 0..64 {
-            let mut bytes = [7; 64];
-            bytes[index] ^= 1;
-
-            assert_ne!(
-                key.reward_account_id(NetworkId::from_bytes(bytes)).unwrap(),
-                expected
-            );
-        }
-
-        for index in [0, 31, 32, 33, 511, 1023, 2047, 2591] {
-            let mut bytes = [14; 2592];
-            bytes[index] ^= 1;
-            let changed =
-                MlDsa87VerificationKey::from_encoded(&EncodedMlDsa87PublicKey::from_bytes(bytes));
-
-            assert_ne!(changed.reward_account_id(network).unwrap(), expected);
-        }
-
-        assert_eq!(key.to_encoded(), encoded);
-        assert_eq!(key.reward_account_id(network).unwrap(), expected);
     }
 }

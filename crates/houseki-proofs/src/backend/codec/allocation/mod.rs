@@ -1,5 +1,9 @@
 //! Test only allocator measurements scoped to the calling test thread.
 
+mod measurement;
+
+use measurement::Measurement;
+
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
@@ -54,16 +58,6 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
     }
 }
 
-/// Clears a measurement even when the tested operation unwinds.
-struct Measurement;
-
-impl Drop for Measurement {
-    /// Disables counting before subsequent test harness allocations.
-    fn drop(&mut self) {
-        COUNTS.with(|counts| counts.set(None));
-    }
-}
-
 /// Returns the result, allocation request count and total requested bytes for one operation.
 pub(super) fn measure<T>(operation: impl FnOnce() -> T) -> (T, usize, usize) {
     COUNTS.with(|counts| {
@@ -71,8 +65,11 @@ pub(super) fn measure<T>(operation: impl FnOnce() -> T) -> (T, usize, usize) {
         counts.set(Some((0, 0)));
     });
     let measurement = Measurement;
+
     let result = operation();
+
     let (calls, bytes) = COUNTS.with(|counts| counts.get().unwrap());
     drop(measurement);
+
     (result, calls, bytes)
 }

@@ -1,23 +1,10 @@
 //! Recognition of expected transaction context without activation or ledger policy.
 
+mod error;
+
+pub use error::ContextError;
+
 use houseki_types::{BodyCodecLimits, TransactionContext};
-
-/// Failure to recognize a supported protocol and proof profile pair.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[non_exhaustive]
-pub enum ContextError {
-    /// The declared protocol identifier has no supported representation rules.
-    #[error("unsupported protocol")]
-    UnsupportedProtocol,
-
-    /// The profile identifier has no admitted immutable configuration.
-    #[error("unsupported proof profile")]
-    UnsupportedProfile,
-
-    /// A recognized profile does not belong to the expected protocol.
-    #[error("proof profile does not match protocol")]
-    ProfileProtocolMismatch,
-}
 
 /// Recognized rules paired with the caller's complete expected transaction context.
 ///
@@ -119,8 +106,10 @@ mod tests {
     #[test]
     fn context_mismatch_is_rejected() {
         let expected = declared(1, 0xffff0004);
+
         let mut encoded = [7_u8; 64];
         encoded[63] ^= 1;
+
         let cases = [
             TransactionContext::new(
                 NetworkId::from_bytes(encoded),
@@ -150,6 +139,7 @@ mod tests {
                 .unwrap(),
             ),
         ];
+
         assert!(require_context(expected, expected).is_ok());
         for actual in cases {
             assert!(require_context(expected, actual).is_err());

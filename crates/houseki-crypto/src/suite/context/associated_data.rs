@@ -198,6 +198,7 @@ mod tests {
             assert_eq!(encoded.len(), 1949);
 
             let fields = parts(&encoded);
+
             assert_eq!(fields[0], context().network_id().as_bytes());
             assert_eq!(fields[1], [4, 3, 2, 1]);
             assert_eq!(fields[2], [1, 0, 0, 0]);
@@ -281,6 +282,7 @@ mod tests {
             assert_eq!(parts(&a)[8], [byte; 12]);
 
             let recovered = NoteEncryptionContext::for_payment(&payment(), 0, &key(0)).unwrap();
+
             assert_eq!(
                 a,
                 recovered.associated_data(&encapsulation, &nonce).unwrap()

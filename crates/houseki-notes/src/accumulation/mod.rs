@@ -6,10 +6,13 @@
 //! The private 256 bit storage leaves room above that bound without selecting a wire format,
 //! AIR representation or protocol count limit, and checked addition prevents silent overflow.
 
+mod error;
+
+pub(crate) use error::AmountTotalError;
+
 use crypto_bigint::{Limb, U256, ctutils::CtEq};
 use houseki_types::Amount;
 use std::fmt;
-use thiserror::Error;
 use zeroize::Zeroizing;
 
 /// A private exact total whose owned integer storage is cleared when dropped.
@@ -70,14 +73,6 @@ impl fmt::Debug for AmountTotal {
     }
 }
 
-/// A failure to retain an exact total within the private integer capacity.
-#[derive(Debug, Error)]
-pub(crate) enum AmountTotalError {
-    /// Addition would exceed the full width sum without producing a usable replacement.
-    #[error("amount total overflow")]
-    Overflow,
-}
-
 /// Checks exact input equality with all output amounts plus the separate fee.
 ///
 /// Each iterator occurrence is counted, so repeated amounts or output entries contribute
@@ -134,10 +129,12 @@ mod tests {
     #[test]
     fn bounded_amounts_accumulate_exactly_from_zero() {
         let mut total = AmountTotal::zero();
+
         assert_eq!(*total.value, U256::ZERO);
 
         let zero = Amount::from_atoms(0).unwrap();
         total.add_amount(&zero).unwrap();
+
         assert_eq!(*total.value, U256::ZERO);
 
         let first = Amount::from_atoms(2).unwrap();

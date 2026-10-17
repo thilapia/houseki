@@ -1,45 +1,15 @@
 //! Direct randomized signatures over complete canonical withdrawal bodies.
 
+mod error;
+
+pub use error::WithdrawalSignatureError;
+
 use getrandom::{SysRng, rand_core::TryCryptoRng};
 use houseki_types::{
     BodyCodecError, BodyCodecLimits, EncodedMlDsa87Signature, RewardWithdrawalBody,
 };
-use thiserror::Error;
 
 use super::{MlDsa87SigningKey, MlDsa87VerificationKey};
-use crate::CryptoFramingError;
-
-/// A failure to sign or verify the exact complete withdrawal body.
-#[derive(Debug, Error)]
-pub enum WithdrawalSignatureError {
-    /// The supplied operational key differs from the body's declared authority.
-    #[error("withdrawal signing authority does not match the body")]
-    AuthorityMismatch,
-
-    /// The complete canonical body cannot be encoded under active bounds.
-    #[error("could not encode withdrawal signature body: {0}")]
-    Encoding(
-        /// Original bounded public encoding failure.
-        #[from]
-        BodyCodecError,
-    ),
-
-    /// Fixed application framing failed without a signature result.
-    #[error("could not frame withdrawal signature body: {0}")]
-    Framing(
-        /// Original safe framing failure.
-        #[from]
-        CryptoFramingError,
-    ),
-
-    /// Fresh signing randomness could not be fully acquired.
-    #[error("withdrawal signing randomness is unavailable")]
-    RandomnessUnavailable,
-
-    /// The signature encoding or direct contextual signature relationship is invalid.
-    #[error("invalid withdrawal signature")]
-    InvalidSignature,
-}
 
 /// Fixed FIPS 204 external direct signature context, independent of other signing roles.
 const CONTEXT: &[u8] = b"houseki/v1/reward-withdrawal";
@@ -238,12 +208,15 @@ mod tests {
         );
 
         let message = super::message(&body, limits()).unwrap();
+
         assert!(!public.0.verify_with_context(&message, b"", &parsed));
 
         let domain = b"houseki/v1/reward-withdrawal/body";
+
         assert_eq!(&message[2..2 + domain.len()], domain);
 
         let original = body.to_bytes(limits()).unwrap();
+
         assert_eq!(&message[message.len() - original.len()..], &original);
 
         for offset in [
@@ -286,6 +259,7 @@ mod tests {
         assert_eq!(rng.position, 0);
 
         let tight = BodyCodecLimits::new(limits().payment_counts(), 2, 5000);
+
         assert!(matches!(
             key.sign_with_rng(&body, tight, &mut rng),
             Err(WithdrawalSignatureError::Encoding(_))
@@ -293,6 +267,7 @@ mod tests {
         assert_eq!(rng.position, 0);
 
         let signature = key.sign_reward_withdrawal(&body, limits()).unwrap();
+
         assert!(matches!(
             other
                 .verification_key()

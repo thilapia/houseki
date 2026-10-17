@@ -63,12 +63,14 @@ impl NoteRecipient {
             bytes[SUITE_OFFSET + 3],
         ]));
         let context = AddressContext::new(network, version, suite);
+
         let ownership = OwnershipCommitment::from_bytes(std::array::from_fn(|index| {
             bytes[OWNERSHIP_OFFSET + index]
         }));
         let key = EncodedMlKem1024PublicKey::from_bytes(std::array::from_fn(|index| {
             bytes[KEY_OFFSET + index]
         }));
+
         let descriptor = RecipientDescriptor::new(context, ownership, key);
 
         Self::validate(&descriptor, expected_network)

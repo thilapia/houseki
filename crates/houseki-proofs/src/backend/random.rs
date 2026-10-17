@@ -53,6 +53,7 @@ impl TryRng for BackendRng {
     /// Fills backend scratch only from a seeded private stream.
     fn try_fill_bytes(&mut self, destination: &mut [u8]) -> Result<(), Self::Error> {
         self.seeded().fill_bytes(destination);
+
         Ok(())
     }
 }
@@ -82,6 +83,7 @@ pub(super) fn generators_with(
         fill(&mut seed)?;
         *generator = BackendRng::from_seed(*seed);
     }
+
     Ok(generators)
 }
 

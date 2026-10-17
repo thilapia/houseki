@@ -1,20 +1,15 @@
 //! Protected ML-DSA-87 key ownership with explicit seed generation and import.
 
+mod error;
+
+pub use error::MlDsa87SigningKeyError;
+
 use super::MlDsa87VerificationKey;
 use crate::random::secret_bytes;
 use getrandom::{SysRng, rand_core::TryCryptoRng};
 use ml_dsa::{Keypair, MlDsa87, SigningKey};
 use std::fmt;
-use thiserror::Error;
 use zeroize::Zeroizing;
-
-/// A failure to acquire a complete private ML-DSA-87 seed.
-#[derive(Debug, Error)]
-pub enum MlDsa87SigningKeyError {
-    /// System entropy could not supply the complete 32 byte seed.
-    #[error("ML-DSA-87 signing key randomness is unavailable")]
-    RandomnessUnavailable,
-}
 
 /// A private ML-DSA-87 signing key with protected backend ownership and fixed diagnostics.
 ///

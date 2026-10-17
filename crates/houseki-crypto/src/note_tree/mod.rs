@@ -1,5 +1,9 @@
 //! Fixed application note tree hashes and protected path evaluation.
 
+mod error;
+
+pub use error::NoteTreeHashError;
+
 use crate::{
     CryptoFramingError,
     domain::Domain,
@@ -7,27 +11,7 @@ use crate::{
 };
 use crypto_bigint::ctutils::{Choice, CtSelect};
 use houseki_types::{NetworkId, NoteCommitment, NoteCount, NotePosition, NoteRoot};
-use thiserror::Error;
 use zeroize::Zeroizing;
-
-/// A failure to evaluate one fixed public tree parent.
-#[derive(Debug, Error)]
-pub enum NoteTreeHashError {
-    /// Parent levels must be from zero through 63 inclusive.
-    #[error("invalid note tree parent level {level}")]
-    InvalidLevel {
-        /// Complete supplied level without narrowing.
-        level: u32,
-    },
-
-    /// Fixed tree framing failed without returning a node.
-    #[error("could not frame note tree node: {0}")]
-    Framing(
-        /// Original safe framing failure.
-        #[from]
-        CryptoFramingError,
-    ),
-}
 
 /// Derives the distinct empty leaf under the complete network.
 ///

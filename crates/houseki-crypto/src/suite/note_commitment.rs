@@ -188,6 +188,7 @@ mod tests {
         let ownership = OwnershipCommitment::from_bytes([0x59; 64]);
         let key = key(0);
         let amount = Amount::from_atoms(1).unwrap();
+
         let derive = |network, version, ownership| {
             CryptoSuite::V1
                 .note_commitment(network, version, ownership, &key, &amount, &[0xa7; 32])
@@ -256,6 +257,7 @@ mod tests {
         let key = key(0);
         let amount = Amount::from_atoms(0).unwrap();
         let blinding = [0xa7; 32];
+
         let derive = |amount: &Amount, blinding: &[u8; 32]| {
             CryptoSuite::V1
                 .note_commitment(network, version, ownership, &key, amount, blinding)

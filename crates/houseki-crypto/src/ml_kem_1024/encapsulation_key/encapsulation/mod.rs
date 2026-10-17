@@ -61,7 +61,7 @@ mod tests {
     use houseki_types::EncodedMlKem1024PublicKey;
 
     use super::{MlKem1024EncapsulationError, MlKem1024EncapsulationKey};
-    use crate::ml_kem_1024::shared_secret::tests::assert_secret_eq;
+    use crate::ml_kem_1024::shared_secret::assert_secret_eq;
 
     // Public NIST ACVP fixture, ML-KEM-encapDecap-FIPS203, tgId 3, tcId 51.
     // https://github.com/usnistgov/ACVP-Server/tree/15c0f3deeefbfa8cb6cd32a99e1ca3b738c66bf0/gen-val/json-files/ML-KEM-encapDecap-FIPS203

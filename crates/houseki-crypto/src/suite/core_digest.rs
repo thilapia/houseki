@@ -185,6 +185,7 @@ mod tests {
         let mut fees = 0x21222324;
         let mut start = 0x0102030405060708;
         let mut end = 0x1112131415161718;
+
         match changed_field {
             Some(0) => network[63] ^= 1,
             Some(1) => protocol ^= 1 << 24,

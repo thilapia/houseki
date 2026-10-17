@@ -1,86 +1,11 @@
 //! Native spending equations over actual ownership keys and concrete membership paths.
 
-use crate::NoteOpening;
-use houseki_crypto::{CryptoFramingError, NullifierKey, SpendingKey};
-use houseki_state::{NoteMembershipError, NoteMembershipWitness};
+mod error;
+
+pub use error::SpendRelationError;
+
+use crate::SpendWitness;
 use houseki_types::{NoteTreeAnchor, Nullifier};
-use std::fmt;
-use thiserror::Error;
-
-/// Borrowed private inputs for a concrete native spend relation.
-///
-/// Construction establishes no equation and leaves all original protected owners with the caller.
-///
-/// No key, amount or path is copied into an unprotected owned representation.
-pub struct SpendWitness<'a> {
-    /// Original positive opening whose commitment must have actual membership.
-    pub(super) opening: &'a NoteOpening,
-
-    /// Original spending capability linked to the declared ownership.
-    pub(super) spending_key: &'a SpendingKey,
-
-    /// Original nullifier capability shared by ownership and spend marker derivation.
-    pub(super) nullifier_key: &'a NullifierKey,
-
-    /// Owned protected path retaining the same original position used by the nullifier.
-    pub(super) membership: &'a NoteMembershipWitness,
-}
-
-impl<'a> SpendWitness<'a> {
-    /// Borrows the original protected relation inputs without validating their correspondence.
-    pub const fn new(
-        opening: &'a NoteOpening,
-        spending_key: &'a SpendingKey,
-        nullifier_key: &'a NullifierKey,
-        membership: &'a NoteMembershipWitness,
-    ) -> Self {
-        Self {
-            opening,
-            spending_key,
-            nullifier_key,
-            membership,
-        }
-    }
-}
-
-impl fmt::Debug for SpendWitness<'_> {
-    /// Writes a fixed label without formatting any referenced private material.
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("SpendWitness([REDACTED])")
-    }
-}
-
-/// A failed native spend equation without private values or partial verification evidence.
-#[derive(Debug, Error)]
-pub enum SpendRelationError {
-    /// The opening belongs to a different network than the selected anchor.
-    #[error("spend opening network does not match the anchor")]
-    NetworkMismatch,
-
-    /// Original spending and nullifier keys do not derive the declared ownership.
-    #[error("spend keys do not match the note ownership")]
-    OwnershipMismatch,
-
-    /// Actual occupied position and root verification failed.
-    #[error("spend membership failed: {0}")]
-    Membership(
-        /// Original value safe concrete membership failure.
-        #[from]
-        NoteMembershipError,
-    ),
-
-    /// The derived marker differs from the exact declared input nullifier.
-    #[error("spend nullifier does not match the declared input")]
-    NullifierMismatch,
-
-    /// A fixed ownership, commitment or nullifier transcript could not be framed.
-    #[error("could not frame native spend relation: {0}")]
-    Framing(
-        /// Original safe fixed transcript failure.
-        #[from]
-        CryptoFramingError,
-    ),
-}
 
 /// Checks supported note rules, network, linked ownership, actual membership and declared nullifier.
 ///

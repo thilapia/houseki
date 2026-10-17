@@ -37,6 +37,7 @@ impl<'a> Reader<'a> {
         let bytes = self.bytes.get(..N).ok_or(CodecError::Truncated)?;
         let result = bytes.try_into().map_err(|_| CodecError::Truncated)?;
         self.bytes = &self.bytes[N..];
+
         Ok(result)
     }
 
@@ -51,12 +52,14 @@ impl<'a> Reader<'a> {
         if value >= 18_446_744_069_414_584_321 {
             return Err(CodecError::NonCanonicalField);
         }
+
         Ok(Goldilocks::from_u64(value))
     }
 
     /// Reads all three canonical basis coefficients in the pinned extension order.
     pub(super) fn extension(&mut self) -> Result<Challenge, CodecError> {
         let coefficients = [self.field()?, self.field()?, self.field()?];
+
         Ok(Challenge::from_basis_coefficients_fn(|index| {
             coefficients[index]
         }))
@@ -68,6 +71,7 @@ impl<'a> Reader<'a> {
         for value in &mut result {
             *value = u64::from_le_bytes(self.take()?);
         }
+
         Ok(result)
     }
 
@@ -83,12 +87,14 @@ impl<'a> Reader<'a> {
         if self.allocated > MAX_DECODED_BYTES {
             return Err(CodecError::AllocationLimit);
         }
+
         let mut values = Vec::new();
         if self.materialize {
             values
                 .try_reserve_exact(count)
                 .map_err(|_| CodecError::AllocationFailed)?;
         }
+
         Ok(values)
     }
 
@@ -105,6 +111,7 @@ impl<'a> Reader<'a> {
                 values.push(value);
             }
         }
+
         Ok(values)
     }
 
@@ -121,9 +128,11 @@ impl<'a> Reader<'a> {
     /// Builds the single root cap only after accounting for its allocation in both passes.
     pub(super) fn commitment(&mut self) -> Result<Option<Commitment>, CodecError> {
         let digest = self.digest()?;
+
         let mut roots = self.reserve(1)?;
         if self.materialize {
             roots.push(digest);
+
             Ok(Some(MerkleCap::new(roots)))
         } else {
             Ok(None)
@@ -138,6 +147,7 @@ impl<'a> Reader<'a> {
                 values.push(commitment);
             }
         }
+
         Ok(values)
     }
 
@@ -147,10 +157,12 @@ impl<'a> Reader<'a> {
         if count > maximum {
             return Err(CodecError::InvalidShape);
         }
+
         let bytes = count.checked_mul(64).ok_or(CodecError::InvalidShape)?;
         if bytes > self.bytes.len() {
             return Err(CodecError::Truncated);
         }
+
         self.list(count, |reader, _| reader.digest())
     }
 
@@ -159,6 +171,7 @@ impl<'a> Reader<'a> {
         if !self.bytes.is_empty() {
             return Err(CodecError::TrailingBytes);
         }
+
         Ok(self.allocated)
     }
 }
@@ -179,9 +192,11 @@ mod tests {
         bytes[8..16].copy_from_slice(&2_u64.to_le_bytes());
         bytes[16..24].copy_from_slice(&18_446_744_069_414_584_320_u64.to_le_bytes());
         bytes[24..].fill(255);
+
         let mut reader = Reader::new(&bytes, false);
         let extension = reader.extension().unwrap();
         let digest = reader.digest().unwrap();
+
         assert_eq!(reader.finish().unwrap(), 0);
         assert_eq!(
             extension
@@ -192,9 +207,11 @@ mod tests {
             [1, 2, 18_446_744_069_414_584_320]
         );
         assert_eq!(digest, [u64::MAX; 8]);
+
         let mut writer = Writer::new(Some(bytes.len())).unwrap();
         writer.extension(extension).unwrap();
         writer.digest(&digest).unwrap();
+
         assert_eq!(writer.bytes, bytes);
     }
 
@@ -204,10 +221,13 @@ mod tests {
         for materialize in [false, true] {
             let mut reader = Reader::new(&[], materialize);
             let (result, calls, bytes) = allocation::measure(|| reader.reserve::<u64>(usize::MAX));
+
             assert!(matches!(result, Err(CodecError::AllocationLimit)));
             assert_eq!((calls, bytes), (0, 0));
         }
+
         let mut reader = Reader::new(&[], false);
+
         assert!(reader.reserve::<u8>(MAX_DECODED_BYTES).unwrap().is_empty());
         assert_eq!(reader.finish().unwrap(), MAX_DECODED_BYTES);
         assert!(matches!(
