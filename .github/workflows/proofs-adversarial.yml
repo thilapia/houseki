@@ -1,0 +1,68 @@
+name: Adversarial proof validation
+
+on:
+  push:
+    branches: [master]
+    paths: [Cargo.toml, Cargo.lock, 'crates/**', 'vendor/**', '.github/workflows/proofs-adversarial.yml']
+  pull_request:
+    paths: [Cargo.toml, Cargo.lock, 'crates/**', 'vendor/**', '.github/workflows/proofs-adversarial.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifier-campaign:
+    name: Public verifier corpus on Linux x86-64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.1
+      CARGO_TERM_COLOR: never
+      CARGO_INCREMENTAL: '0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/validation-target
+    steps:
+      - name: Check out the tested revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
+
+      - name: Check the standalone verifier harness
+        run: |
+          mkdir -p validation-logs
+          cargo fmt --manifest-path crates/houseki-proofs/fuzz/Cargo.toml --check
+          cargo test --manifest-path crates/houseki-proofs/fuzz/Cargo.toml --release --locked \
+            2>&1 | tee validation-logs/harness-tests.log
+          cargo clippy --manifest-path crates/houseki-proofs/fuzz/Cargo.toml --all-targets --locked -- \
+            -D warnings -D missing_docs -D clippy::missing_docs_in_private_items \
+            2>&1 | tee validation-logs/harness-clippy.log
+          python3 crates/houseki-proofs/fuzz/campaign.py --self-test \
+            2>&1 | tee validation-logs/supervisor-tests.log
+
+      - name: Challenge complete statements and evidence ownership
+        run: |
+          cargo run --manifest-path crates/houseki-proofs/fuzz/Cargo.toml --release --locked -- conformance \
+            2>&1 | tee validation-logs/conformance.log
+          python3 crates/houseki-proofs/fuzz/evidence.py --output validation-logs/consumers \
+            2>&1 | tee validation-logs/consumers.log
+
+      - name: Run both bounded mutation streams
+        run: |
+          python3 crates/houseki-proofs/fuzz/campaign.py \
+            --binary validation-target/release/houseki-proofs-adversarial \
+            --output validation-logs/fuzz 2>&1 | tee validation-logs/fuzz.log
+
+      - name: Retain exact campaign evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: proofs-adversarial-${{ github.sha }}-${{ github.run_attempt }}
+          path: validation-logs/
+          if-no-files-found: warn
+          retention-days: 30

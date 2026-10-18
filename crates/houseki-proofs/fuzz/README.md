@@ -1,6 +1,6 @@
 # Adversarial proof validation
 
-This isolated Rust package depends on the public verifier with `experimental-profiles` and no `prover` feature. It preserves the workspace's pinned dependencies and local backend patches in its own lockfile. Rust 1.99.1 and Python 3.12 or newer suffice. It needs no nightly compiler, witness data or network service.
+This isolated Rust package depends on the public verifier with `experimental-profiles` and no `prover` feature. It preserves the workspace's pinned dependencies and local backend patches in its own lockfile. Use Rust 1.99.1 and Python 3.12 or newer on macOS or Linux with `ps` available for process supervision. It needs no nightly compiler, witness data or network service.
 
 From the repository root, build and check the harness, then run its deterministic conformance campaign.
 
