@@ -119,8 +119,17 @@ pub(crate) fn body_regions(
             cursor + 64..cursor + 1632,
             cursor + 1632..cursor + 1640,
         ]);
-        if *payload > 0 {
-            regions.push(cursor + 1640..cursor + 1640 + payload);
+        let start = cursor + 1640;
+        let end = start + payload;
+        if *payload >= 32 {
+            regions.extend([start..start + 4, start + 4..start + 16]);
+            if *payload > 32 {
+                regions.push(start + 16..end - 16);
+            }
+
+            regions.push(end - 16..end);
+        } else if *payload > 0 {
+            regions.push(start..end);
         }
 
         cursor += 1640 + payload;
@@ -148,6 +157,16 @@ mod tests {
         assert!(regions.contains(&(2159..3727)));
         assert!(regions.contains(&(3735..3738)));
         assert_eq!(regions.len(), 24);
+    }
+
+    /// Encrypted payload suite, nonce, ciphertext and tag are challenged separately.
+    #[test]
+    fn encrypted_payload_regions_include_nonce_ciphertext_and_tag() {
+        let regions = body_regions(&vec![0; 1964], Some(1), &[64]);
+
+        for expected in [1900..1904, 1904..1916, 1916..1948, 1948..1964] {
+            assert!(regions.contains(&expected), "missing region {expected:?}");
+        }
     }
 
     /// Forged nested counts preserve the outer header so the decoder must inspect them.
