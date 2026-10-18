@@ -24,6 +24,6 @@ pub(crate) use recipient_key::RecipientPairAir;
 pub(crate) use recipient_key::eval_pair as eval_recipient_pair;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use recipient_key::{RecipientKeyError, assign_pair as assign_recipient_pair};
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 pub(crate) use spend::Input as SpendInput;
 pub(crate) use spend::{Endpoints as SpendEndpoints, Spend};

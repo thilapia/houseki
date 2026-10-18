@@ -2,18 +2,18 @@
 
 #[cfg(all(test, feature = "prover"))]
 mod air;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 mod assignment;
 mod endpoints;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 mod error;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 mod input;
 
 pub(crate) use endpoints::Endpoints;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 pub(crate) use error::MembershipError;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 pub(crate) use input::Input;
 
 use crate::gadgets::{eval_byte, poseidon2::CompactHash};

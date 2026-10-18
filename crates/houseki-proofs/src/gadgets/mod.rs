@@ -43,12 +43,12 @@ pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 )]
 pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 pub(crate) use merkle::Input as MembershipInput;
 pub(crate) use merkle::{Endpoints as MembershipEndpoints, Membership};
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use notes::OpeningInput;
-#[cfg(any(test, feature = "prover"))]
+#[cfg(feature = "prover")]
 pub(crate) use notes::SpendInput;
 pub(crate) use notes::{CompactOpening, Opening, OpeningSelectors};
 #[cfg(test)]
