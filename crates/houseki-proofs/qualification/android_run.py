@@ -7,14 +7,36 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tarfile
 import time
+import unittest
+
+
+def retain_process(expected, observed):
+    """Reject an unplanned process replacement instead of accepting a silently retried proof."""
+    if not observed.isdecimal() or (expected is not None and observed != expected):
+        raise RuntimeError("application process changed during the correctness run")
+    return observed
+
+
+class ObservationTests(unittest.TestCase):
+    """Transport recovery cannot erase a process failure or substitute another worker."""
+
+    def test_recovery_requires_the_original_process(self):
+        """A live replacement process fails the run even when its public output looks valid."""
+        self.assertEqual(retain_process(None, "123"), "123")
+        self.assertEqual(retain_process("123", "123"), "123")
+        with self.assertRaises(RuntimeError):
+            retain_process("123", "456")
 
 
 def run(args):
     """Install the synthetic debug application and require actual worker completion or cancellation."""
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
+    source_bytes = Path(__file__).read_bytes()
+    (output / "android-runner.py").write_bytes(source_bytes)
     package = "org.houseki.proofs.qualification"
     component = package + "/android.app.NativeActivity"
     commands = []
@@ -37,6 +59,7 @@ def run(args):
         "classification": "exploratory application execution, not device qualification",
         "serial": args.serial, "workload": args.workload,
         "warm_requested": args.warm, "sustained_seconds_requested": args.soak_seconds,
+        "driver_sha3_512": hashlib.sha3_512(source_bytes).hexdigest(),
         "apk_sha3_512": hashlib.sha3_512(args.apk.read_bytes()).hexdigest(),
         "device": adb("shell", "getprop"),
         "battery_before": adb("shell", "dumpsys", "battery"),
@@ -65,20 +88,46 @@ def run(args):
     maximum_hwm = 0
     latest = []
     observed_pid = None
+    transport_gaps = []
     deadline = time.monotonic() + args.safety_deadline
     startup_deadline = time.monotonic() + 30
+
+    def connected():
+        """Recover only the transport without restarting, replacing or discarding a proof attempt."""
+        started = time.monotonic()
+        if adb("get-state", check=False).strip() == "device":
+            return
+        gap = {"host_monotonic_start": started, "recovered": False}
+        transport_gaps.append(gap)
+        (output / "transport-gaps.json").write_text(json.dumps(transport_gaps, indent=2) + "\n")
+        while time.monotonic() - started < args.reconnect_seconds:
+            time.sleep(0.5)
+            if adb("get-state", check=False).strip() == "device":
+                gap["recovered"] = True
+                gap["seconds"] = time.monotonic() - started
+                (output / "transport-gaps.json").write_text(json.dumps(transport_gaps, indent=2) + "\n")
+                return
+        raise RuntimeError("device transport did not recover within its observation grace period")
 
     def observe():
         """Read actual process events and retain kernel high-water memory while the app is alive."""
         nonlocal maximum_rss, maximum_hwm, latest, observed_pid
-        adb("get-state")
+        connected()
         text = adb("shell", "run-as", package, "cat", "files/events.jsonl", check=False)
         latest = [json.loads(line) for line in text.splitlines()[original_lines:] if line.startswith("{")]
         (output / "events.json").write_text(json.dumps(latest, indent=2) + "\n")
         pid = adb("shell", "pidof", package, check=False).strip()
+        if not pid.isdecimal() and observed_pid is not None:
+            connected()
+            pid = adb("shell", "pidof", package, check=False).strip()
         if pid.isdecimal():
-            observed_pid = pid
+            observed_pid = retain_process(observed_pid, pid)
             status = adb("shell", "run-as", package, "cat", f"/proc/{pid}/status", check=False)
+            if not re.search(r"^VmHWM:", status, flags=re.MULTILINE):
+                connected()
+                status = adb("shell", "run-as", package, "cat", f"/proc/{pid}/status")
+            if not re.search(r"^VmHWM:", status, flags=re.MULTILINE):
+                raise RuntimeError("kernel process memory high-water counter unavailable")
             with (output / "memory.log").open("a") as log:
                 log.write(status + "\n")
             for field, value in re.findall(r"^(VmRSS|VmHWM):\s+(\d+) kB", status, flags=re.MULTILINE):
@@ -87,7 +136,7 @@ def run(args):
                 else:
                     maximum_rss = max(maximum_rss, int(value) * 1024)
         elif observed_pid is not None:
-            adb("get-state")
+            connected()
             raise RuntimeError("application process exited during the correctness run")
         if not latest and time.monotonic() > startup_deadline:
             raise TimeoutError("application did not start a worker within 30 seconds")
@@ -105,7 +154,7 @@ def run(args):
                           and event["attempt"] > after), None)
             if match:
                 return match
-            time.sleep(0.2)
+            time.sleep(0.5)
 
     result = {"passed": False, "warm_completed": 0, "sustained_completed": 0}
     try:
@@ -154,6 +203,7 @@ def run(args):
         result["kernel_peak_rss_bytes"] = maximum_hwm
         result["memory_counter"] = "Android /proc/PID/status VmHWM, with VmRSS samples"
         try:
+            connected()
             environment["battery_after"] = adb("shell", "dumpsys", "battery", check=False)
             environment["thermal_after"] = adb("shell", "dumpsys", "thermalservice", check=False)
             (output / "environment.json").write_text(json.dumps(environment, indent=2) + "\n")
@@ -168,11 +218,16 @@ def run(args):
                 raise
         finally:
             adb("shell", "am", "force-stop", package, check=False)
+            result["transport_gaps"] = transport_gaps
+            result["uninterrupted_observation"] = not transport_gaps
             (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
 
 
 def main():
     """Require an explicitly selected phone and new evidence directory."""
+    if "--self-test" in sys.argv:
+        unittest.main(argv=[sys.argv[0]])
+        return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
     parser.add_argument("--serial", required=True)
@@ -187,11 +242,15 @@ def main():
                         help="additional fresh attempts in the same process after its initial proof")
     parser.add_argument("--soak-seconds", type=int, default=0,
                         help="sustained same-process fresh attempts after the warm series")
-    parser.add_argument("--safety-deadline", type=int, default=1800,
+    parser.add_argument("--reconnect-seconds", type=int, default=15,
+                        help="bounded transport recovery without retrying the running proof")
+    parser.add_argument("--safety-deadline", type=int, default=86400,
                         help="separate supervision ceiling, never the soft proving latency target")
     args = parser.parse_args()
     if not 0 <= args.warm <= 1000 or not 0 <= args.soak_seconds <= 1000:
         parser.error("warm iterations and sustained seconds must be between zero and 1000")
+    if not 0 <= args.reconnect_seconds <= 30:
+        parser.error("transport recovery must be between zero and 30 seconds")
     run(args)
 
 
