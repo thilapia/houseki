@@ -90,8 +90,7 @@ impl Spend {
         let version = std::array::from_fn::<_, 4, _>(|index| AB::Expr::from_bool(index == 0));
         let work = row[192..].try_into().unwrap();
         let next_work = next[192..].try_into().unwrap();
-        eval_hash(
-            &self.spending,
+        self.spending.eval_linked(
             builder,
             work,
             next_work,
@@ -99,8 +98,7 @@ impl Spend {
             &[endpoints.network, &spending],
             &first,
         );
-        eval_hash(
-            &self.nullifier_key,
+        self.nullifier_key.eval_linked(
             builder,
             work,
             next_work,
@@ -108,8 +106,7 @@ impl Spend {
             &[endpoints.network, &nullifier],
             &second,
         );
-        eval_hash(
-            &self.ownership,
+        self.ownership.eval_linked(
             builder,
             work,
             next_work,
@@ -117,8 +114,7 @@ impl Spend {
             &[endpoints.network, &first, &second],
             endpoints.ownership,
         );
-        eval_hash(
-            &self.nullifier,
+        self.nullifier.eval_linked(
             builder,
             work,
             next_work,
@@ -135,34 +131,6 @@ impl Spend {
     }
 }
 
-/// Applies one complete hash with exact source maps and all sixteen digest extraction words.
-fn eval_hash<const BLOCKS: usize, AB: AirBuilder<F = Goldilocks>>(
-    hash: &ScheduledHash<BLOCKS>,
-    builder: &mut AB,
-    row: &[AB::Var; 909],
-    next: &[AB::Var; 909],
-    phases: &[AB::Expr],
-    parts: &[&[AB::Expr]],
-    digest: &[AB::Expr; 64],
-) {
-    hash.eval(builder, row, next, phases);
-    for (phase, block) in hash.blocks().iter().enumerate() {
-        for (local, part, offset) in block.input_positions() {
-            builder
-                .when(phases[phase].clone())
-                .assert_eq(row[43 + local], parts[part][offset].clone());
-        }
-    }
-
-    for word in 0..16 {
-        for byte in 0..4 {
-            builder
-                .when(phases[BLOCKS + 1 + word].clone())
-                .assert_eq(row[857 + byte], digest[word * 4 + byte].clone());
-        }
-    }
-}
-
 /// Complete source linkage tested independently of native spending validation.
 #[cfg(all(test, feature = "prover"))]
 mod tests {
@@ -173,6 +141,23 @@ mod tests {
     use p3_field::{PrimeCharacteristicRing, PrimeField64};
     use p3_goldilocks::Goldilocks;
     use p3_matrix::dense::RowMajorMatrix;
+
+    /// Confirms the declared degree against every symbolic constraint and periodic selector.
+    #[test]
+    fn spend_geometry_matches_symbolic_constraints() {
+        use p3_air::{
+            BaseAir,
+            symbolic::{AirLayout, get_max_constraint_degree},
+        };
+
+        let air = air::SpendAir::new();
+
+        assert_eq!(air.width(), 1101);
+        assert_eq!(
+            get_max_constraint_degree(&air, AirLayout::from_air(&air), 128),
+            4
+        );
+    }
 
     /// Builds synthetic public endpoints using the native authority and nullifier transcripts.
     fn public(spending: &[u8; 32], nullifier: &[u8; 32], position: u64) -> Vec<Goldilocks> {

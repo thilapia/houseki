@@ -169,6 +169,10 @@ mod tests {
             assert_eq!(bytes(fields.opening().amount()), 17_u128.to_le_bytes());
             for (level, expected) in siblings.iter().enumerate() {
                 assert_eq!(&bytes(fields.sibling(level).unwrap()), expected);
+                assert!(std::ptr::eq(
+                    fields.sibling(level).unwrap(),
+                    &fields.siblings()[level]
+                ));
             }
 
             assert!(fields.sibling(64).is_none());

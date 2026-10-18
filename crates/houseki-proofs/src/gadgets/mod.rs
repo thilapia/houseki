@@ -9,6 +9,11 @@
 )]
 mod amount;
 mod encoding;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "complete payment composition follows")
+)]
+mod merkle;
 mod notes;
 #[cfg_attr(
     not(test),

@@ -76,6 +76,15 @@ impl SpendFields {
         part(&self.cells, 64)
     }
 
+    /// Borrows the complete original path in place for sequential membership assignment.
+    pub(crate) fn siblings(&self) -> &[[Goldilocks; 64]; 64] {
+        self.cells.values()[72..]
+            .as_chunks::<64>()
+            .0
+            .try_into()
+            .unwrap()
+    }
+
     /// Borrows one complete sibling and returns none for every level outside the fixed depth.
     pub(crate) fn sibling(&self, level: usize) -> Option<&[Goldilocks; 64]> {
         if level >= 64 {
