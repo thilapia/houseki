@@ -1,0 +1,19 @@
+[package]
+name = "houseki-proofs-adversarial"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+
+[workspace]
+
+[dependencies]
+houseki-proofs = { path = "..", features = ["experimental-profiles"] }
+houseki-types = { path = "../../houseki-types" }
+
+[patch.crates-io]
+p3-util = { path = "../../../vendor/plonky3/util" }
+p3-dft = { path = "../../../vendor/plonky3/dft" }
+p3-fri = { path = "../../../vendor/plonky3/fri" }
+p3-uni-stark = { path = "../../../vendor/plonky3/uni-stark" }
+p3-air = { path = "../../../vendor/plonky3/air" }
