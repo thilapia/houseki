@@ -82,5 +82,12 @@
     "before": ".assert_eq(work[64 + byte], row[32 + byte]);",
     "after": ".assert_eq(work[64 + byte], work[64 + byte]);",
     "test": "payment_coherent_output_amount_requires_opening_binding"
+  },
+  {
+    "id": "decoder-preallocation",
+    "path": "crates/houseki-proofs/src/backend/codec/decode.rs",
+    "before": "    decode_pass(layout, payload, false)?;\n",
+    "after": "",
+    "test": "final_noncanonical_fields_allocate_nothing_for_each_family"
   }
 ]

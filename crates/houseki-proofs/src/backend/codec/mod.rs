@@ -281,6 +281,50 @@ mod tests {
         }
     }
 
+    /// Every real family seed rejects a noncanonical final scalar before decoded allocation.
+    #[test]
+    fn final_noncanonical_fields_allocate_nothing_for_each_family() {
+        use crate::{
+            circuits::payment::PaymentLayout,
+            profile::{payment, reward_withdrawal},
+        };
+
+        let check = |identity: &ExpectedIdentity, layout: Layout, name: &str| {
+            let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("fixtures/adversarial")
+                .join(name);
+            let mut bytes = std::fs::read(directory.join("proof.bin")).unwrap();
+            assert!(decode(identity, layout, &bytes).is_ok());
+            let end = bytes.len();
+            bytes[end - 8..].copy_from_slice(&18_446_744_069_414_584_321_u64.to_le_bytes());
+            let (result, calls, allocated) =
+                allocation::measure(|| decode(identity, layout, &bytes));
+
+            assert!(
+                matches!(result, Err(CodecError::NonCanonicalField)),
+                "{name}"
+            );
+            assert_eq!((calls, allocated), (0, 0), "{name}");
+        };
+        for inputs in 1..=4 {
+            for outputs in 1..=2 {
+                let shape = payment::SupportedPaymentShape::new(inputs, outputs).unwrap();
+                let layout = PaymentLayout::for_shape(shape).unwrap().codec();
+                check(
+                    &payment::identity(shape),
+                    layout,
+                    &format!("payment-{inputs}-{outputs}"),
+                );
+            }
+        }
+
+        check(
+            &reward_withdrawal::identity(),
+            reward_withdrawal::LAYOUT,
+            "withdrawal",
+        );
+    }
+
     /// Refuses object fields omitted from the canonical zero grinding payload.
     #[test]
     fn encoding_rejects_unrepresented_fields() {
