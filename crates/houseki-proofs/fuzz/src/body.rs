@@ -9,7 +9,7 @@ use houseki_types::{
 
 /// One trusted corpus statement with its independently retained expected anchor.
 pub(crate) enum Body {
-    /// A complete payment and its original count-bound application root.
+    /// A complete payment and its original application root bound to the occupied count.
     Payment {
         /// Immutable original canonical payment body.
         body: Box<PaymentBody>,

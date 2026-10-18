@@ -1,4 +1,4 @@
-//! Fixed statement attacks and reproducible bounded public-verifier campaigns.
+//! Fixed statement attacks and reproducible bounded public verifier campaigns.
 
 use crate::{allocation, body::Body, mutation, seed::Seed};
 use houseki_proofs::{ProofContext, ProofRuntime, VerifyError};
@@ -13,10 +13,10 @@ use std::{
 /// Maximum observed live verifier allocation, separate from the fixed decoder vector cap.
 const MAX_LIVE_BYTES: usize = 128 * 1024 * 1024;
 
-/// Per-case verifier deadline enforced after return and by the external campaign supervisor.
+/// Rejects completed verifier calls taking more than five seconds.
 const MAX_CASE_TIME: Duration = Duration::from_secs(5);
 
-/// Checks valid seeds and rejects every ordered field occurrence and every cross-seed proof.
+/// Checks valid seeds and rejects every ordered field occurrence and every proof from another seed.
 pub(crate) fn conformance(seeds: &[Seed]) -> Result<(), Box<dyn Error>> {
     let runtime = ProofRuntime::new();
     for seed in seeds {

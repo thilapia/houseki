@@ -15,7 +15,7 @@ fn random(state: &mut u64) -> usize {
     *state as usize
 }
 
-/// Produces ten classes of header, scalar, nested frontier and complete-payload mutations.
+/// Produces ten classes of header, scalar, nested frontier and complete payload mutations.
 ///
 /// Length repairs keep malformed nested structures reachable beyond the outer envelope check.
 pub(crate) fn proof(

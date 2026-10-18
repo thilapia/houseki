@@ -1,11 +1,11 @@
-//! Per-call allocation observations around the actual public verifier.
+//! Allocation observations for each call around the actual public verifier.
 
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     cell::Cell,
 };
 
-/// System allocator with thread local live-byte and request observations.
+/// System allocator with thread local live byte and request observations.
 pub(crate) struct ObservedAllocator;
 
 thread_local! {

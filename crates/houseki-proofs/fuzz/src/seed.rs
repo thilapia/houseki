@@ -29,7 +29,7 @@ pub(crate) struct Seed {
 }
 
 impl Seed {
-    /// Loads the complete finite corpus under fixed file-size ceilings.
+    /// Loads the complete finite corpus under fixed file size ceilings.
     pub(crate) fn load_all(directory: &Path) -> Result<Vec<Self>, Box<dyn Error>> {
         let mut seeds = Vec::new();
         for inputs in 1..=4 {
