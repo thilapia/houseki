@@ -34,6 +34,8 @@ pub(super) fn build(
     for (index, witness) in witness.inputs().iter().enumerate() {
         checkpoint(cancellation)?;
         let fields = SpendFields::new(witness)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::InputOpening(index));
         let start = index * Schedule::INPUT_ROWS;
         let commitment = opening(air, fields.opening(), &mut trace, start)?;
         note_registers(
@@ -44,6 +46,9 @@ pub(super) fn build(
             &commitment,
             fields.position(),
         );
+        checkpoint(cancellation)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::InputAuthority(index));
         air.spend
             .assign(
                 SpendInput {
@@ -58,6 +63,8 @@ pub(super) fn build(
             )
             .map_err(|_| BackendError::InvalidTrace)?;
         checkpoint(cancellation)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::InputMembership(index));
         air.membership
             .assign(
                 MembershipInput {
@@ -71,6 +78,9 @@ pub(super) fn build(
                 width,
             )
             .map_err(|_| BackendError::InvalidTrace)?;
+        checkpoint(cancellation)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::InputAccumulation(index));
         add(
             &mut trace,
             start + Schedule::INPUT_ROWS - 1,
@@ -82,6 +92,8 @@ pub(super) fn build(
     for (index, opening_owner) in witness.outputs().iter().enumerate() {
         checkpoint(cancellation)?;
         let fields = OpeningFields::new(opening_owner)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::OutputOpening(index));
         let start = shape.inputs() * Schedule::INPUT_ROWS + index * Schedule::OUTPUT_ROWS;
         let commitment = opening(air, &fields, &mut trace, start)?;
         note_registers(
@@ -92,6 +104,9 @@ pub(super) fn build(
             &commitment,
             &[Goldilocks::ZERO; 8],
         );
+        checkpoint(cancellation)?;
+        #[cfg(test)]
+        crate::memory::at_payment_point(crate::memory::TestPoint::OutputAccumulation(index));
         add(
             &mut trace,
             start + 128,
@@ -101,6 +116,8 @@ pub(super) fn build(
     }
 
     checkpoint(cancellation)?;
+    #[cfg(test)]
+    crate::memory::at_payment_point(crate::memory::TestPoint::Fee);
     let fee_row = air.layout.schedule.active_rows() - 1;
     trace.values_mut()[fee_row * width..fee_row * width + 32].copy_from_slice(&totals[..]);
     add(

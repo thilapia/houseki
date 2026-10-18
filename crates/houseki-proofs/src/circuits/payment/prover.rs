@@ -306,4 +306,114 @@ mod tests {
             assert_eq!(calls, 0);
         }
     }
+    /// Every input, output and backend boundary releases all protected storage after interruption.
+    #[test]
+    fn payment_lifecycle_cancellation_and_allocation_failure() {
+        use crate::memory::{self, TestPoint};
+        use p3_util::prover_runtime::Phase;
+        let fixture = PaymentFixture::new(4, 2);
+        let context = ProofContext::new(fixture.body.context()).unwrap();
+        let spends = fixture.spends();
+        let outputs = fixture.outputs();
+        let witness = PaymentWitness::new(&spends, &outputs).unwrap();
+        let runtime = ProofRuntime::new();
+        let mut points = Vec::new();
+        for index in 0..4 {
+            points.extend([
+                TestPoint::InputOpening(index),
+                TestPoint::InputAuthority(index),
+                TestPoint::InputMembership(index),
+                TestPoint::InputAccumulation(index),
+            ]);
+        }
+
+        for index in 0..2 {
+            points.extend([
+                TestPoint::OutputOpening(index),
+                TestPoint::OutputAccumulation(index),
+            ]);
+        }
+
+        points.extend([TestPoint::Fee, TestPoint::Encoding]);
+        points.extend(
+            [
+                Phase::Random,
+                Phase::Transform,
+                Phase::Commitment,
+                Phase::Constraint,
+                Phase::Opening,
+                Phase::Fold,
+            ]
+            .map(TestPoint::Backend),
+        );
+        for point in points {
+            for allocation_failure in [false, true] {
+                let token = CancellationToken::new();
+                memory::interrupt_payment_at(point, allocation_failure);
+                let result = prove_payment(
+                    &runtime,
+                    &fixture.body,
+                    &fixture.anchor,
+                    &witness,
+                    &context,
+                    &token,
+                );
+                assert!(
+                    if allocation_failure {
+                        matches!(result, Err(ProveError::AllocationFailed))
+                    } else {
+                        matches!(result, Err(ProveError::Cancelled))
+                    },
+                    "{point:?}: {result:?}"
+                );
+                let (peak, wiped) = memory::LAST_USAGE.with(|usage| usage.take().unwrap());
+                assert!(peak >= 8192 * 1185 * 8 && wiped >= peak);
+                assert!(runtime.acquire().is_ok());
+                assert!(matches!(
+                    prove_payment(
+                        &runtime,
+                        &fixture.body,
+                        &fixture.anchor,
+                        &witness,
+                        &context,
+                        &token
+                    ),
+                    Err(ProveError::Cancelled)
+                ));
+                eprintln!(
+                    "point={point:?} allocation_failure={allocation_failure} peak={peak} wiped={wiped}"
+                );
+            }
+        }
+
+        let retry = PaymentFixture::new(1, 1);
+        let retry_spends = retry.spends();
+        let retry_outputs = retry.outputs();
+        let retry_witness = PaymentWitness::new(&retry_spends, &retry_outputs).unwrap();
+        let first = prove_payment(
+            &runtime,
+            &retry.body,
+            &retry.anchor,
+            &retry_witness,
+            &context,
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        let second = prove_payment(
+            &runtime,
+            &retry.body,
+            &retry.anchor,
+            &retry_witness,
+            &context,
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        assert_ne!(first.as_bytes(), second.as_bytes());
+        let first_evidence =
+            verify_payment(&runtime, &retry.body, &retry.anchor, &first, &context).unwrap();
+        assert!(std::ptr::eq(first_evidence.body(), &retry.body));
+        let second_evidence =
+            verify_payment(&runtime, &retry.body, &retry.anchor, &second, &context).unwrap();
+        assert!(std::ptr::eq(second_evidence.anchor(), &retry.anchor));
+    }
 }

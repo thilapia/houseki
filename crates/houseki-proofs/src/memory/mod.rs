@@ -12,6 +12,8 @@ mod scope;
 mod suspension;
 #[cfg(test)]
 mod test_control;
+#[cfg(test)]
+mod test_point;
 mod usage;
 
 pub use allocator::ProofAllocator;
@@ -21,7 +23,13 @@ pub(crate) use error::MemoryError;
 pub(crate) use public_copy::public_copy;
 pub(crate) use scope::Scope;
 #[cfg(test)]
+pub(crate) use test_control::at_payment_point;
+#[cfg(all(test, feature = "prover", feature = "experimental-profiles"))]
+pub(crate) use test_control::interrupt_payment_at;
+#[cfg(test)]
 pub(crate) use test_control::{INTERRUPTED_AT, LAST_USAGE, PHASE_BYTES, interrupt_at};
+#[cfg(test)]
+pub(crate) use test_point::TestPoint;
 pub(crate) use usage::Usage;
 
 use account::Account;

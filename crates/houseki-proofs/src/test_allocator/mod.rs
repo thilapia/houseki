@@ -7,6 +7,9 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
 thread_local! {
+    /// Fails exactly one allocation requested by an immediately following fallible test probe.
+    static FAIL_NEXT: Cell<bool> = const { Cell::new(false) };
+
     /// Active allocation call count and requested bytes for this thread alone.
     static COUNTS: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
 
@@ -36,6 +39,12 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
     /// Records an ordinary allocation before forwarding its exact layout.
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         record(layout.size());
+        if FAIL_NEXT
+            .try_with(|next| next.replace(false))
+            .unwrap_or(false)
+        {
+            return std::ptr::null_mut();
+        }
 
         // Safety: The caller supplies the layout required by GlobalAlloc.
         unsafe { System.alloc(layout) }
@@ -62,6 +71,12 @@ unsafe impl GlobalAlloc for MeasuredAllocator {
     /// Preserves the system allocator's zero initialization contract.
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         record(layout.size());
+        if FAIL_NEXT
+            .try_with(|next| next.replace(false))
+            .unwrap_or(false)
+        {
+            return std::ptr::null_mut();
+        }
 
         // Safety: The caller supplies the layout required by GlobalAlloc.
         unsafe { System.alloc_zeroed(layout) }
@@ -108,4 +123,9 @@ pub(crate) unsafe fn observes_zeroed_drop(
     operation();
 
     WATCH.with(|watch| watch.take().unwrap().2)
+}
+
+/// Makes the next reservation return an actual allocator failure on this test thread.
+pub(crate) fn fail_next_allocation() {
+    FAIL_NEXT.with(|next| next.set(true));
 }

@@ -86,6 +86,8 @@ where
             #[cfg(test)]
             super::LAST_PROOF_SIZE
                 .with(|size| size.set(Some(codec::measured_size(request.layout, &proof))));
+            #[cfg(test)]
+            memory::at_payment_point(memory::TestPoint::Encoding);
             let encoded = codec::encode(request.identity, request.layout, &proof)
                 .map_err(BackendError::from)?;
 
@@ -99,14 +101,26 @@ where
         let result = match result {
             Ok(result) => result,
             Err(payload) => {
+                #[cfg(test)]
+                let allocation_failed = matches!(
+                    payload.downcast_ref::<MemoryError>(),
+                    Some(MemoryError::AllocationFailed)
+                );
                 let cancelled = payload.is::<memory::Cancelled>();
                 drop(payload);
 
-                Err(if cancelled {
+                let error = if cancelled {
                     BackendError::Cancelled
                 } else {
                     BackendError::ProvingFailed
-                })
+                };
+                #[cfg(test)]
+                let error = if allocation_failed {
+                    BackendError::AllocationFailed
+                } else {
+                    error
+                };
+                Err(error)
             }
         };
 

@@ -8,6 +8,9 @@ use std::sync::atomic::Ordering;
 /// Applies backend interruption without allocating diagnostics or exposing private values.
 pub(super) fn backend_checkpoint(phase: p3_util::prover_runtime::Phase) {
     #[cfg(test)]
+    super::at_payment_point(super::TestPoint::Backend(phase));
+
+    #[cfg(test)]
     PHASE_BYTES.with(|observed| {
         use p3_util::prover_runtime::Phase;
         let index = match phase {
