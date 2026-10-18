@@ -165,8 +165,8 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for PaymentAir<'_> {
         let next_work = &next[PaymentLayout::WORK..];
         self.opening.eval_selected(
             builder,
-            work[..1001].try_into().unwrap(),
-            next_work[..1001].try_into().unwrap(),
+            work[..CompactOpening::WIDTH].try_into().unwrap(),
+            next_work[..CompactOpening::WIDTH].try_into().unwrap(),
             OpeningSelectors {
                 phases: &phases[..78],
                 active: phases[78].clone(),
@@ -195,8 +195,8 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for PaymentAir<'_> {
 
         self.spend.eval(
             builder,
-            work[..983].try_into().unwrap(),
-            next_work[..983].try_into().unwrap(),
+            work[..Spend::WIDTH].try_into().unwrap(),
+            next_work[..Spend::WIDTH].try_into().unwrap(),
             &phases[79..167],
             SpendEndpoints {
                 network: &network,
@@ -208,8 +208,8 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for PaymentAir<'_> {
         );
         self.membership.eval(
             builder,
-            work[..991].try_into().unwrap(),
-            next_work[..991].try_into().unwrap(),
+            work[..Membership::WIDTH].try_into().unwrap(),
+            next_work[..Membership::WIDTH].try_into().unwrap(),
             &phases[167..298],
             MembershipEndpoints {
                 network: &network,

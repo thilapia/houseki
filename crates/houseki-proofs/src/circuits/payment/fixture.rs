@@ -136,7 +136,7 @@ impl PaymentFixture {
         let context = TransactionContext::new(
             network,
             ProtocolVersion::new(1),
-            ProofProfileId::new(0xffff0008),
+            crate::profile::payment::EXPERIMENTAL_PAYMENT_PROFILE,
             FeeScheduleId::new(4),
             ValidityCheckpointRange::new(CheckpointSequence::new(5), CheckpointSequence::new(8))
                 .unwrap(),

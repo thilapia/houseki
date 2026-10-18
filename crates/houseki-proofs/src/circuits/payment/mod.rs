@@ -19,8 +19,7 @@ mod tests {
     use super::*;
     use crate::{
         CancellationToken, PaymentWitness, ProofRuntime, backend,
-        profile::{ExpectedIdentity, Relation, payment::SupportedPaymentShape},
-        statement::Statement,
+        profile::payment::SupportedPaymentShape, statement::Statement,
     };
     use p3_air::{
         BaseAir, check_all_constraints,
@@ -89,12 +88,7 @@ mod tests {
         .unwrap();
         let layout = PaymentLayout::for_shape(SupportedPaymentShape::new(1, 1).unwrap()).unwrap();
         let air = PaymentAir::new(&layout);
-        let identity = ExpectedIdentity {
-            profile: fixture.body.context().proof_profile_id(),
-            relation: Relation::Payment,
-            shape: layout.shape().code(),
-            manifest: [0x81; 64],
-        };
+        let identity = crate::profile::payment::identity(layout.shape());
         let statement = Statement::payment(
             &fixture.body,
             &fixture.anchor,
@@ -160,12 +154,7 @@ mod tests {
         let layout =
             PaymentLayout::for_shape(SupportedPaymentShape::new(inputs, outputs).unwrap()).unwrap();
         let air = PaymentAir::new(&layout);
-        let identity = ExpectedIdentity {
-            profile: fixture.body.context().proof_profile_id(),
-            relation: Relation::Payment,
-            shape: layout.shape().code(),
-            manifest: [0x81; 64],
-        };
+        let identity = crate::profile::payment::identity(layout.shape());
         let statement = Statement::payment(
             &fixture.body,
             &fixture.anchor,
@@ -370,12 +359,7 @@ mod tests {
 
     /// Builds the exact independent statement used by complete relation tests.
     fn statement(fixture: &fixture::PaymentFixture, layout: &PaymentLayout) -> Statement {
-        let identity = ExpectedIdentity {
-            profile: fixture.body.context().proof_profile_id(),
-            relation: Relation::Payment,
-            shape: layout.shape().code(),
-            manifest: [0x81; 64],
-        };
+        let identity = crate::profile::payment::identity(layout.shape());
         Statement::payment(
             &fixture.body,
             &fixture.anchor,
