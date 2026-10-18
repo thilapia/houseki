@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/images/houseki-banner.jpg" alt="Houseki. Native foundations for private value." width="100%">
+  <img src=".github/images/houseki-banner.jpg" alt="Houseki. Private by design. Powered by Moon Math." width="100%">
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 # Houseki
 
-**Native foundations for private value.**
+**Private by design. Powered by Moon Math.**
 
 Houseki is an experimental Rust project building the foundations of a private payment system. It brings together
 encrypted notes, authenticated note state, and local zk-STARK proving and verification through small, focused crates.
