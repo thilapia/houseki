@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from source_identity import identity
 
 
 def check_files(directory, manifest):
@@ -49,10 +50,11 @@ def run(args):
     shutil.copyfile(args.binary, worker)
     worker.chmod(0o500)
     repository = Path(__file__).resolve().parents[3]
-    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
+    source = identity(repository)
+    revision = source["revision"]
     report = {
         "schema": 1, "status": "running", "revision": revision,
-        "dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=repository)),
+        "dirty": source["dirty"], "source_identity": source,
         "platform": platform.platform(), "machine": platform.machine(),
         "rustc": subprocess.check_output(["rustc", "-Vv"], text=True),
         "binary_sha3_512": hashlib.sha3_512(worker.read_bytes()).hexdigest(), "operations": [],

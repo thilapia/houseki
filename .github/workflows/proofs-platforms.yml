@@ -71,6 +71,7 @@ jobs:
           python3 crates/houseki-proofs/qualification/campaign.py --self-test
           python3 crates/houseki-proofs/qualification/interoperability.py --self-test
           python3 crates/houseki-proofs/qualification/release.py --self-test
+          python3 crates/houseki-proofs/qualification/source_identity.py
 
       - name: Verify normal dependencies contain no private owners or entropy
         run: |

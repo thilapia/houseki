@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 import unittest
+from source_identity import identity
 
 
 def percentile(values, fraction):
@@ -92,8 +93,9 @@ def run(args):
     report = {
         "schema": 1, "status": "running", "platform_qualified": False,
         "classification": "exploratory" if args.exploratory else "contract sample campaign",
-        "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip(),
-        "dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=repository)),
+        "source_identity": identity(repository),
+        "revision": identity(repository)["revision"],
+        "dirty": identity(repository)["dirty"],
         "platform": platform.platform(), "machine": platform.machine(),
         "rustc": subprocess.check_output(["rustc", "-Vv"], text=True),
         "binary_origin": str(args.binary.resolve()), "binary_sha3_512": digest,

@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from source_identity import identity
 
 
 def newest(directory):
@@ -55,8 +56,9 @@ def build(output):
                            stderr=subprocess.STDOUT, check=True)
 
     metadata = {
-        "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip(),
-        "dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=repository)),
+        "source_identity": identity(repository),
+        "revision": identity(repository)["revision"],
+        "dirty": identity(repository)["dirty"],
         "rustc": subprocess.check_output(["rustc", "-Vv"], text=True),
         "sdk": str(sdk), "ndk": str(ndk), "build_tools": str(build_tools),
         "ndk_properties": (ndk / "source.properties").read_text(),
