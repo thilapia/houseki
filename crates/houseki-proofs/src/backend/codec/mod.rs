@@ -377,6 +377,43 @@ mod tests {
         }
     }
 
+    /// Extra frontier nodes fail before allocation even when the complete envelope fits the cap.
+    #[test]
+    fn payment_excess_frontiers_cannot_exceed_decoded_bound() {
+        use crate::{
+            circuits::payment::PaymentLayout,
+            profile::payment::{SupportedPaymentShape, identity},
+        };
+        let shape = SupportedPaymentShape::new(1, 1).unwrap();
+        let layout = PaymentLayout::for_shape(shape).unwrap().codec();
+        let expected = identity(shape);
+        let (bytes, frontiers) = payment_structural_vector(&expected, layout);
+        for offset in frontiers {
+            let mut changed = bytes.clone();
+            let count = u32::from_le_bytes(changed[offset..offset + 4].try_into().unwrap());
+            changed[offset..offset + 4].copy_from_slice(&(count + 4).to_le_bytes());
+            changed.splice(offset + 4..offset + 4, [0; 256]);
+            let length = changed.len() - HEADER_BYTES;
+            changed[88..96].copy_from_slice(&(length as u64).to_le_bytes());
+            assert!(changed.len() < crate::profile::MAX_PROOF_BYTES);
+            let (result, calls, allocated) =
+                allocation::measure(|| decode(&expected, layout, &changed));
+            assert!(matches!(result, Err(CodecError::InvalidShape)));
+            assert_eq!((calls, allocated), (0, 0));
+        }
+
+        let mut proof = decode(&expected, layout, &bytes).unwrap();
+        for fri in [false, true] {
+            let original = frontier(&mut proof, fri).len();
+            frontier(&mut proof, fri).resize(original + 4, [0; 8]);
+            let (result, calls, allocated) =
+                allocation::measure(|| encode(&expected, layout, &proof));
+            assert!(matches!(result, Err(CodecError::InvalidShape)));
+            assert_eq!((calls, allocated), (0, 0));
+            frontier(&mut proof, fri).truncate(original);
+        }
+    }
+
     /// Equal public lengths and equal trace dimensions never substitute for exact shape identity.
     #[test]
     fn payment_hostile_headers_and_dimensions_allocate_nothing() {

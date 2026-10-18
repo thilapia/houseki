@@ -123,7 +123,7 @@ fn encode_payload(
 
         writer.siblings(
             &opening.opening_proof.1.sibling_hashes,
-            QUERIES * layout.input_height(),
+            super::layout::frontier_maximum(layout.input_height()),
         )?;
     }
 
@@ -142,7 +142,7 @@ fn encode_payload(
 
         writer.siblings(
             &opening.opening_proof.1.sibling_hashes,
-            QUERIES * (layout.input_height() - round - 1),
+            super::layout::frontier_maximum(layout.input_height() - round - 1),
         )?;
     }
 

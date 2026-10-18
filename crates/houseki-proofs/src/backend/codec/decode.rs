@@ -105,7 +105,8 @@ pub(super) fn decode_pass(
             })
         })?;
 
-        let sibling_hashes = reader.siblings(QUERIES * layout.input_height())?;
+        let sibling_hashes =
+            reader.siblings(super::layout::frontier_maximum(layout.input_height()))?;
 
         Ok(BatchMultiOpening {
             opened_values,
@@ -119,7 +120,9 @@ pub(super) fn decode_pass(
             reader.list(1, |reader, _| reader.fields(SALT_ELEMENTS))
         })?;
 
-        let sibling_hashes = reader.siblings(QUERIES * (layout.input_height() - round - 1))?;
+        let sibling_hashes = reader.siblings(super::layout::frontier_maximum(
+            layout.input_height() - round - 1,
+        ))?;
 
         Ok(CommitPhaseMultiStep {
             sibling_values,
