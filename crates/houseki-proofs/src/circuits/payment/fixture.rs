@@ -24,6 +24,9 @@ pub(super) struct PaymentFixture {
     /// Every output opening in body order.
     openings: Vec<NoteOpening>,
 
+    /// Reuses the first private owner at every distinct input position and output occurrence.
+    repeated: bool,
+
     /// Canonical effects with intentionally opaque envelopes.
     pub(super) body: PaymentBody,
 
@@ -34,6 +37,26 @@ pub(super) struct PaymentFixture {
 impl PaymentFixture {
     /// Funds each output occurrence and exactly one atom of public fee under real membership.
     pub(super) fn new(inputs: usize, outputs: usize) -> Self {
+        let amount = inputs as u128 * 11 - 1;
+        let outputs: Vec<_> = (0..outputs)
+            .map(|index| {
+                if index + 1 == outputs {
+                    amount - (outputs - 1) as u128
+                } else {
+                    1
+                }
+            })
+            .collect();
+        Self::with_amounts(&vec![11; inputs], &outputs, 1, false)
+    }
+
+    /// Builds arbitrary positive note amounts, fees and repeated owners for independent relation checks.
+    pub(super) fn with_amounts(
+        inputs: &[u128],
+        outputs: &[u128],
+        fee: u128,
+        repeated: bool,
+    ) -> Self {
         let network = NetworkId::from_bytes([7; 64]);
         let spending = SpendingKey::from_bytes(&[17; 32]);
         let nullifier = NullifierKey::from_bytes(&[29; 32]);
@@ -47,7 +70,7 @@ impl PaymentFixture {
             network,
         )
         .unwrap();
-        let opening = |amount, _rho| {
+        let opening = |amount| {
             NoteOpening::new(
                 NoteFormat::V1,
                 &recipient,
@@ -56,24 +79,19 @@ impl PaymentFixture {
             )
             .unwrap()
         };
-        let input_openings: Vec<_> = (0..inputs).map(|index| opening(11, index as u8)).collect();
-        let amount = inputs as u128 * 11 - 1;
-        let openings: Vec<_> = (0..outputs)
-            .map(|index| {
-                opening(
-                    if index + 1 == outputs {
-                        amount - (outputs - 1) as u128
-                    } else {
-                        1
-                    },
-                    100 + index as u8,
-                )
-            })
-            .collect();
+        let input_openings: Vec<_> = inputs.iter().copied().map(opening).collect();
+        let openings: Vec<_> = outputs.iter().copied().map(opening).collect();
         let mut tree = NoteTree::new(network).unwrap();
         let positions: Vec<_> = input_openings
             .iter()
-            .map(|opening| tree.append(opening.commitment().unwrap()).unwrap())
+            .map(|opening| {
+                tree.append(if repeated {
+                    input_openings[0].commitment().unwrap()
+                } else {
+                    opening.commitment().unwrap()
+                })
+                .unwrap()
+            })
             .collect();
         let paths = positions
             .iter()
@@ -82,7 +100,18 @@ impl PaymentFixture {
         let markers = input_openings
             .iter()
             .zip(&positions)
-            .map(|(opening, position)| derive_nullifier(opening, &nullifier, position).unwrap())
+            .map(|(opening, position)| {
+                derive_nullifier(
+                    if repeated {
+                        &input_openings[0]
+                    } else {
+                        opening
+                    },
+                    &nullifier,
+                    position,
+                )
+                .unwrap()
+            })
             .collect();
         let anchor = tree.anchor();
         let counts = PaymentCountLimits::new(4, 2).unwrap();
@@ -90,7 +119,11 @@ impl PaymentFixture {
             .iter()
             .map(|opening| {
                 NoteOutput::new(
-                    opening.commitment().unwrap(),
+                    if repeated {
+                        openings[0].commitment().unwrap()
+                    } else {
+                        opening.commitment().unwrap()
+                    },
                     EncryptedNoteEnvelope::new(
                         EncodedMlKem1024Ciphertext::from_bytes([21; 1568]),
                         vec![31; 3],
@@ -112,12 +145,13 @@ impl PaymentFixture {
             context,
             PaymentInputs::new(anchor.root(), markers, counts).unwrap(),
             PaymentOutputs::new(outputs, counts).unwrap(),
-            Amount::from_atoms(1).unwrap(),
+            Amount::from_atoms(fee).unwrap(),
             counts,
         )
         .unwrap();
 
         Self {
+            repeated,
             spending,
             nullifier,
             inputs: input_openings,
@@ -134,13 +168,31 @@ impl PaymentFixture {
             .iter()
             .zip(&self.paths)
             .map(|(opening, path)| {
-                SpendWitness::new(opening, &self.spending, &self.nullifier, path)
+                SpendWitness::new(
+                    if self.repeated {
+                        &self.inputs[0]
+                    } else {
+                        opening
+                    },
+                    &self.spending,
+                    &self.nullifier,
+                    path,
+                )
             })
             .collect()
     }
 
     /// Borrows the actual output openings in their public body order.
     pub(super) fn outputs(&self) -> Vec<&NoteOpening> {
-        self.openings.iter().collect()
+        self.openings
+            .iter()
+            .map(|opening| {
+                if self.repeated {
+                    &self.openings[0]
+                } else {
+                    opening
+                }
+            })
+            .collect()
     }
 }

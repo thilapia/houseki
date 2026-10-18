@@ -38,6 +38,39 @@ impl<'a> PaymentAir<'a> {
             membership: Membership::new(),
         }
     }
+
+    /// Evaluates one real scheduled row with its actual adjacent source cells.
+    #[cfg(test)]
+    pub(crate) fn valid_row(
+        &self,
+        rows: &[Goldilocks],
+        public: &[Goldilocks],
+        phase: usize,
+    ) -> bool {
+        let width = self.layout.width();
+        let next = (phase + 1) % (rows.len() / width);
+        let main = p3_matrix::stack::ViewPair::new(
+            p3_matrix::dense::RowMajorMatrixView::new_row(
+                &rows[phase * width..(phase + 1) * width],
+            ),
+            p3_matrix::dense::RowMajorMatrixView::new_row(&rows[next * width..(next + 1) * width]),
+        );
+        let empty = p3_matrix::dense::RowMajorMatrixView::new_row(&[]);
+        let periodic = self.periodic_values(phase);
+        let mut builder = p3_air::DebugConstraintBuilder::new(
+            phase,
+            main,
+            p3_matrix::stack::ViewPair::new(empty, empty),
+            public,
+            Goldilocks::from_bool(phase == 0),
+            Goldilocks::from_bool(phase + 1 == rows.len() / width),
+            Goldilocks::from_bool(phase + 1 < rows.len() / width),
+            &periodic,
+        );
+        self.eval(&mut builder);
+
+        builder.failures().is_empty()
+    }
 }
 
 impl BaseAir<Goldilocks> for PaymentAir<'_> {
@@ -253,9 +286,11 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for PaymentAir<'_> {
             if column < 983 {
                 active += spend.clone();
             }
+
             if column < 991 {
                 active += membership.clone();
             }
+
             if column < 448 {
                 active += addition.clone();
             }

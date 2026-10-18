@@ -1,7 +1,7 @@
 //! Exact geometry selected from the trusted payment schedule.
 
 use super::{PaymentLayoutError, schedule::Schedule};
-use crate::{backend::Layout, profile::payment::SupportedPaymentShape};
+use crate::{backend::Layout, gadgets::CompactOpening, profile::payment::SupportedPaymentShape};
 
 /// Complete public schedule and bounded codec geometry for one actual count pair.
 pub(crate) struct PaymentLayout {
@@ -17,7 +17,7 @@ impl PaymentLayout {
     pub(super) const WORK: usize = 184;
 
     /// Live registers plus the largest shared gadget region.
-    pub(super) const WIDTH: usize = 1185;
+    pub(super) const WIDTH: usize = Self::WORK + CompactOpening::WIDTH;
 
     /// Resolves bounded geometry without allocating any private trace.
     pub(crate) fn for_shape(shape: SupportedPaymentShape) -> Result<Self, PaymentLayoutError> {

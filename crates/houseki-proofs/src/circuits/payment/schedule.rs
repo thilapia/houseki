@@ -1,6 +1,9 @@
 //! Trusted operation selectors derived solely from checked public counts.
 
-use crate::profile::payment::SupportedPaymentShape;
+use crate::{
+    gadgets::{CompactOpening, Membership, Spend},
+    profile::payment::SupportedPaymentShape,
+};
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
 
@@ -12,10 +15,10 @@ pub(super) struct Schedule {
 
 impl Schedule {
     /// Complete opening, authority, membership and one accumulation for each input.
-    pub(super) const INPUT_ROWS: usize = 1733;
+    pub(super) const INPUT_ROWS: usize = CompactOpening::CYCLE + Spend::ROWS + Membership::ROWS + 1;
 
     /// One complete opening and one accumulation for each output.
-    pub(super) const OUTPUT_ROWS: usize = 129;
+    pub(super) const OUTPUT_ROWS: usize = CompactOpening::CYCLE + 1;
 
     /// First selector reserved for actual ordered note slots.
     pub(super) const SLOTS: usize = 301;
