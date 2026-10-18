@@ -81,6 +81,6 @@
     "path": "crates/houseki-proofs/src/circuits/payment/air.rs",
     "before": ".assert_eq(work[64 + byte], row[32 + byte]);",
     "after": ".assert_eq(work[64 + byte], work[64 + byte]);",
-    "test": "payment_coherent_output_amount_fails_at_opening_seam"
+    "test": "payment_coherent_output_amount_requires_opening_binding"
   }
 ]

@@ -617,6 +617,25 @@ mod tests {
         assert_rejected_only_at(&air, &rows, &statement, &[second_output_add - 1]);
     }
 
+    /// A stable forged output amount must remain linked to its independently valid opening.
+    #[test]
+    fn payment_coherent_output_amount_requires_opening_binding() {
+        let fixture = fixture::PaymentFixture::with_amounts(&[11, 12, 13, 14], &[11, 11], 1, false);
+        let layout = PaymentLayout::for_shape(SupportedPaymentShape::new(4, 2).unwrap()).unwrap();
+        let air = PaymentAir::new(&layout);
+        let statement = statement(&fixture, &layout);
+        let mut rows = fixture_rows(&fixture, &air, &statement);
+        let second_output = 4 * 1733 + 129;
+        for phase in second_output..second_output + 129 {
+            let amount = phase * layout.width() + 32;
+            rows[amount..amount + 16]
+                .copy_from_slice(&38_u128.to_le_bytes().map(Goldilocks::from_u8));
+        }
+
+        recompute_totals(&mut rows, &layout, &[]);
+        assert_rejected_only_at(&air, &rows, &statement, &[second_output]);
+    }
+
     /// Builds the complete private assignment while deliberately bypassing native balance checks.
     fn fixture_rows(
         fixture: &fixture::PaymentFixture,
