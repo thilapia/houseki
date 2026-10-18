@@ -121,6 +121,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  android:
+    name: Cross-build Android qualification shell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      HOUSEKI_NDK_VERSION: "30.0.16248370"
+    steps:
+      - name: Check out the exact Android candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Android Rust target
+        run: rustup toolchain install 1.99.1 --profile minimal --target aarch64-linux-android
+
+      - name: Build the real NativeActivity with retained tool provenance
+        run: |
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$HOUSEKI_NDK_VERSION" \
+            python3 crates/houseki-proofs/qualification/android.py --output android-build
+
+      - name: Retain the public debug application and build evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: proofs-android-build-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            android-build/qualification.apk
+            android-build/libhouseki_qualification.so
+            android-build/environment.json
+            android-build/commands.json
+            android-build/build.log
+          if-no-files-found: error
+          retention-days: 30
+
   verify:
     name: Cross-verify on ${{ matrix.target }}
     needs: produce
