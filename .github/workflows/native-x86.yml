@@ -113,6 +113,19 @@ jobs:
           cargo test -p houseki-proofs --release --features prover --locked \
             2>&1 | tee validation-logs/proofs-prover-release-tests.log
 
+      - name: Exercise experimental withdrawal public consumers
+        run: |
+          cargo test -p houseki-proofs --release --features 'prover,experimental-profiles' --locked \
+            reward_withdrawal 2>&1 | tee validation-logs/withdrawal-family-tests.log
+          cargo test -p houseki-proofs --release --features 'prover,experimental-profiles' --locked \
+            --example reward_withdrawal 2>&1 | tee validation-logs/withdrawal-authorization-tests.log
+          cargo run -p houseki-proofs --release --features 'prover,experimental-profiles' --locked \
+            --example reward_withdrawal -- validation-logs/withdrawal-public \
+            2>&1 | tee validation-logs/withdrawal-consumer.log
+          cargo run -p houseki-proofs --release --no-default-features --features experimental-profiles \
+            --locked --example verify_reward_withdrawal -- validation-logs/withdrawal-public \
+            2>&1 | tee validation-logs/withdrawal-verifier-only.log
+
       - name: Reject parallel backend feature unification
         run: |
           cargo test -p houseki-proofs --lib --locked \
