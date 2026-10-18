@@ -63,7 +63,9 @@ impl Membership {
     /// Evaluates exactly one complete invocation under trusted phase and level selectors.
     ///
     /// Selectors 0 through 20 describe the leaf, 21 through 43 the parent, 44 through 65
-    /// the root and 66 through 129 the current parent level. Selector 130 marks occupancy.
+    /// the root and 66 through 129 the current parent level.
+    ///
+    /// Selector 130 marks occupancy.
     ///
     /// The caller supplies stable external endpoints, forbids a final-row-crossing invocation
     /// and constrains all cells outside active membership phases.

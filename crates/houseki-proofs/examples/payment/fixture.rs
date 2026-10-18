@@ -91,6 +91,7 @@ impl Fixture {
                 opening(&sender, total - total / 2)?,
             ]
         };
+
         let output_pairs: Vec<_> = (0..outputs)
             .map(|index| {
                 if index == 0 || repeated {

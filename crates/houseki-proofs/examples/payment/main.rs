@@ -66,6 +66,7 @@ fn run(
             &CancellationToken::new(),
         )?
     };
+
     let proving = start.elapsed();
     let runtime = ProofRuntime::new();
     let start = Instant::now();

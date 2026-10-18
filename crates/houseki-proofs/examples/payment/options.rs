@@ -26,6 +26,7 @@ impl Options {
             directory: None,
             repeated: false,
         };
+
         let mut args = args;
         while let Some(argument) = args.next() {
             match argument.as_str() {

@@ -102,6 +102,7 @@ mod tests {
             )
             .unwrap()
         };
+
         let body = fixture.body.clone();
         let anchor = fixture.anchor;
         drop(fixture);
@@ -192,6 +193,7 @@ mod tests {
                 &token,
             )
         });
+
         assert!(matches!(result, Err(ProveError::WitnessCountMismatch)));
         assert_eq!(calls, 0);
         assert!(matches!(
@@ -217,6 +219,7 @@ mod tests {
                 &token,
             )
         });
+
         assert!(matches!(result, Err(ProveError::Cancelled)));
         assert_eq!(calls, 0);
         let expected = fixture.body.context();
@@ -250,6 +253,7 @@ mod tests {
             Amount, EncodedTransactionProof, Nullifier, PaymentBody, PaymentCountLimits,
             PaymentInputs, PaymentOutputs,
         };
+
         let fixture = PaymentFixture::new(1, 1);
         let context = ProofContext::new(fixture.body.context()).unwrap();
         let spends = fixture.spends();
@@ -288,6 +292,7 @@ mod tests {
                     &CancellationToken::new(),
                 )
             });
+
             assert!(matches!(
                 result,
                 Err(ProveError::Statement(StatementError::UnsupportedShape))
@@ -297,6 +302,7 @@ mod tests {
             let (result, calls, _) = crate::test_allocator::measure(|| {
                 verify_payment(&runtime, &body, &fixture.anchor, &empty, &context)
             });
+
             assert!(matches!(
                 result,
                 Err(crate::VerifyError::Statement(

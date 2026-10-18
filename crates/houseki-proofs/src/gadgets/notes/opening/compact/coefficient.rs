@@ -5,7 +5,9 @@ use p3_goldilocks::Goldilocks;
 
 /// Requires a twelve-bit integer at most 3328 with one product helper.
 ///
-/// Values below 3072 pass directly. For larger values bit nine must be zero, and bit eight
+/// Values below 3072 pass directly.
+///
+/// For larger values bit nine must be zero, and bit eight
 /// may be one only when all eight lower bits are zero, yielding exactly the interval to 3328.
 pub(super) fn eval<AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
