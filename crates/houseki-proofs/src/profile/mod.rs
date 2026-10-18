@@ -1,6 +1,7 @@
 //! Trusted operation identities independent of untrusted proof headers.
 
 mod identity;
+pub(crate) mod payment;
 mod relation;
 pub(crate) mod reward_withdrawal;
 

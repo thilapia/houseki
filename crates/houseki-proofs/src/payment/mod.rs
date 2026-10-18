@@ -4,6 +4,7 @@ mod error;
 
 pub use error::WitnessShapeError;
 
+use crate::profile::payment::{ShapeError, SupportedPaymentShape};
 use houseki_notes::{NoteOpening, SpendWitness};
 use std::fmt;
 
@@ -35,18 +36,16 @@ impl<'a> PaymentWitness<'a> {
     ///
     /// # Errors
     ///
-    /// Returns the corresponding [`WitnessShapeError`] unless each count is one or two.
+    /// Returns the corresponding [`WitnessShapeError`] unless inputs number one through four
+    /// and outputs number one through two.
     pub fn new(
         inputs: &'a [SpendWitness<'a>],
         outputs: &'a [&'a NoteOpening],
     ) -> Result<Self, WitnessShapeError> {
-        if !(1..=2).contains(&inputs.len()) {
-            return Err(WitnessShapeError::UnsupportedInputCount);
-        }
-
-        if !(1..=2).contains(&outputs.len()) {
-            return Err(WitnessShapeError::UnsupportedOutputCount);
-        }
+        SupportedPaymentShape::new(inputs.len(), outputs.len()).map_err(|error| match error {
+            ShapeError::UnsupportedInputCount => WitnessShapeError::UnsupportedInputCount,
+            ShapeError::UnsupportedOutputCount => WitnessShapeError::UnsupportedOutputCount,
+        })?;
 
         Ok(Self { inputs, outputs })
     }

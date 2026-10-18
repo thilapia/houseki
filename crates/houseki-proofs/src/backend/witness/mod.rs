@@ -175,24 +175,27 @@ mod tests {
         }
     }
 
-    /// Borrows original slices for all four launch shapes and rejects unsupported counts.
+    /// Borrows original slices for all eight bounded shapes and rejects unsupported counts.
     #[test]
     fn payment_witness_reuses_native_owners_for_every_shape() {
         let spending = SpendingKey::from_bytes(&[17; 32]);
         let nullifier = NullifierKey::from_bytes(&[29; 32]);
         let opening = opening(17, &spending, &nullifier);
         let membership = NoteMembershipWitness::from_parts(&NotePosition::new(0), &[[0; 64]; 64]);
-        let inputs = std::array::from_fn::<_, 3, _>(|_| {
+        let inputs = std::array::from_fn::<_, 5, _>(|_| {
             SpendWitness::new(&opening, &spending, &nullifier, &membership)
         });
 
         let outputs = [&opening; 3];
 
-        for input_count in 0..=3 {
+        for input_count in 0..=5 {
             for output_count in 0..=3 {
-                let result =
-                    crate::PaymentWitness::new(&inputs[..input_count], &outputs[..output_count]);
-                if (1..=2).contains(&input_count) && (1..=2).contains(&output_count) {
+                let (result, allocations, _) = crate::test_allocator::measure(|| {
+                    crate::PaymentWitness::new(&inputs[..input_count], &outputs[..output_count])
+                });
+
+                assert_eq!(allocations, 0);
+                if (1..=4).contains(&input_count) && (1..=2).contains(&output_count) {
                     let witness = result.unwrap();
                     assert!(std::ptr::eq(witness.inputs(), &inputs[..input_count]));
                     assert!(std::ptr::eq(witness.outputs(), &outputs[..output_count]));

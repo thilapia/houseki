@@ -4,7 +4,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum WitnessShapeError {
-    /// The number of input spends is outside the supported one or two input shapes.
+    /// The number of input spends is outside the supported one through four input shapes.
     #[error("unsupported payment input count")]
     UnsupportedInputCount,
 
