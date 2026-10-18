@@ -13,24 +13,28 @@ proofs = []
 # internal
 houseki-types = { workspace = true }
 
-# cryptography
-getrandom.workspace = true
+# types
 crypto-bigint.workspace = true
-ml-kem.workspace = true
-ml-dsa.workspace = true
-aes-gcm-siv.workspace = true
+
+# cryptography
 # Enable cleanup features for the transitive encryption backends.
 aes.workspace = true
-polyval.workspace = true
+aes-gcm-siv.workspace = true
 sha3.workspace = true
 sha2.workspace = true
 hkdf.workspace = true
+ml-dsa.workspace = true
+ml-kem.workspace = true
+polyval.workspace = true
 zeroize.workspace = true
 
-# zero-knowledge
+# zero knowledge proofs
 p3-field.workspace = true
 p3-goldilocks.workspace = true
 p3-symmetric.workspace = true
+
+# random generators
+getrandom.workspace = true
 
 # error handling
 thiserror.workspace = true

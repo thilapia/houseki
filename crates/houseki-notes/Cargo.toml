@@ -12,16 +12,20 @@ proofs = []
 [dependencies]
 # internal
 houseki-crypto.workspace = true
-houseki-types.workspace = true
 houseki-state.workspace = true
-
-# cryptography
-getrandom.workspace = true
-crypto-bigint.workspace = true
-zeroize.workspace = true
+houseki-types.workspace = true
 
 # encoding
 base64ct.workspace = true
+
+# types
+crypto-bigint.workspace = true
+
+# cryptography
+zeroize.workspace = true
+
+# random generators
+getrandom.workspace = true
 
 # error handling
 thiserror.workspace = true

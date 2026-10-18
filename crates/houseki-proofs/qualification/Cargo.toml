@@ -16,11 +16,12 @@ prover = ["houseki-proofs/prover", "dep:houseki-crypto", "dep:houseki-notes", "d
 mobile = ["prover"]
 
 [dependencies]
-houseki-proofs = { path = "..", features = ["experimental-profiles"] }
-houseki-types = { path = "../../houseki-types" }
+# internal
 houseki-crypto = { path = "../../houseki-crypto", features = ["proofs"], optional = true }
 houseki-notes = { path = "../../houseki-notes", features = ["proofs"], optional = true }
+houseki-proofs = { path = "..", features = ["experimental-profiles"] }
 houseki-state = { path = "../../houseki-state", features = ["proofs"], optional = true }
+houseki-types = { path = "../../houseki-types" }
 
 [patch.crates-io]
 p3-util = { path = "../../../vendor/plonky3/util" }
