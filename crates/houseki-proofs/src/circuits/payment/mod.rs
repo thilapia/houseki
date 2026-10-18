@@ -34,6 +34,7 @@ mod tests {
         symbolic::{AirLayout, get_max_constraint_degree},
     };
     use p3_field::PrimeCharacteristicRing;
+    use p3_goldilocks::Goldilocks;
     use p3_matrix::dense::RowMajorMatrix;
 
     /// Derives all eight exact schedules and checks their actual symbolic degree without traces.
@@ -487,6 +488,158 @@ mod tests {
             rows[..16],
             rows[(layout.rows() - 1) * layout.width()..(layout.rows() - 1) * layout.width() + 16]
         );
+    }
+
+    /// Balanced accumulator resets preserve every local addition and fail only at the reset seams.
+    #[test]
+    fn payment_coherent_accumulator_resets_fail_at_continuity() {
+        let fixture = fixture::PaymentFixture::with_amounts(&[11, 12, 13, 14], &[11, 38], 1, false);
+        let layout = PaymentLayout::for_shape(SupportedPaymentShape::new(4, 2).unwrap()).unwrap();
+        let air = PaymentAir::new(&layout);
+        let statement = statement(&fixture, &layout);
+        let mut rows = fixture_rows(&fixture, &air, &statement);
+        assert_rejected_only_at(&air, &rows, &statement, &[]);
+
+        let third_input_add = 3 * 1733 - 1;
+        let second_output_add = 4 * 1733 + 2 * 129 - 1;
+        recompute_totals(
+            &mut rows,
+            &layout,
+            &[(third_input_add, 0, 12), (second_output_add, 16, 0)],
+        );
+        assert_rejected_only_at(
+            &air,
+            &rows,
+            &statement,
+            &[third_input_add - 1, second_output_add - 1],
+        );
+    }
+
+    /// Valid alternate opening and membership segments cannot replace a later input's registers.
+    #[test]
+    fn payment_coherent_input_splices_fail_at_register_seams() {
+        let fixture = fixture::PaymentFixture::with_amounts(&[11, 12, 13, 14], &[11, 38], 1, false);
+        let layout = PaymentLayout::for_shape(SupportedPaymentShape::new(4, 2).unwrap()).unwrap();
+        let air = PaymentAir::new(&layout);
+        let statement = statement(&fixture, &layout);
+        let original = fixture_rows(&fixture, &air, &statement);
+        let target = 2 * 1733;
+        for (phases, seams) in [
+            (0..128, vec![target + 127]),
+            (216..1732, vec![target + 215, target + 1731]),
+        ] {
+            let mut changed = original.clone();
+            for phase in phases {
+                let donor = phase * layout.width();
+                let destination = (target + phase) * layout.width();
+                changed[destination + 32..destination + layout.width()]
+                    .copy_from_slice(&original[donor + 32..donor + layout.width()]);
+            }
+
+            assert_rejected_only_at(&air, &changed, &statement, &seams);
+        }
+    }
+
+    /// A second output's valid committed opening cannot fund a coherently substituted amount.
+    #[test]
+    fn payment_coherent_output_amount_fails_at_opening_seam() {
+        let fixture = fixture::PaymentFixture::with_amounts(&[11, 12, 13, 14], &[11, 11], 1, false);
+        let layout = PaymentLayout::for_shape(SupportedPaymentShape::new(4, 2).unwrap()).unwrap();
+        let air = PaymentAir::new(&layout);
+        let statement = statement(&fixture, &layout);
+        let mut rows = fixture_rows(&fixture, &air, &statement);
+        let second_output_add = 4 * 1733 + 2 * 129 - 1;
+        let amount = second_output_add * layout.width() + 32;
+        rows[amount..amount + 16].copy_from_slice(&38_u128.to_le_bytes().map(Goldilocks::from_u8));
+        recompute_totals(&mut rows, &layout, &[]);
+        assert_rejected_only_at(&air, &rows, &statement, &[second_output_add - 1]);
+    }
+
+    /// Builds the complete private assignment while deliberately bypassing native balance checks.
+    fn fixture_rows(
+        fixture: &fixture::PaymentFixture,
+        air: &PaymentAir<'_>,
+        statement: &Statement,
+    ) -> Vec<Goldilocks> {
+        let spends = fixture.spends();
+        let outputs = fixture.outputs();
+        let witness = PaymentWitness::new(&spends, &outputs).unwrap();
+        trace::build(air, &witness, statement, &CancellationToken::new())
+            .unwrap()
+            .values()
+            .to_vec()
+    }
+
+    /// Requires every gadget and arithmetic row outside the named composition seams to remain valid.
+    fn assert_rejected_only_at(
+        air: &PaymentAir<'_>,
+        rows: &[Goldilocks],
+        statement: &Statement,
+        expected: &[usize],
+    ) {
+        let report = check_all_constraints(
+            air,
+            &RowMajorMatrix::new(rows.to_vec(), air.layout.width()),
+            &statement.public_values,
+            None,
+        );
+        let failed_rows: std::collections::BTreeSet<_> =
+            report.failures.iter().map(|failure| failure.row).collect();
+        assert_eq!(failed_rows, expected.iter().copied().collect());
+    }
+
+    /// Rebuilds every addition bit, carry and later total after deliberate private register changes.
+    fn recompute_totals(
+        rows: &mut [Goldilocks],
+        layout: &PaymentLayout,
+        resets: &[(usize, usize, u128)],
+    ) {
+        let mut totals = [Goldilocks::ZERO; 32];
+        for row in 0..layout.rows() {
+            for &(reset_row, column, amount) in resets {
+                if reset_row == row {
+                    totals[column..column + 16]
+                        .copy_from_slice(&amount.to_le_bytes().map(Goldilocks::from_u8));
+                }
+            }
+
+            let current = &mut rows[row * layout.width()..(row + 1) * layout.width()];
+            current[..32].copy_from_slice(&totals);
+            let phases = layout.schedule.values(row);
+            let column = if phases[298] == Goldilocks::ONE {
+                0
+            } else if phases[299] + phases[300] == Goldilocks::ONE {
+                16
+            } else {
+                continue;
+            };
+            let (registers, work) = current.split_at_mut(PaymentLayout::WORK);
+            work[..16].copy_from_slice(&totals[column..column + 16]);
+            if phases[300] == Goldilocks::ZERO {
+                work[16..32].copy_from_slice(&registers[32..48]);
+            }
+
+            let (operands, rest) = work[..448].split_at_mut(32);
+            let (sum, rest) = rest.split_at_mut(16);
+            let (left_bits, rest) = rest.split_at_mut(128);
+            let (right_bits, rest) = rest.split_at_mut(128);
+            let (sum_bits, carries) = rest.split_at_mut(128);
+            crate::gadgets::assign_addition(
+                [
+                    operands[..16].try_into().unwrap(),
+                    operands[16..].try_into().unwrap(),
+                ],
+                [
+                    left_bits.as_chunks_mut::<8>().0.try_into().unwrap(),
+                    right_bits.as_chunks_mut::<8>().0.try_into().unwrap(),
+                ],
+                sum.try_into().unwrap(),
+                sum_bits.as_chunks_mut::<8>().0.try_into().unwrap(),
+                carries.try_into().unwrap(),
+            )
+            .unwrap();
+            totals[column..column + 16].copy_from_slice(sum);
+        }
     }
 
     /// Extracts exact next-row reads from the symbolic AIR rather than trusting a hand-written union.
