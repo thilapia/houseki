@@ -1,0 +1,29 @@
+[package]
+name = "houseki-proofs-qualification"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[features]
+default = []
+prover = ["houseki-proofs/prover", "dep:houseki-crypto", "dep:houseki-notes", "dep:houseki-state"]
+
+[dependencies]
+houseki-proofs = { path = "..", features = ["experimental-profiles"] }
+houseki-types = { path = "../../houseki-types" }
+houseki-crypto = { path = "../../houseki-crypto", features = ["proofs"], optional = true }
+houseki-notes = { path = "../../houseki-notes", features = ["proofs"], optional = true }
+houseki-state = { path = "../../houseki-state", features = ["proofs"], optional = true }
+
+[patch.crates-io]
+p3-util = { path = "../../../vendor/plonky3/util" }
+p3-dft = { path = "../../../vendor/plonky3/dft" }
+p3-fri = { path = "../../../vendor/plonky3/fri" }
+p3-uni-stark = { path = "../../../vendor/plonky3/uni-stark" }
+p3-air = { path = "../../../vendor/plonky3/air" }
