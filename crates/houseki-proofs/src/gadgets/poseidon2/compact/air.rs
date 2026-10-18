@@ -22,6 +22,7 @@ impl<const BLOCKS: usize> CompactHashAir<BLOCKS> {
             hash: CompactHash::new(domain, lengths).unwrap(),
         }
     }
+
     /// Evaluates one real scheduled row with its actual adjacent source cells.
     pub(crate) fn valid_row(
         &self,

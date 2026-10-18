@@ -315,6 +315,7 @@ mod tests {
             );
         }
     }
+
     /// Recomputing both hashes cannot bypass canonical coefficients or substitute the private digest.
     #[test]
     fn coordinated_hashes_still_require_key_validity_and_binding() {

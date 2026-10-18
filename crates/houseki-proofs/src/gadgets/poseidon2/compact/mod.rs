@@ -260,6 +260,7 @@ mod tests {
             );
         }
     }
+
     /// Every application transcript size preserves the retained hash result and complete constraints.
     #[test]
     fn compact_hash_covers_all_payment_transcript_sizes() {
