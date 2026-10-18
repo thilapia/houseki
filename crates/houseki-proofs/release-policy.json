@@ -8,14 +8,56 @@
     "reason": "Paid independent review is unavailable. Author review and automated tests do not establish independent cryptographic assurance."
   },
   "required_targets": [
-    {"id": "macos-arm64", "os_floor": "macOS 15", "cpu": "Apple Silicon with NEON", "reference": "M1 with 8 GiB RAM"},
-    {"id": "linux-x86_64", "os_floor": "Ubuntu 24.04 LTS with glibc 2.39", "cpu": "x86-64 with SSE2 baseline", "reference": "Core i5-8250U laptop and i5-8500 desktop with 8 GiB RAM"},
-    {"id": "android-arm64", "os_floor": "Android 14 API 34", "cpu": "ARM64 with NEON", "reference": "Pixel 8a with 8 GB RAM"}
+    {
+      "id": "macos-arm64",
+      "os_floor": "macOS 15",
+      "cpu": "Apple Silicon with NEON",
+      "reference": "M1 with 8 GiB RAM"
+    },
+    {
+      "id": "linux-x86_64",
+      "os_floor": "Ubuntu 24.04 LTS with glibc 2.39",
+      "cpu": "x86-64 with SSE2 baseline",
+      "reference": "Core i5-8250U laptop and i5-8500 desktop with 8 GiB RAM"
+    },
+    {
+      "id": "android-arm64",
+      "os_floor": "Android 14 API 34",
+      "cpu": "ARM64 with NEON",
+      "reference": "Pixel 8a with 8 GB RAM"
+    }
   ],
-  "deferred_targets": ["Windows", "iOS", "Linux ARM64", "Intel macOS", "WebAssembly"],
+  "deferred_targets": [
+    "Windows",
+    "iOS",
+    "Linux ARM64",
+    "Intel macOS",
+    "WebAssembly"
+  ],
   "profiles": [
-    {"family": "reward-withdrawal", "id_hex": "ffff0007", "outputs": [1], "status": "experimental"},
-    {"family": "payment", "id_hex": "ffff0008", "inputs": [1, 2, 3, 4], "outputs": [1, 2], "status": "experimental"}
+    {
+      "family": "reward-withdrawal",
+      "id_hex": "ffff0007",
+      "outputs": [
+        1
+      ],
+      "status": "experimental"
+    },
+    {
+      "family": "payment",
+      "id_hex": "ffff0008",
+      "inputs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "outputs": [
+        1,
+        2
+      ],
+      "status": "experimental"
+    }
   ],
   "structural_limits": {
     "proof_bytes": 2097152,
@@ -43,5 +85,16 @@
   ],
   "publication": "Separate explicit owner instruction required",
   "migration": "Incompatible statements, constraints, parameters, transcripts or codecs require new immutable profile identities",
-  "emergency_disable": "Stop admission of new proofs through consuming protocol policy while retaining historical verification under original rules"
+  "emergency_disable": "Stop admission of new proofs through consuming protocol policy while retaining historical verification under original rules",
+  "advisory_dispositions": [
+    {
+      "id": "RUSTSEC-2024-0436",
+      "package": "paste",
+      "version": "1.0.15",
+      "classification": "informational maintenance advisory",
+      "reviewed_advisory_modified": "2026-01-27T22:03:15.694766Z",
+      "source": "https://rustsec.org/advisories/RUSTSEC-2024-0436.html",
+      "disposition": "Retain the pinned transitive compile-time procedural macro through p3-field 0.8.0 for this unreviewed candidate. RustSec reports that it is unmaintained and lists no patched version. Track upstream replacement and reassess any new advisory. This does not claim a runtime vulnerability fix or independent supply-chain assurance."
+    }
+  ]
 }

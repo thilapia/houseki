@@ -73,7 +73,7 @@ def advisories(packages):
         report["packages"] = [{"name": package["name"], "version": package["version"], "result": result}
                               for package, result in zip(registry, results, strict=True)]
         report["response_sha3_512"] = hashlib.sha3_512(data).hexdigest()
-        report["untriaged_advisories"] = sum(len(result.get("vulns", [])) for result in results)
+        report["reported_advisories"] = sum(len(result.get("vulns", [])) for result in results)
     except (OSError, ValueError, KeyError) as error:
         report["status"] = "unavailable"
         report["error"] = str(error)
