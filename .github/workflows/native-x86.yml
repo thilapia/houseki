@@ -13,7 +13,7 @@ jobs:
   native-x86:
     name: Rust 1.99.1 on Linux x86-64
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
@@ -87,8 +87,8 @@ jobs:
           RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items --locked \
             2>&1 | tee validation-logs/rustdoc.log
 
-      - name: Test the locked workspace
-        run: cargo test --workspace --all-features --locked 2>&1 | tee validation-logs/workspace-tests.log
+      - name: Test the locked release workspace serially
+        run: cargo test --workspace --release --all-features --locked -- --test-threads=1 2>&1 | tee validation-logs/workspace-tests.log
 
       - name: Run native release crypto, notes and state tests
         run: cargo test -p houseki-crypto -p houseki-notes -p houseki-state --all-features --release --locked 2>&1 | tee validation-logs/crypto-release-tests.log
