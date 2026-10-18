@@ -112,9 +112,9 @@ mod tests {
     use houseki_state::NoteTree;
     use houseki_types::*;
 
-    /// Permits real two input payments and up to three ordinary output slots.
+    /// Permits real four input payments and up to three ordinary output slots.
     fn limits() -> PaymentCountLimits {
-        PaymentCountLimits::new(2, 3).unwrap()
+        PaymentCountLimits::new(4, 3).unwrap()
     }
 
     /// Binds all fixture operations to one complete public context.
@@ -247,6 +247,63 @@ mod tests {
             check_payment(&extra_fee, &anchor, &inputs, &[&output, &output], limits()),
             Err(PaymentRelationError::ConservationMismatch)
         ));
+    }
+
+    /// Counts four distinct note instances and both repeated outputs without a one-note total cap.
+    #[test]
+    fn four_input_payment_conserves_repeated_outputs_and_separate_fee() {
+        let spending = SpendingKey::from_bytes(&[0xa7; 32]);
+        let nullifier = NullifierKey::from_bytes(&[0x59; 32]);
+        let key = MlKem1024DecapsulationKey::from_seed(&[11; 64]);
+        let recipient = recipient(&spending, &nullifier, &key);
+        for input_amount in [Amount::MAX_ATOMS / 2, Amount::MAX_ATOMS] {
+            let input = opening(&recipient, input_amount, 0xa5);
+            let output = opening(&recipient, Amount::MAX_ATOMS, 0x5a);
+            let mut tree = NoteTree::new(context().network_id()).unwrap();
+            let positions: Vec<_> = (0..4)
+                .map(|_| tree.append(input.commitment().unwrap()).unwrap())
+                .collect();
+            let paths: Vec<_> = positions
+                .iter()
+                .map(|position| tree.witness(position).unwrap())
+                .collect();
+            let inputs: Vec<_> = paths
+                .iter()
+                .map(|path| SpendWitness::new(&input, &spending, &nullifier, path))
+                .collect();
+            let markers: Vec<_> = positions
+                .iter()
+                .map(|position| derive_nullifier(&input, &nullifier, position).unwrap())
+                .collect();
+            let anchor = tree.anchor();
+            let outputs = [&output, &output];
+            let counts = PaymentCountLimits::new(4, 2).unwrap();
+            let fee = if input_amount == Amount::MAX_ATOMS {
+                Amount::MAX_ATOMS
+            } else {
+                0
+            };
+            let payment = body(&anchor, markers.clone(), &outputs, fee);
+            let result = check_payment(&payment, &anchor, &inputs, &outputs, counts);
+            if input_amount == Amount::MAX_ATOMS {
+                assert!(matches!(
+                    result,
+                    Err(PaymentRelationError::ConservationMismatch)
+                ));
+            } else {
+                result.unwrap();
+                let payment = body(&anchor, markers.clone(), &[&output], Amount::MAX_ATOMS);
+
+                check_payment(&payment, &anchor, &inputs, &[&output], counts).unwrap();
+
+                let payment = body(&anchor, markers, &outputs, 1);
+
+                assert!(matches!(
+                    check_payment(&payment, &anchor, &inputs, &outputs, counts),
+                    Err(PaymentRelationError::ConservationMismatch)
+                ));
+            }
+        }
     }
 
     /// Requires exact counts, anchor, input order and output correspondence before conservation.

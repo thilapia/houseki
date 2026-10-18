@@ -90,6 +90,96 @@ mod tests {
         bytes
     }
 
+    /// Builds bounded family bytes directly from the wire offsets with maximum opaque payloads.
+    fn bounded_payment(inputs: usize, outputs: usize) -> Vec<u8> {
+        let mut bytes = vec![0; 196 + 64 * inputs + 5736 * outputs];
+        header(&mut bytes, 1);
+        bytes[100..164].fill(8);
+        bytes[164..172].copy_from_slice(&(inputs as u64).to_le_bytes());
+        for index in 0..inputs {
+            bytes[172 + 64 * index..236 + 64 * index].fill(index as u8 + 9);
+        }
+
+        let fee = 172 + 64 * inputs;
+        bytes[fee] = 17;
+        bytes[fee + 16..fee + 24].copy_from_slice(&(outputs as u64).to_le_bytes());
+        for index in 0..outputs {
+            let start = fee + 24 + 5736 * index;
+            bytes[start..start + 64].fill(11);
+            bytes[start + 64..start + 1632].fill(12);
+            bytes[start + 1632..start + 1640].copy_from_slice(&4096_u64.to_le_bytes());
+            bytes[start + 1640..start + 5736].fill(13);
+        }
+
+        bytes
+    }
+
+    /// Preserves every supported shape and repeated outputs at the maximum payload size.
+    #[test]
+    fn payment_codec_round_trips_all_four_by_two_shapes() {
+        let limits = BodyCodecLimits::new(PaymentCountLimits::new(4, 2).unwrap(), 4096, 16384);
+        for inputs in 1..=4 {
+            for outputs in 1..=2 {
+                let bytes = bounded_payment(inputs, outputs);
+                let body = PaymentBody::from_bytes(&bytes, limits).unwrap();
+
+                assert_eq!(body.inputs().input_count(), inputs);
+                assert_eq!(body.outputs().output_count(), outputs);
+                assert_eq!(body.to_bytes(limits).unwrap(), bytes);
+                assert_eq!(body.encoded_len(limits).unwrap(), bytes.len());
+                assert!(body.outputs().outputs().iter().all(|output| {
+                    output == &body.outputs().outputs()[0]
+                        && output.envelope().payload().len() == 4096
+                }));
+            }
+        }
+
+        assert_eq!(bounded_payment(4, 2).len(), 11924);
+    }
+
+    /// Rejects historical count limits, missing list bytes and hostile declared lengths.
+    #[test]
+    fn payment_codec_bounds_four_by_two_before_list_allocation() {
+        let counts = PaymentCountLimits::new(4, 2).unwrap();
+        let limits = BodyCodecLimits::new(counts, 4096, 16384);
+        let bytes = bounded_payment(4, 2);
+        let body = PaymentBody::from_bytes(&bytes, limits).unwrap();
+        let old = BodyCodecLimits::new(PaymentCountLimits::new(2, 2).unwrap(), 4096, 16384);
+
+        assert!(matches!(body.to_bytes(old), Err(BodyCodecError::Counts(_))));
+        assert!(matches!(
+            PaymentBody::from_bytes(&bytes, old),
+            Err(BodyCodecError::Counts(_))
+        ));
+        for length in 0..bytes.len() {
+            assert!(PaymentBody::from_bytes(&bytes[..length], limits).is_err());
+        }
+
+        let loose = BodyCodecLimits::new(
+            PaymentCountLimits::new(usize::MAX, usize::MAX).unwrap(),
+            usize::MAX,
+            usize::MAX,
+        );
+        for offset in [164, 444, 2084, 7820] {
+            let mut changed = bytes.clone();
+            changed[offset..offset + 8].copy_from_slice(&u64::MAX.to_le_bytes());
+
+            assert!(PaymentBody::from_bytes(&changed, limits).is_err());
+            assert!(PaymentBody::from_bytes(&changed, loose).is_err());
+        }
+
+        let tight_payload = BodyCodecLimits::new(counts, 4095, 16384);
+
+        assert!(matches!(
+            body.to_bytes(tight_payload),
+            Err(BodyCodecError::PayloadTooLong { .. })
+        ));
+        assert!(matches!(
+            PaymentBody::from_bytes(&bytes, tight_payload),
+            Err(BodyCodecError::PayloadTooLong { .. })
+        ));
+    }
+
     /// Builds independent withdrawal bytes with a full authority key and separate amount and fee.
     fn withdrawal() -> Vec<u8> {
         let mut bytes = vec![0; 4439];
