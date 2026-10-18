@@ -8,7 +8,12 @@ import os
 from pathlib import Path
 import platform
 import signal
+import shutil
 import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
 import time
 
 
@@ -71,7 +76,10 @@ def main():
     root = Path(__file__).resolve().parents[3]
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    binary = args.binary.resolve(strict=True)
+    original_binary = args.binary.resolve(strict=True)
+    binary = output / "worker"
+    shutil.copyfile(original_binary, binary)
+    binary.chmod(0o500)
     manifest = root / "crates/houseki-proofs/fixtures/adversarial/manifest.sha3"
     for line in manifest.read_text().splitlines():
         expected, name = line.split("  ", 1)
@@ -84,6 +92,8 @@ def main():
         "platform": platform.platform(), "machine": platform.machine(),
         "rustc": subprocess.check_output(["rustc", "--version"], text=True).strip(),
         "binary_sha3_512": hashlib.sha3_512(binary.read_bytes()).hexdigest(),
+        "binary_origin": str(original_binary),
+        "binary_snapshot": str(binary),
         "corpus_manifest_sha3_512": hashlib.sha3_512(manifest.read_bytes()).hexdigest(),
         "features": ["experimental-profiles"], "prover": False,
         "seconds_per_stream": 180, "seeds": [24301, 12648430],
@@ -101,5 +111,35 @@ def main():
             raise SystemExit("bounded campaign failed, retain log and replay its last indexed case")
 
 
+class CampaignTests(unittest.TestCase):
+    """Check executable provenance using actual supervised child processes."""
+
+    def test_rebuild_cannot_replace_the_second_stream_worker(self):
+        """Both streams must run the recorded executable even if its original path changes."""
+        with tempfile.TemporaryDirectory(prefix="houseki-supervisor-test-") as temporary:
+            directory = Path(temporary)
+            binary = directory / "worker"
+            original = "#!/bin/sh\necho original\necho 'fuzz iterations=1'\n"
+            binary.write_text(original)
+            binary.chmod(0o700)
+            output = directory / "results"
+            original_supervise = supervise
+
+            def launch(worker, root, destination, seconds, seed):
+                """Simulate a rebuild after the first real worker has exited."""
+                result = original_supervise(worker, root, destination, seconds, seed)
+                binary.write_text(original.replace("original", "replacement"))
+                binary.chmod(0o700)
+                return result
+
+            arguments = [sys.argv[0], "--binary", str(binary), "--output", str(output)]
+            with patch.object(sys, "argv", arguments), patch.object(sys.modules[__name__], "supervise", launch):
+                main()
+            self.assertIn("original\n", (output / "fuzz-12648430.log").read_text())
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--self-test"]:
+        unittest.main(argv=[sys.argv[0]])
+    else:
+        main()

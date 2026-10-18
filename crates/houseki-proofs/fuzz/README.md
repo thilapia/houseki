@@ -16,14 +16,15 @@ The bounded campaign freezes two 180 second deterministic streams with seeds 243
 
 The verifier must return within five seconds and remain below 128 MiB of simultaneously live observed allocations for each case. The supervisor samples process RSS every 200 milliseconds, terminates a worker above 384 MiB, and rejects a 15 second progress stall or a campaign that exceeds its duration by 60 seconds. RSS sampling is an observed process ceiling and can miss subinterval peaks. The allocation observer covers the actual serial verifier call and requires observed temporary allocations to be released on every return. The decoder's separate 16 MiB vector budget remains unchanged. The late-field inline regression requires zero decoder allocations even after scanning a complete real proof.
 
-Build the executable and run the frozen supervisor with an output directory outside tracked source.
+Check that rebuilding the original executable cannot replace the second stream's worker, then build the executable and run the frozen supervisor with an output directory outside tracked source.
 
 ```sh
+python3 crates/houseki-proofs/fuzz/campaign.py --self-test
 cargo build --manifest-path crates/houseki-proofs/fuzz/Cargo.toml --release --locked
 python3 crates/houseki-proofs/fuzz/campaign.py --binary crates/houseki-proofs/fuzz/target/release/houseki-proofs-adversarial --output /tmp/houseki-fuzz-campaign
 ```
 
-Adjust `--binary` when using `CARGO_TARGET_DIR`. The supervisor validates all corpus hashes and records the revision, compiler, executable hash, corpus hash, platform, resource ceilings and completed stream statistics before declaring success. Panics and allocator aborts fail the worker and preserve its last indexed case. No panic catch converts a failure into a successful outcome. Accepted mutated proof bytes are reported for review because proof malleability alone need not change the verified statement.
+Adjust `--binary` when using `CARGO_TARGET_DIR`. The supervisor copies the executable into its result directory before launching either stream, validates all corpus hashes and records the revision, compiler, executable hash, corpus hash, platform, resource ceilings and completed stream statistics before declaring success. Panics and allocator aborts fail the worker and preserve its last indexed case. No panic catch converts a failure into a successful outcome. Accepted mutated proof bytes are reported for review because proof malleability alone need not change the verified statement.
 
 Replay a case by its zero-based iteration and original stream seed without verifying all earlier mutations.
 
