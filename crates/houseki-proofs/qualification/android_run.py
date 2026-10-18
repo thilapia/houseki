@@ -29,12 +29,14 @@ def run(args):
             log.write(result.stdout if not binary else b"public binary transfer\n")
             log.write(result.stderr)
         if check and result.returncode:
-            raise RuntimeError(f"device command failed with code {result.returncode}")
+            detail = result.stderr.decode("utf-8", errors="replace").strip()[:500]
+            raise RuntimeError(f"device {arguments[0]} command failed with code {result.returncode}: {detail}")
         return result.stdout if binary else result.stdout.decode("utf-8", errors="replace")
 
     environment = {
         "classification": "exploratory application execution, not device qualification",
         "serial": args.serial, "workload": args.workload,
+        "warm_requested": args.warm, "sustained_seconds_requested": args.soak_seconds,
         "apk_sha3_512": hashlib.sha3_512(args.apk.read_bytes()).hexdigest(),
         "device": adb("shell", "getprop"),
         "battery_before": adb("shell", "dumpsys", "battery"),
@@ -69,6 +71,7 @@ def run(args):
     def observe():
         """Read actual process events and retain kernel high-water memory while the app is alive."""
         nonlocal maximum_rss, maximum_hwm, latest, observed_pid
+        adb("get-state")
         text = adb("shell", "run-as", package, "cat", "files/events.jsonl", check=False)
         latest = [json.loads(line) for line in text.splitlines()[original_lines:] if line.startswith("{")]
         (output / "events.json").write_text(json.dumps(latest, indent=2) + "\n")
@@ -84,6 +87,7 @@ def run(args):
                 else:
                     maximum_rss = max(maximum_rss, int(value) * 1024)
         elif observed_pid is not None:
+            adb("get-state")
             raise RuntimeError("application process exited during the correctness run")
         if not latest and time.monotonic() > startup_deadline:
             raise TimeoutError("application did not start a worker within 30 seconds")
@@ -103,7 +107,7 @@ def run(args):
                 return match
             time.sleep(0.2)
 
-    result = {"passed": False}
+    result = {"passed": False, "warm_completed": 0, "sustained_completed": 0}
     try:
         adb("shell", "am", "start", "-n", component)
         first = wait_for("started")
@@ -121,9 +125,26 @@ def run(args):
             if restarted["pid"] != first["pid"]:
                 raise RuntimeError("resumption unexpectedly restarted the process")
             result["resumed_attempt"] = restarted["attempt"]
-            wait_for("complete", first["attempt"])
+            completed = wait_for("complete", first["attempt"])
         else:
-            wait_for("complete")
+            completed = wait_for("complete")
+
+        def next_attempt(previous):
+            """Reenter foreground with fresh admission while keeping the initialized process alive."""
+            adb("shell", "input", "keyevent", "KEYCODE_HOME")
+            adb("shell", "am", "start", "-n", component)
+            started = wait_for("started", previous["attempt"])
+            if started["pid"] != first["pid"]:
+                raise RuntimeError("warm series lost its original application process")
+            return wait_for("complete", previous["attempt"])
+
+        for _ in range(args.warm):
+            completed = next_attempt(completed)
+            result["warm_completed"] += 1
+        sustained_start = time.monotonic()
+        while time.monotonic() - sustained_start < args.soak_seconds:
+            completed = next_attempt(completed)
+            result["sustained_completed"] += 1
         result["passed"] = True
     except Exception as error:
         result["error"] = str(error)
@@ -132,16 +153,22 @@ def run(args):
         result["sampled_peak_rss_bytes"] = maximum_rss
         result["kernel_peak_rss_bytes"] = maximum_hwm
         result["memory_counter"] = "Android /proc/PID/status VmHWM, with VmRSS samples"
-        (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
-        environment["battery_after"] = adb("shell", "dumpsys", "battery", check=False)
-        environment["thermal_after"] = adb("shell", "dumpsys", "thermalservice", check=False)
-        (output / "environment.json").write_text(json.dumps(environment, indent=2) + "\n")
-        archive = output / "public.tar"
-        archive.write_bytes(adb("exec-out", "run-as", package, "tar", "-cf", "-", "files", binary=True, check=False))
-        if archive.stat().st_size:
+        try:
+            environment["battery_after"] = adb("shell", "dumpsys", "battery", check=False)
+            environment["thermal_after"] = adb("shell", "dumpsys", "thermalservice", check=False)
+            (output / "environment.json").write_text(json.dumps(environment, indent=2) + "\n")
+            archive = output / "public.tar"
+            archive.write_bytes(adb("exec-out", "run-as", package, "tar", "-cf", "-", "files", binary=True))
             with tarfile.open(archive) as public:
                 public.extractall(output / "public", filter="data")
-        adb("shell", "am", "force-stop", package, check=False)
+        except Exception as error:
+            result["passed"] = False
+            result["evidence_error"] = str(error)
+            if "error" not in result:
+                raise
+        finally:
+            adb("shell", "am", "force-stop", package, check=False)
+            (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
 
 
 def main():
@@ -156,9 +183,16 @@ def main():
     parser.add_argument("--cancel", action="store_true")
     parser.add_argument("--skip-install", action="store_true",
                         help="verify the installed APK hash and reuse it without another install prompt")
+    parser.add_argument("--warm", type=int, default=0,
+                        help="additional fresh attempts in the same process after its initial proof")
+    parser.add_argument("--soak-seconds", type=int, default=0,
+                        help="sustained same-process fresh attempts after the warm series")
     parser.add_argument("--safety-deadline", type=int, default=1800,
                         help="separate supervision ceiling, never the soft proving latency target")
-    run(parser.parse_args())
+    args = parser.parse_args()
+    if not 0 <= args.warm <= 1000 or not 0 <= args.soak_seconds <= 1000:
+        parser.error("warm iterations and sustained seconds must be between zero and 1000")
+    run(args)
 
 
 if __name__ == "__main__":
