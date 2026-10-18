@@ -117,7 +117,7 @@ impl Opening {
 }
 
 /// Reuses the amount owner while storing only auxiliaries beside the shared private amount.
-fn assign_amount_auxiliary(
+pub(super) fn assign_amount_auxiliary(
     amount: &[Goldilocks; 16],
     destination: &mut [Goldilocks; 289],
 ) -> Result<(), OpeningError> {

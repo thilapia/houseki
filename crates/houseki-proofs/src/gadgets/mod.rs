@@ -29,21 +29,7 @@ mod scratch;
 #[cfg(test)]
 pub(crate) use amount::{AdditionAir, AmountAir};
 #[cfg(any(test, feature = "prover"))]
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "circuit trace builders follow in later increments"
-    )
-)]
 pub(crate) use amount::{AmountError, assign_addition, assign_amount};
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "circuit consumers follow in later increments"
-    )
-)]
 pub(crate) use amount::{eval_addition, eval_amount};
 #[cfg(test)]
 pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
@@ -57,13 +43,19 @@ pub(crate) use encoding::{ByteAir, BytesAir, FieldAir};
 )]
 pub(crate) use encoding::{EncodingError, assign_byte, assign_bytes, assign_field_bytes};
 pub(crate) use encoding::{eval_byte, eval_bytes, eval_field_bytes};
-pub(crate) use notes::Opening;
+#[cfg(any(test, feature = "prover"))]
+pub(crate) use merkle::Input as MembershipInput;
+pub(crate) use merkle::{Endpoints as MembershipEndpoints, Membership};
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use notes::OpeningInput;
+#[cfg(any(test, feature = "prover"))]
+pub(crate) use notes::SpendInput;
+pub(crate) use notes::{CompactOpening, Opening, OpeningSelectors};
 #[cfg(test)]
 pub(crate) use notes::{
     OpeningAir, OpeningError, OpeningFixture, PaymentOpeningAir, RecipientPairAir,
 };
+pub(crate) use notes::{Spend, SpendEndpoints};
 #[cfg_attr(
     not(test),
     expect(

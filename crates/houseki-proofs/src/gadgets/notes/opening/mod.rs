@@ -4,6 +4,7 @@
 mod air;
 #[cfg(any(test, feature = "prover"))]
 mod assignment;
+mod compact;
 #[cfg(any(test, feature = "prover"))]
 mod error;
 #[cfg(test)]
@@ -13,9 +14,11 @@ mod input;
 mod key_pair;
 #[cfg(test)]
 mod payment_air;
+mod selectors;
 
 #[cfg(test)]
 pub(crate) use air::OpeningAir;
+pub(crate) use compact::CompactOpening;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use error::OpeningError;
 #[cfg(test)]
@@ -24,6 +27,7 @@ pub(crate) use fixture::OpeningFixture;
 pub(crate) use input::Input;
 #[cfg(test)]
 pub(crate) use payment_air::PaymentOpeningAir;
+pub(crate) use selectors::Selectors;
 
 use crate::gadgets::{eval_amount, poseidon2::ScheduledHash};
 use key_pair::KeyPair;
