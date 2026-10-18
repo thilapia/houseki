@@ -74,3 +74,236 @@ pub fn prove_payment(
     .map_err(ProveError::from)
 }
 
+/// Public admission, binding and attempt lifetime checks.
+#[cfg(all(test, feature = "experimental-profiles"))]
+mod tests {
+    use crate::circuits::payment::fixture::PaymentFixture;
+    use crate::{
+        CancellationToken, PaymentWitness, ProofContext, ProofRuntime, ProveError, StatementError,
+        prove_payment, verify_payment,
+    };
+
+    /// Priority shape evidence borrows the exact immutable public arguments after private owners expire.
+    #[test]
+    fn payment_facade_binds_priority_body_anchor_and_context() {
+        let fixture = PaymentFixture::new(4, 2);
+        let context = ProofContext::new(fixture.body.context()).unwrap();
+        let proof = {
+            let spends = fixture.spends();
+            let outputs = fixture.outputs();
+            let witness = PaymentWitness::new(&spends, &outputs).unwrap();
+            prove_payment(
+                &ProofRuntime::new(),
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &context,
+                &CancellationToken::new(),
+            )
+            .unwrap()
+        };
+        let body = fixture.body.clone();
+        let anchor = fixture.anchor;
+        drop(fixture);
+        let runtime = ProofRuntime::new();
+        let evidence = verify_payment(&runtime, &body, &anchor, &proof, &context).unwrap();
+        assert!(std::ptr::eq(evidence.body(), &body));
+        assert!(std::ptr::eq(evidence.anchor(), &anchor));
+        assert!(std::ptr::eq(evidence.context(), &context));
+        assert!(runtime.acquire().is_ok());
+        let bytes = body.to_bytes(context.body_limits()).unwrap();
+        for offset in [
+            8,
+            71,
+            72,
+            76,
+            80,
+            84,
+            92,
+            100,
+            163,
+            180,
+            244,
+            308,
+            372,
+            440,
+            504,
+            2076,
+            2078,
+            bytes.len() - 1,
+        ] {
+            let mut changed = bytes.clone();
+            changed[offset] ^= 1;
+            if let Ok(changed) =
+                houseki_types::PaymentBody::from_bytes(&changed, context.body_limits())
+            {
+                assert!(
+                    verify_payment(&runtime, &changed, &anchor, &proof, &context).is_err(),
+                    "body byte {offset}"
+                );
+                if let Ok(changed_context) = ProofContext::new(changed.context()) {
+                    assert!(
+                        verify_payment(&runtime, &changed, &anchor, &proof, &changed_context)
+                            .is_err()
+                    );
+                }
+            }
+        }
+
+        let changed = houseki_types::NoteTreeAnchor::new(
+            anchor.network_id(),
+            houseki_types::NoteCount::new(anchor.count().value() + 1).unwrap(),
+            anchor.root(),
+        );
+        assert!(verify_payment(&runtime, &body, &changed, &proof, &context).is_err());
+    }
+
+    /// Busy admission preserves the token and admitted failures consume it before private conversion.
+    #[test]
+    fn payment_facade_preflight_has_no_private_allocation() {
+        let fixture = PaymentFixture::new(4, 2);
+        let context = ProofContext::new(fixture.body.context()).unwrap();
+        let runtime = ProofRuntime::new();
+        let spends = fixture.spends();
+        let outputs = fixture.outputs();
+        let witness = PaymentWitness::new(&spends[..1], &outputs).unwrap();
+        let token = CancellationToken::new();
+        let lease = runtime.acquire().unwrap();
+        assert!(matches!(
+            prove_payment(
+                &runtime,
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &context,
+                &token
+            ),
+            Err(ProveError::Busy)
+        ));
+        drop(lease);
+
+        let (result, calls, _) = crate::test_allocator::measure(|| {
+            prove_payment(
+                &runtime,
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &context,
+                &token,
+            )
+        });
+        assert!(matches!(result, Err(ProveError::WitnessCountMismatch)));
+        assert_eq!(calls, 0);
+        assert!(matches!(
+            prove_payment(
+                &runtime,
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &context,
+                &token
+            ),
+            Err(ProveError::Cancelled)
+        ));
+        let token = CancellationToken::new();
+        token.cancel();
+        let (result, calls, _) = crate::test_allocator::measure(|| {
+            prove_payment(
+                &runtime,
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &context,
+                &token,
+            )
+        });
+        assert!(matches!(result, Err(ProveError::Cancelled)));
+        assert_eq!(calls, 0);
+        let expected = fixture.body.context();
+        let other_context = ProofContext::new(houseki_types::TransactionContext::new(
+            expected.network_id(),
+            expected.protocol_version(),
+            crate::EXPERIMENTAL_REWARD_WITHDRAWAL_PROFILE,
+            expected.fee_schedule_id(),
+            expected.validity_checkpoint_range(),
+        ))
+        .unwrap();
+        assert!(matches!(
+            prove_payment(
+                &runtime,
+                &fixture.body,
+                &fixture.anchor,
+                &witness,
+                &other_context,
+                &CancellationToken::new()
+            ),
+            Err(ProveError::Statement(
+                StatementError::IdentityMismatch | StatementError::ContextMismatch
+            ))
+        ));
+        assert!(runtime.acquire().is_ok());
+    }
+    /// Unsupported body counts reject without statement allocation or private conversion.
+    #[test]
+    fn payment_facade_rejects_excessive_counts_without_allocation() {
+        use houseki_types::{
+            Amount, EncodedTransactionProof, Nullifier, PaymentBody, PaymentCountLimits,
+            PaymentInputs, PaymentOutputs,
+        };
+        let fixture = PaymentFixture::new(1, 1);
+        let context = ProofContext::new(fixture.body.context()).unwrap();
+        let spends = fixture.spends();
+        let outputs = fixture.outputs();
+        let witness = PaymentWitness::new(&spends, &outputs).unwrap();
+        let runtime = ProofRuntime::new();
+        let empty = EncodedTransactionProof::new(Vec::new(), context.max_proof_bytes()).unwrap();
+        let limits = PaymentCountLimits::new(5, 3).unwrap();
+        for (inputs, outputs) in [(5, 1), (1, 3)] {
+            let body = PaymentBody::new(
+                fixture.body.context(),
+                PaymentInputs::new(
+                    fixture.anchor.root(),
+                    (0..inputs)
+                        .map(|i| Nullifier::from_bytes([i as u8; 64]))
+                        .collect(),
+                    limits,
+                )
+                .unwrap(),
+                PaymentOutputs::new(
+                    vec![fixture.body.outputs().outputs()[0].clone(); outputs],
+                    limits,
+                )
+                .unwrap(),
+                Amount::from_atoms(1).unwrap(),
+                limits,
+            )
+            .unwrap();
+            let (result, calls, _) = crate::test_allocator::measure(|| {
+                prove_payment(
+                    &runtime,
+                    &body,
+                    &fixture.anchor,
+                    &witness,
+                    &context,
+                    &CancellationToken::new(),
+                )
+            });
+            assert!(matches!(
+                result,
+                Err(ProveError::Statement(StatementError::UnsupportedShape))
+            ));
+            // The fresh cancellation token owns one public atomic allocation.
+            assert_eq!(calls, 1);
+            let (result, calls, _) = crate::test_allocator::measure(|| {
+                verify_payment(&runtime, &body, &fixture.anchor, &empty, &context)
+            });
+            assert!(matches!(
+                result,
+                Err(crate::VerifyError::Statement(
+                    StatementError::UnsupportedShape
+                ))
+            ));
+            assert_eq!(calls, 0);
+        }
+    }
+}
