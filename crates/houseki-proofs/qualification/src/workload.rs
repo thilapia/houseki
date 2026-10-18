@@ -61,8 +61,10 @@ impl Workload {
 }
 
 impl FromStr for Workload {
+    /// Rejects selectors outside the complete supported workload inventory.
     type Err = Error;
 
+    /// Accepts only exact canonical labels, including their count spelling.
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         Self::ALL
             .into_iter()

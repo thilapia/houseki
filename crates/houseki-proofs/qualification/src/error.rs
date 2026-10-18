@@ -16,6 +16,7 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
+    /// Formats only the public request, filesystem or operation diagnostic.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Input(message) => formatter.write_str(message),
@@ -26,6 +27,7 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {
+    /// Exposes only an underlying filesystem error, without protected operation state.
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Self::Io(error) => Some(error),
@@ -35,6 +37,7 @@ impl error::Error for Error {
 }
 
 impl From<io::Error> for Error {
+    /// Retains filesystem context for public artifact handling.
     fn from(error: io::Error) -> Self {
         Self::Io(error)
     }
