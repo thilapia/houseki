@@ -25,6 +25,9 @@ mod test_allocator;
 
 #[cfg(any(test, feature = "prover"))]
 pub use cancellation::CancellationToken;
+#[cfg(feature = "prover")]
+pub use circuits::ProveError;
+pub use circuits::{ProofEncodingError, VerifyError};
 pub use context::{ContextError, ProofContext};
 #[cfg(feature = "prover")]
 pub use memory::ProofAllocator;
