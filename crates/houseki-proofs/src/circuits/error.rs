@@ -101,6 +101,7 @@ impl From<CodecError> for VerifyError {
             CodecError::InvalidShape | CodecError::AllocationLimit => {
                 ProofEncodingError::InvalidShape
             }
+
             CodecError::TrailingBytes => ProofEncodingError::TrailingBytes,
         };
 

@@ -12,6 +12,16 @@ use houseki_types::RewardWithdrawalBody;
 /// checkpoint eligibility remain separate checks before execution.
 ///
 /// Evidence retains neither the witness, proof storage nor the runtime's operation slot.
+///
+/// Callers cannot construct evidence directly from an unverified body.
+///
+/// ```compile_fail,E0451
+/// use houseki_proofs::{ProofContext, VerifiedRewardWithdrawal};
+/// use houseki_types::RewardWithdrawalBody;
+/// fn forge<'a>(body: &'a RewardWithdrawalBody, context: &'a ProofContext) -> VerifiedRewardWithdrawal<'a> {
+///     VerifiedRewardWithdrawal { body, context }
+/// }
+/// ```
 #[derive(Debug)]
 #[must_use]
 pub struct VerifiedRewardWithdrawal<'a> {

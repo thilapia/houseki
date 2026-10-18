@@ -65,6 +65,7 @@ mod tests {
                 shape: 1,
                 manifest: [7; 64],
             };
+
             let statement = Statement::withdrawal(&body, body.context(), &identity).unwrap();
             let trace = build(&air, &opening, &CancellationToken::new()).unwrap();
             let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());

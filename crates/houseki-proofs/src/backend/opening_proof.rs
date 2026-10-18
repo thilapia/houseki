@@ -5,7 +5,8 @@ use super::{
     prover::Request, trace::Trace,
 };
 use crate::{
-    gadgets::{Opening, OpeningAir, OpeningFixture},
+    circuits::reward_withdrawal::WithdrawalAir,
+    gadgets::{Opening, OpeningFixture},
     profile::ExpectedIdentity,
     runtime::Admission,
     statement::Statement,
@@ -40,7 +41,7 @@ fn prove(
         admission,
         Request {
             prefix: &statement.prefix,
-            air: &OpeningAir::new(),
+            air: &WithdrawalAir::new(),
             public: &statement.public_values,
             identity,
             layout: LAYOUT,
@@ -64,10 +65,52 @@ mod tests {
     use p3_uni_stark::get_log_num_quotient_chunks;
     use std::time::Instant;
 
+    /// A prover cannot suppress opening checks by selecting inactive operation flags.
+    #[test]
+    fn reward_withdrawal_rejects_a_counterfeit_selector_schedule() {
+        let fixture = OpeningFixture::new(0);
+        let (identity, expected) = statement(&fixture, 0, 1, 0, 7);
+        let dishonest = crate::backend::inactive_withdrawal_air::InactiveWithdrawalAir::new();
+        let runtime = ProofRuntime::new();
+        let admission = runtime.acquire().unwrap();
+        let empty = Trace::new(512, LAYOUT.width, 512 * LAYOUT.width).unwrap();
+        let proof = gadget_proof::prove(
+            &admission,
+            Request {
+                prefix: &expected.prefix,
+                air: &dishonest,
+                public: &expected.public_values,
+                identity: &identity,
+                layout: LAYOUT,
+            },
+            empty,
+        )
+        .unwrap();
+        verifier::verify(
+            &admission,
+            &expected.prefix,
+            &dishonest,
+            &proof,
+            &expected.public_values,
+        )
+        .unwrap();
+
+        assert!(
+            verifier::verify(
+                &admission,
+                &expected.prefix,
+                &WithdrawalAir::new(),
+                &proof,
+                &expected.public_values
+            )
+            .is_err()
+        );
+    }
+
     /// Codec quotient geometry accounts for the full opening schedule and all validity constraints.
     #[test]
     fn gadgets_opening_geometry_matches_constraints() {
-        let air = OpeningAir::new();
+        let air = WithdrawalAir::new();
         let layout = AirLayout::from_air(&air);
         let constraints = get_symbolic_constraints(&air, layout).len();
         println!(
@@ -102,7 +145,7 @@ mod tests {
         verifier::verify(
             &lease,
             &expected.prefix,
-            &OpeningAir::new(),
+            &WithdrawalAir::new(),
             &proof,
             &expected.public_values,
         )
@@ -123,7 +166,7 @@ mod tests {
                 verifier::verify(
                     &lease,
                     &expected.prefix,
-                    &OpeningAir::new(),
+                    &WithdrawalAir::new(),
                     &proof,
                     &public
                 )
@@ -138,7 +181,7 @@ mod tests {
             verifier::verify(
                 &lease,
                 &changed.prefix,
-                &OpeningAir::new(),
+                &WithdrawalAir::new(),
                 &proof,
                 &changed.public_values
             )
@@ -223,7 +266,8 @@ mod tests {
     fn gadgets_complete_opening_forgeries_cannot_verify() {
         let runtime = ProofRuntime::new();
         let lease = runtime.acquire().unwrap();
-        let air = OpeningAir::new();
+        #[cfg(not(debug_assertions))]
+        let air = WithdrawalAir::new();
         for substitute in [false, true] {
             let mut fixture = OpeningFixture::new(0);
             let mut forged = trace(&fixture);
@@ -231,7 +275,7 @@ mod tests {
                 fixture.input[140..143].copy_from_slice(&[1, 13, 0].map(Goldilocks::from_u8));
             }
 
-            fixture.rehash(&air.opening, forged.values_mut(), substitute);
+            fixture.rehash(&Opening::new(), forged.values_mut(), substitute);
             let (identity, expected) = statement(&fixture, 0, 1, 0, 7);
             let result = prove(&lease, forged, &identity, &expected);
             #[cfg(debug_assertions)]

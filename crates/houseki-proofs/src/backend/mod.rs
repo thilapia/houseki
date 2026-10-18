@@ -27,6 +27,8 @@ mod framing_proof;
 mod gadget_proof;
 mod hash;
 #[cfg(test)]
+mod inactive_withdrawal_air;
+#[cfg(test)]
 mod opening_proof;
 #[cfg(test)]
 mod opening_statement;
