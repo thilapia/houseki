@@ -16,7 +16,7 @@ pub(crate) use error::MembershipError;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use input::Input;
 
-use crate::gadgets::{eval_byte, poseidon2::ScheduledHash};
+use crate::gadgets::{eval_byte, poseidon2::CompactHash};
 use p3_air::AirBuilder;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
@@ -25,53 +25,53 @@ use p3_goldilocks::Goldilocks;
 ///
 /// Columns 0 through 191 hold the current node, sibling and next node respectively.
 ///
-/// Columns 192 through 255 hold original-position bits throughout the invocation.
+/// Columns 192 through 199 hold the selected position byte bits during each parent hash.
 ///
-/// Columns 256 through 415 hold the initial occupancy difference, bits and carries.
+/// Columns 256 through 479 hold occupancy auxiliaries only on the dedicated initial row.
 ///
-/// Columns 416 through 1324 reuse hash scratch for every level, with no duplicated path owner.
+/// Columns 200 through 990 then reuse hash scratch with no duplicated path owner.
 pub(crate) struct Membership {
     /// Network and complete occupied note commitment.
-    leaf: ScheduledHash<4>,
+    leaf: CompactHash<4>,
 
     /// Network, trusted level and both selected children.
-    parent: ScheduledHash<6>,
+    parent: CompactHash<6>,
 
     /// Network, fixed depth, complete occupied count and final top node.
-    root: ScheduledHash<5>,
+    root: CompactHash<5>,
 }
 
 impl Membership {
     /// Private node registers, occupancy auxiliaries and shared hash scratch.
-    pub(crate) const WIDTH: usize = 1325;
+    pub(crate) const WIDTH: usize = 991;
 
     /// One leaf, sixty-four parents and one final root.
-    pub(crate) const ROWS: usize = 1515;
+    pub(crate) const ROWS: usize = 1516;
 
     /// Leaf, repeated parent and root phases followed by sixty-four trusted level selectors.
-    pub(crate) const SELECTORS: usize = 130;
+    pub(crate) const SELECTORS: usize = 131;
 
     /// Selects exact depth-64 native transcript domains and lengths.
     pub(crate) fn new() -> Self {
         Self {
-            leaf: ScheduledHash::new(b"houseki/v1/note-tree/leaf", &[64, 64]).unwrap(),
-            parent: ScheduledHash::new(b"houseki/v1/note-tree/node", &[64, 4, 64, 64]).unwrap(),
-            root: ScheduledHash::new(b"houseki/v1/note-tree/root", &[64, 4, 16, 64]).unwrap(),
+            leaf: CompactHash::new(b"houseki/v1/note-tree/leaf", &[64, 64]).unwrap(),
+            parent: CompactHash::new(b"houseki/v1/note-tree/node", &[64, 4, 64, 64]).unwrap(),
+            root: CompactHash::new(b"houseki/v1/note-tree/root", &[64, 4, 16, 64]).unwrap(),
         }
     }
 
     /// Evaluates exactly one complete invocation under trusted phase and level selectors.
     ///
     /// Selectors 0 through 20 describe the leaf, 21 through 43 the parent, 44 through 65
-    /// the root and 66 through 129 the current parent level.
+    /// the root and 66 through 129 the current parent level. Selector 130 marks occupancy.
     ///
     /// The caller supplies stable external endpoints, forbids a final-row-crossing invocation
     /// and constrains all cells outside active membership phases.
     pub(crate) fn eval<AB: AirBuilder<F = Goldilocks>>(
         &self,
         builder: &mut AB,
-        row: &[AB::Var; 1325],
-        next: &[AB::Var; 1325],
+        row: &[AB::Var; 991],
+        next: &[AB::Var; 991],
         phases: &[AB::Expr],
         endpoints: Endpoints<'_, AB::Expr>,
     ) {
@@ -79,13 +79,26 @@ impl Membership {
         let leaf: AB::Expr = phases[..21].iter().cloned().sum();
         let parent: AB::Expr = phases[21..44].iter().cloned().sum();
         let root: AB::Expr = phases[44..66].iter().cloned().sum();
-        let continuing = leaf.clone() + parent.clone() + root.clone() - phases[65].clone();
-        for column in 192..256 {
+        for bit in 0..8 {
+            builder.when(phases[21].clone()).assert_bool(row[192 + bit]);
             builder
                 .when_transition()
-                .when(continuing.clone())
-                .assert_eq(row[column], next[column]);
+                .when(parent.clone() - phases[43].clone())
+                .assert_eq(row[192 + bit], next[192 + bit]);
+            builder
+                .when(leaf.clone() + root.clone() + phases[130].clone())
+                .assert_zero(row[192 + bit]);
         }
+
+        let selected_byte: AB::Expr = (0..64)
+            .map(|level| phases[66 + level].clone() * endpoints.position[level / 8].clone())
+            .sum();
+        let reconstructed: AB::Expr = (0..8)
+            .map(|bit| row[192 + bit] * Goldilocks::from_u8(1 << bit))
+            .sum();
+        builder
+            .when(phases[21].clone())
+            .assert_eq(reconstructed, selected_byte);
 
         let within = leaf.clone() - phases[20].clone() + parent.clone() - phases[43].clone();
         for column in 0..192 {
@@ -114,17 +127,19 @@ impl Membership {
             builder.when(root.clone()).assert_zero(*value);
         }
 
-        for value in &row[256..416] {
-            builder
-                .when(leaf.clone() + parent.clone() + root.clone() - phases[0].clone())
-                .assert_zero(*value);
+        for value in row[..192]
+            .iter()
+            .chain(row[200..256].iter())
+            .chain(row[480..].iter())
+        {
+            builder.when(phases[130].clone()).assert_zero(*value);
         }
 
-        self.eval_occupancy(builder, row, phases[0].clone(), &endpoints);
+        self.eval_occupancy(builder, row, phases[130].clone(), &endpoints);
         let current: [AB::Expr; 64] = std::array::from_fn(|index| row[index].into());
         let digest: [AB::Expr; 64] = std::array::from_fn(|index| row[128 + index].into());
         let orientation: AB::Expr = (0..64)
-            .map(|level| phases[66 + level].clone() * row[192 + level])
+            .map(|level| phases[66 + level].clone() * row[192 + level % 8])
             .sum();
         let left: [AB::Expr; 64] = std::array::from_fn(|index| {
             current[index].clone() + orientation.clone() * (row[64 + index] - row[index])
@@ -142,8 +157,8 @@ impl Membership {
             AB::Expr::ZERO,
             AB::Expr::ZERO,
         ];
-        let work = row[416..].try_into().unwrap();
-        let next_work = next[416..].try_into().unwrap();
+        let work = row[200..].try_into().unwrap();
+        let next_work = next[200..].try_into().unwrap();
         self.leaf.eval_linked(
             builder,
             work,
@@ -174,7 +189,7 @@ impl Membership {
     fn eval_occupancy<AB: AirBuilder<F = Goldilocks>>(
         &self,
         builder: &mut AB,
-        row: &[AB::Var; 1325],
+        row: &[AB::Var; 991],
         selector: AB::Expr,
         endpoints: &Endpoints<'_, AB::Expr>,
     ) {
@@ -182,7 +197,7 @@ impl Membership {
         for byte in 0..8 {
             let mut value = AB::Expr::ZERO;
             for bit in 0..8 {
-                let cell = row[192 + byte * 8 + bit];
+                let cell = row[416 + byte * 8 + bit];
                 builder.assert_bool(cell);
                 value += cell * Goldilocks::from_u8(1 << bit);
             }
@@ -243,7 +258,7 @@ mod tests {
 
         let air = air::MembershipAir::new();
 
-        assert_eq!(air.width(), 1325);
+        assert_eq!(air.width(), 991);
         assert_eq!(
             get_max_constraint_degree(&air, AirLayout::from_air(&air), 2048),
             4
@@ -328,8 +343,8 @@ mod tests {
             .assign(input(&public, &siblings), &mut rows, Membership::WIDTH)
             .unwrap();
         for level in 0..64 {
-            let phase = 21 + 23 * level;
-            for column in [64, 192 + level] {
+            let phase = 22 + 23 * level;
+            for column in [64, 192 + level % 8] {
                 let index = phase * Membership::WIDTH + column;
                 rows[index] += Goldilocks::ONE;
 
@@ -371,7 +386,7 @@ mod tests {
                 .unwrap();
             public[152..].copy_from_slice(&original[152..]);
 
-            assert!((1499..1515).any(|phase| !air.valid_row(&rows, &public, phase)));
+            assert!((1500..1516).any(|phase| !air.valid_row(&rows, &public, phase)));
         }
     }
 
@@ -385,7 +400,7 @@ mod tests {
         air.membership
             .assign(input(&valid, &siblings), &mut rows, Membership::WIDTH)
             .unwrap();
-        let top: [Goldilocks; 64] = rows[1493 * Membership::WIDTH..1493 * Membership::WIDTH + 64]
+        let top: [Goldilocks; 64] = rows[1494 * Membership::WIDTH..1494 * Membership::WIDTH + 64]
             .try_into()
             .unwrap();
         let depth = [
@@ -398,12 +413,12 @@ mod tests {
             .root
             .assign(
                 &[&invalid[..64], &depth, &invalid[64..80], &top],
-                &mut rows[1493 * Membership::WIDTH + 416..],
+                &mut rows[1494 * Membership::WIDTH + 200..],
                 Membership::WIDTH,
             )
             .unwrap();
 
-        assert!((1493..1515).all(|phase| air.valid_row(&rows, &invalid, phase)));
+        assert!((1494..1516).all(|phase| air.valid_row(&rows, &invalid, phase)));
         assert!(!air.valid_row(&rows, &invalid, 0));
     }
 

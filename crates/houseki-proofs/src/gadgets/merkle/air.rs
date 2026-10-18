@@ -79,12 +79,18 @@ impl BaseAir<Goldilocks> for MembershipAir {
     fn periodic_values(&self, row_index: usize) -> Vec<Goldilocks> {
         let row = row_index % 2048;
         let mut values = vec![Goldilocks::ZERO; Membership::SELECTORS];
+        if row == 0 {
+            values[130] = Goldilocks::ONE;
+            return values;
+        }
+
+        let row = row - 1;
         if row < 21 {
             values[row] = Goldilocks::ONE;
         } else if row < 1493 {
             values[21 + (row - 21) % 23] = Goldilocks::ONE;
             values[66 + (row - 21) / 23] = Goldilocks::ONE;
-        } else if row < Membership::ROWS {
+        } else if row < Membership::ROWS - 1 {
             values[44 + row - 1493] = Goldilocks::ONE;
         }
 
@@ -93,7 +99,7 @@ impl BaseAir<Goldilocks> for MembershipAir {
 
     /// Opens live node and position registers plus internal hash bridges.
     fn main_next_row_columns(&self) -> Vec<usize> {
-        (0..256).chain(416..443).chain([1324]).collect()
+        (0..227).chain(243..331).chain([448]).collect()
     }
 
     /// Includes phase selectors and polynomial selection of the trusted level's private direction.
@@ -135,7 +141,8 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for MembershipAir {
                 root: public[152..].try_into().unwrap(),
             },
         );
-        let idle = AB::Expr::ONE - phases[..66].iter().cloned().sum::<AB::Expr>();
+        let idle =
+            AB::Expr::ONE - phases[..66].iter().cloned().sum::<AB::Expr>() - phases[130].clone();
         for value in row {
             builder.when(idle.clone()).assert_zero(*value);
         }

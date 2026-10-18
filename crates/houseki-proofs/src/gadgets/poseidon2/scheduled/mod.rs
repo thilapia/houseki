@@ -167,33 +167,6 @@ impl<const BLOCKS: usize> ScheduledHash<BLOCKS> {
             builder.when(permuting.clone()).assert_zero(*value);
         }
     }
-    /// Applies one complete hash with exact source maps and all sixteen digest extraction words.
-    pub(crate) fn eval_linked<AB: AirBuilder<F = Goldilocks>>(
-        &self,
-        builder: &mut AB,
-        row: &[AB::Var; 909],
-        next: &[AB::Var; 909],
-        phases: &[AB::Expr],
-        parts: &[&[AB::Expr]],
-        digest: &[AB::Expr; 64],
-    ) {
-        self.eval(builder, row, next, phases);
-        for (phase, block) in self.blocks().iter().enumerate() {
-            for (local, part, offset) in block.input_positions() {
-                builder
-                    .when(phases[phase].clone())
-                    .assert_eq(row[43 + local], parts[part][offset].clone());
-            }
-        }
-
-        for word in 0..16 {
-            for byte in 0..4 {
-                builder
-                    .when(phases[BLOCKS + 1 + word].clone())
-                    .assert_eq(row[857 + byte], digest[word * 4 + byte].clone());
-            }
-        }
-    }
 }
 
 /// Complete reference conformance and invalid assignment boundaries.

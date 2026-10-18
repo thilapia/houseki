@@ -59,8 +59,9 @@ impl Membership {
         for phase in 0..Self::ROWS {
             let row = &mut rows[phase * stride..phase * stride + Self::WIDTH];
             row.fill(Goldilocks::ZERO);
-            row[192..256].copy_from_slice(&bits[..]);
         }
+
+        rows[416..480].copy_from_slice(&bits[..]);
 
         let mut carry = Zeroizing::new(1_u16);
         for byte in 0..16 {
@@ -81,10 +82,15 @@ impl Membership {
         let mut current = Scratch::<64>::default();
         let mut digest = Scratch::<64>::default();
         self.leaf
-            .assign(&[input.network, input.commitment], &mut rows[416..], stride)
+            .assign(
+                &[input.network, input.commitment],
+                &mut rows[stride + 200..],
+                stride,
+            )
             .expect("validated leaf sources and storage");
-        self.leaf.copy_digest(&rows[416..], stride, &mut current);
-        for phase in 0..21 {
+        self.leaf
+            .copy_digest(&rows[stride + 200..], stride, &mut current);
+        for phase in 1..22 {
             rows[phase * stride + 128..phase * stride + 192].copy_from_slice(&current[..]);
         }
 
@@ -97,7 +103,7 @@ impl Membership {
                 children[64 + byte] = sibling[byte] + orientation * (current[byte] - sibling[byte]);
             }
 
-            let start = 21 + 23 * level;
+            let start = 22 + 23 * level;
             let encoded_level = [
                 Goldilocks::from_usize(level),
                 Goldilocks::ZERO,
@@ -112,17 +118,18 @@ impl Membership {
                         &children[..64],
                         &children[64..],
                     ],
-                    &mut rows[start * stride + 416..],
+                    &mut rows[start * stride + 200..],
                     stride,
                 )
                 .expect("validated parent sources and storage");
             self.parent
-                .copy_digest(&rows[start * stride + 416..], stride, &mut digest);
+                .copy_digest(&rows[start * stride + 200..], stride, &mut digest);
             for phase in start..start + 23 {
-                let row = &mut rows[phase * stride..phase * stride + 192];
+                let row = &mut rows[phase * stride..phase * stride + 200];
                 row[..64].copy_from_slice(&current[..]);
                 row[64..128].copy_from_slice(sibling);
                 row[128..192].copy_from_slice(&digest[..]);
+                row[192..200].copy_from_slice(&bits[level / 8 * 8..level / 8 * 8 + 8]);
             }
 
             current.copy_from_slice(&digest[..]);
@@ -137,11 +144,11 @@ impl Membership {
         self.root
             .assign(
                 &[input.network, &depth, input.count, &current[..]],
-                &mut rows[1493 * stride + 416..],
+                &mut rows[1494 * stride + 200..],
                 stride,
             )
             .expect("validated root sources and storage");
-        for phase in 1493..Self::ROWS {
+        for phase in 1494..Self::ROWS {
             rows[phase * stride..phase * stride + 64].copy_from_slice(&current[..]);
         }
 
