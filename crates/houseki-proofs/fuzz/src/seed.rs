@@ -37,23 +37,29 @@ impl Seed {
                 seeds.push(Self::load(
                     directory,
                     &format!("payment-{inputs}-{outputs}"),
-                    true,
+                    Some((inputs, outputs)),
                 )?);
             }
         }
 
-        seeds.push(Self::load(directory, "withdrawal", false)?);
+        seeds.push(Self::load(directory, "withdrawal", None)?);
 
         Ok(seeds)
     }
 
     /// Decodes a bounded original artifact without importing any protected witness owner.
-    fn load(directory: &Path, name: &str, payment: bool) -> Result<Self, Box<dyn Error>> {
+    fn load(
+        directory: &Path,
+        name: &str,
+        shape: Option<(usize, usize)>,
+    ) -> Result<Self, Box<dyn Error>> {
         let directory = directory.join(name);
         let limits = BodyCodecLimits::new(PaymentCountLimits::new(4, 2)?, 4096, 16384);
         let bytes = read(&directory.join("body.bin"), 16384)?;
-        let body = if payment {
+        let body = if let Some((inputs, outputs)) = shape {
             let body = PaymentBody::from_bytes(&bytes, limits)?;
+            assert_eq!(body.inputs().input_count(), inputs);
+            assert_eq!(body.outputs().output_count(), outputs);
             assert_eq!(
                 body.context().proof_profile_id(),
                 EXPERIMENTAL_PAYMENT_PROFILE
@@ -85,6 +91,7 @@ impl Seed {
 
             Body::Withdrawal(Box::new(body))
         };
+
         let context = ProofContext::new(body.context())?;
         let proof = EncodedTransactionProof::new(
             read(&directory.join("proof.bin"), context.max_proof_bytes())?,

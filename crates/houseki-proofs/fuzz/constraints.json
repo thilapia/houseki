@@ -89,5 +89,12 @@
     "before": "    decode_pass(layout, payload, false)?;\n",
     "after": "",
     "test": "final_noncanonical_fields_allocate_nothing_for_each_family"
+  },
+  {
+    "id": "spending-ownership",
+    "path": "crates/houseki-proofs/src/gadgets/notes/spend/mod.rs",
+    "before": "        self.ownership.eval_linked(\n            builder,\n            work,\n            next_work,\n            &phases[42..65],\n            &[endpoints.network, &first, &second],\n            endpoints.ownership,\n        );",
+    "after": "",
+    "test": "spend_rehashed_nullifier_secret_still_requires_original_ownership"
   }
 ]

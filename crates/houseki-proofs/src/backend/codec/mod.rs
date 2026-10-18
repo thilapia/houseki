@@ -306,6 +306,7 @@ mod tests {
             );
             assert_eq!((calls, allocated), (0, 0), "{name}");
         };
+
         for inputs in 1..=4 {
             for outputs in 1..=2 {
                 let shape = payment::SupportedPaymentShape::new(inputs, outputs).unwrap();

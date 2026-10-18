@@ -36,6 +36,7 @@ pub(crate) fn conformance(seeds: &[Seed]) -> Result<(), Box<dyn Error>> {
             ),
             Body::Withdrawal(body) => (None, vec![body.output().envelope().payload().len()]),
         };
+
         let regions = mutation::body_regions(&seed.bytes, inputs, &payloads);
         let mut mutations = 0;
         let mut cryptographic = 0;
@@ -133,6 +134,20 @@ pub(crate) fn conformance(seeds: &[Seed]) -> Result<(), Box<dyn Error>> {
             );
         }
 
+        for length in [0, 95, 96, 2_097_151, 2_097_152, 2_097_153] {
+            let mut changed = seed.proof.as_bytes().to_vec();
+            changed.resize(length, 0);
+            if length >= 96 {
+                changed[88..96].copy_from_slice(&((length - 96) as u64).to_le_bytes());
+            }
+
+            let proof = EncodedTransactionProof::new(changed, usize::MAX)?;
+            let (result, peak) =
+                allocation::measure(|| seed.body.verify(&proof, &seed.context, &runtime));
+            assert!(result.is_err(), "{} boundary length {length}", seed.name);
+            assert!(peak <= MAX_LIVE_BYTES);
+        }
+
         for offset in 0..104 {
             let mut changed = seed.proof.as_bytes().to_vec();
             changed[offset] ^= 1;
@@ -145,7 +160,7 @@ pub(crate) fn conformance(seeds: &[Seed]) -> Result<(), Box<dyn Error>> {
         }
 
         println!(
-            "conformance seed={} fields={} body_mutations={mutations} cryptographic_body_rejections={cryptographic} header_mutations=104 cross_seed_checks={}",
+            "conformance seed={} fields={} body_mutations={mutations} cryptographic_body_rejections={cryptographic} header_mutations=104 boundary_lengths=6 cross_seed_checks={}",
             seed.name,
             regions.len(),
             2 * (seeds.len() - 1)
@@ -202,6 +217,7 @@ fn frontiers(seed: &Seed) -> Vec<usize> {
     } else {
         1493
     };
+
     let mut cursor = 104 + 3 * 64 + 2 * width * 24 + 9 * 72 + 11 * 72 + rounds * 64;
     let mut offsets = Vec::new();
     for (matrices, committed_width) in [(1, 6), (1, width + 3), (8, 6)] {

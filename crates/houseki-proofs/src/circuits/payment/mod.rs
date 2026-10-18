@@ -169,6 +169,7 @@ mod tests {
 
                 Ok(trace)
             };
+
             let trace = prepare().unwrap();
             let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());
             assert!(
