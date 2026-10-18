@@ -1,0 +1,173 @@
+name: Proof platform interoperability
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUSTUP_TOOLCHAIN: 1.99.1
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+  RUST_BACKTRACE: "1"
+  RUSTFLAGS: ""
+  CARGO_ENCODED_RUSTFLAGS: ""
+
+jobs:
+  produce:
+    name: Produce on ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            machine: x86_64
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            machine: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the exact candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install and check the native compiler
+        run: |
+          mkdir -p platform-logs
+          rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
+          rustc -Vv | tee platform-logs/rustc.txt
+          test "$(uname -m)" = '${{ matrix.machine }}'
+          test "$(rustc -Vv | sed -n 's/^host: //p')" = '${{ matrix.target }}'
+          {
+            git rev-parse HEAD
+            uname -a
+            printf 'Runner: %s %s\nImage: %s %s\n' "$RUNNER_OS" "$RUNNER_ARCH" \
+              "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          } > platform-logs/environment.txt
+
+      - name: Check the external consumer and documentation
+        run: |
+          cargo fmt --all --check
+          cargo fmt --manifest-path crates/houseki-proofs/qualification/Cargo.toml --check
+          for features in '' 'prover' 'mobile'; do
+            cargo clippy --manifest-path crates/houseki-proofs/qualification/Cargo.toml \
+              --all-targets --features "$features" --locked -- \
+              -D warnings -D missing_docs -D clippy::missing_docs_in_private_items
+            cargo test --manifest-path crates/houseki-proofs/qualification/Cargo.toml \
+              --release --features "$features" --locked
+          done 2>&1 | tee platform-logs/consumer-checks.log
+          RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path crates/houseki-proofs/qualification/Cargo.toml \
+            --no-deps --document-private-items --all-features --locked
+          python3 crates/houseki-proofs/qualification/campaign.py --self-test
+          python3 crates/houseki-proofs/qualification/interoperability.py --self-test
+          python3 crates/houseki-proofs/qualification/release.py --self-test
+
+      - name: Verify normal dependencies contain no private owners or entropy
+        run: |
+          cargo tree --manifest-path crates/houseki-proofs/qualification/Cargo.toml --locked \
+            -e normal | tee platform-logs/verifier-dependencies.txt
+          if grep -E 'houseki-(crypto|notes|state)|getrandom' platform-logs/verifier-dependencies.txt; then
+            exit 1
+          fi
+
+      - name: Test both native proof feature configurations
+        run: |
+          cargo test -p houseki-proofs --release --no-default-features --locked \
+            2>&1 | tee platform-logs/default-proof-tests.log
+          cargo test -p houseki-proofs --release --all-features --locked -- --test-threads=1 \
+            2>&1 | tee platform-logs/all-proof-tests.log
+          cargo test -p houseki-proofs --release --all-features --locked --example reward_withdrawal \
+            2>&1 | tee platform-logs/withdrawal-consumer.log
+          cargo test -p houseki-proofs --release --all-features --locked --example payment \
+            2>&1 | tee platform-logs/payment-consumer.log
+
+      - name: Generate all nine public workload proofs
+        run: |
+          cargo build --manifest-path crates/houseki-proofs/qualification/Cargo.toml \
+            --release --features prover --locked
+          python3 crates/houseki-proofs/qualification/interoperability.py produce \
+            --binary crates/houseki-proofs/qualification/target/release/houseki-proofs-qualification \
+            --output public-set
+
+      - name: Retain the public proof exchange
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: proofs-public-${{ matrix.target }}-${{ github.sha }}
+          path: public-set/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Retain native execution evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: proofs-platform-${{ matrix.target }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            platform-logs/
+            public-set/manifest.json
+            public-set/*.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  verify:
+    name: Cross-verify on ${{ matrix.target }}
+    needs: produce
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            machine: x86_64
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            machine: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the same candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Retrieve all producer sets
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: proofs-public-*-${{ github.sha }}
+          path: producer-sets/
+          merge-multiple: false
+
+      - name: Build the independent verifier and check the native host
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          test "$(uname -m)" = '${{ matrix.machine }}'
+          test "$(rustc -Vv | sed -n 's/^host: //p')" = '${{ matrix.target }}'
+          cargo build --manifest-path crates/houseki-proofs/qualification/Cargo.toml --release --locked
+
+      - name: Require every producer proof to verify on this target
+        run: |
+          python3 crates/houseki-proofs/qualification/interoperability.py verify \
+            --binary crates/houseki-proofs/qualification/target/release/houseki-proofs-qualification \
+            --input producer-sets --output cross-verification
+
+      - name: Retain cross-target results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: proofs-cross-${{ matrix.target }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: cross-verification/
+          if-no-files-found: error
+          retention-days: 30
