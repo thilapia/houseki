@@ -11,9 +11,9 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-/// Process-owned application state containing only public paths, admission and runtime state.
+/// Application state owned by the process with only public paths, admission and runtime state.
 struct Mobile {
-    /// Application-private destination for public observations.
+    /// Application private directory for public observations.
     directory: PathBuf,
 
     /// Foreground cancellation and exclusive worker admission.
@@ -25,7 +25,7 @@ struct Mobile {
     /// Serializes complete event lines from callbacks and the worker.
     events: Mutex<()>,
 
-    /// Process-local monotonic origin for cancellation acknowledgment measurements.
+    /// Monotonic origin within this process for cancellation acknowledgment measurements.
     origin: Instant,
 }
 
@@ -39,12 +39,14 @@ impl Mobile {
             Ok(workload) => workload,
             Err(_) => return 3,
         };
+
         let lease = match self.controller.enter() {
             Ok(lease) => lease,
             Err(LifecycleError::Busy) => return 2,
             Err(LifecycleError::Background) => return 4,
             Err(_) => return 7,
         };
+
         let generation = lease.generation();
         if self.event("admitted", generation).is_err() {
             return 5;
@@ -96,12 +98,14 @@ impl Mobile {
 
             Ok::<(), Error>(())
         });
+
         let outcome = match result {
             Ok(Ok(())) => "complete",
             Ok(Err(_)) if lease.token().is_cancelled() => "cancelled",
             Ok(Err(_)) => "failed",
             Err(_) => "panic",
         };
+
         drop(lease);
 
         let _ = self.event(outcome, generation);
@@ -132,7 +136,7 @@ fn boundary(body: impl FnOnce() -> i32 + UnwindSafe) -> i32 {
     catch_unwind(body).unwrap_or(6)
 }
 
-/// Copies the platform's application-private UTF-8 directory before the callback returns.
+/// Copies the platform's application private UTF-8 directory before the callback returns.
 ///
 /// # Safety
 ///
@@ -154,6 +158,7 @@ pub unsafe extern "C" fn houseki_qualification_configure(
         let Ok(path) = std::str::from_utf8(bytes) else {
             return 3;
         };
+
         let path = Path::new(path);
         if !path.is_absolute() || path.as_os_str().is_empty() {
             return 3;
@@ -187,6 +192,7 @@ pub extern "C" fn houseki_qualification_resume() -> i32 {
         let Some(mobile) = MOBILE.get() else {
             return 1;
         };
+
         if mobile.controller.set_foreground(true).is_err() {
             return 7;
         }
@@ -202,6 +208,7 @@ pub extern "C" fn houseki_qualification_pause() -> i32 {
         let Some(mobile) = MOBILE.get() else {
             return 1;
         };
+
         if mobile.event("cancel_requested", 0).is_err() {
             let _ = mobile.controller.set_foreground(false);
 

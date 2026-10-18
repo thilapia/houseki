@@ -91,6 +91,7 @@ pub fn produce(
             body_encode_us,
         )
     };
+
     let mut sample = artifact.verify(runtime)?;
     sample.fixture_us = Some(fixture_us);
     sample.prove_api_us = Some(prove_api_us);
