@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "candidate_kind": "experimental-unreviewed",
+  "production_profile_admission": "closed",
+  "independent_review": {
+    "status": "skipped_by_owner",
+    "decision_date": "2026-10-18",
+    "reason": "Paid independent review is unavailable. Author review and automated tests do not establish independent cryptographic assurance."
+  },
+  "required_targets": [
+    {"id": "macos-arm64", "os_floor": "macOS 15", "cpu": "Apple Silicon with NEON", "reference": "M1 with 8 GiB RAM"},
+    {"id": "linux-x86_64", "os_floor": "Ubuntu 24.04 LTS with glibc 2.39", "cpu": "x86-64 with SSE2 baseline", "reference": "Core i5-8250U laptop and i5-8500 desktop with 8 GiB RAM"},
+    {"id": "android-arm64", "os_floor": "Android 14 API 34", "cpu": "ARM64 with NEON", "reference": "Pixel 8a with 8 GB RAM"}
+  ],
+  "deferred_targets": ["Windows", "iOS", "Linux ARM64", "Intel macOS", "WebAssembly"],
+  "profiles": [
+    {"family": "reward-withdrawal", "id_hex": "ffff0007", "outputs": [1], "status": "experimental"},
+    {"family": "payment", "id_hex": "ffff0008", "inputs": [1, 2, 3, 4], "outputs": [1, 2], "status": "experimental"}
+  ],
+  "structural_limits": {
+    "proof_bytes": 2097152,
+    "canonical_body_bytes": 16384,
+    "output_payload_bytes": 4096,
+    "runtime_combined_operations": 1,
+    "pending_requests": 0
+  },
+  "measurement_contract": {
+    "cold_samples_per_workload": 30,
+    "warm_samples_per_workload": 100,
+    "sustained_seconds_per_workload": 900,
+    "mobile_prove_p95_seconds_soft": 30,
+    "preferred_prover_process_bytes_soft": 1073741824,
+    "upper_prover_process_bytes_soft": 2147483648,
+    "scheduled_cancellation_cleanup_ms": 1000
+  },
+  "unresolved_release_obligations": [
+    "Composed knowledge, soundness and hiding analysis and adopted profile freeze",
+    "Reference-device cold, warm, sustained, power and lifecycle campaigns",
+    "Disposition of measured soft latency and memory target misses",
+    "Exact outer transaction envelope and complete transaction byte accounting",
+    "Project license selection before external redistribution",
+    "Exact final source validation and upstream advisory disposition"
+  ],
+  "publication": "Separate explicit owner instruction required",
+  "migration": "Incompatible statements, constraints, parameters, transcripts or codecs require new immutable profile identities",
+  "emergency_disable": "Stop admission of new proofs through consuming protocol policy while retaining historical verification under original rules"
+}
