@@ -2,6 +2,8 @@
 
 mod error;
 #[cfg(feature = "prover")]
+mod lifecycle;
+#[cfg(feature = "prover")]
 #[path = "../../examples/payment/owner.rs"]
 #[allow(
     dead_code,
@@ -29,6 +31,8 @@ mod withdrawal_fixture;
 mod workload;
 
 pub use error::Error;
+#[cfg(feature = "prover")]
+pub use lifecycle::{Controller, Lease, LifecycleError};
 #[cfg(feature = "prover")]
 pub use producer::produce;
 pub use public_artifact::PublicArtifact;
