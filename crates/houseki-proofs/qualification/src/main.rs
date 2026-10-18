@@ -5,7 +5,10 @@ use houseki_proofs::CancellationToken;
 use houseki_proofs::ProofRuntime;
 use houseki_proofs_qualification::{Error, PublicArtifact, Workload};
 #[cfg(feature = "prover")]
-use std::fs;
+use std::{
+    fs,
+    time::{Duration, Instant},
+};
 use std::{
     io::{self, Write},
     path::PathBuf,
@@ -46,9 +49,15 @@ fn main() -> Result<(), Error> {
             }
         }
         #[cfg(feature = "prover")]
-        "produce" => {
+        "produce" | "produce-for" => {
             fs::create_dir(&directory)?;
-            for index in 0..iterations {
+            let start = Instant::now();
+            let mut index = 0;
+            while if operation == "produce-for" {
+                index == 0 || start.elapsed() < Duration::from_secs(iterations as u64)
+            } else {
+                index < iterations
+            } {
                 let (artifact, sample) = houseki_proofs_qualification::produce(
                     workload,
                     &runtime,
@@ -57,6 +66,7 @@ fn main() -> Result<(), Error> {
                 artifact.write(&directory.join(format!("sample-{index:04}")))?;
                 println!("{}", sample.json());
                 io::stdout().flush()?;
+                index += 1;
             }
         }
         _ => {
