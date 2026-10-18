@@ -146,6 +146,68 @@ mod tests {
         proof_round_trip(1, 1);
     }
 
+    /// Invalid conservation and idle work reach cryptographic rejection without native prechecks.
+    #[test]
+    fn payment_forged_conservation_and_padding_cannot_verify() {
+        for corrupt_padding in [false, true] {
+            let output = if corrupt_padding { 10 } else { 9 };
+            let fixture = fixture::PaymentFixture::with_amounts(&[11], &[output], 1, false);
+            let layout =
+                PaymentLayout::for_shape(SupportedPaymentShape::new(1, 1).unwrap()).unwrap();
+            let air = PaymentAir::new(&layout);
+            let statement = statement(&fixture, &layout);
+            let spends = fixture.spends();
+            let outputs = fixture.outputs();
+            let witness = PaymentWitness::new(&spends, &outputs).unwrap();
+            let token = CancellationToken::new();
+            let prepare = || {
+                let mut trace = trace::build(&air, &witness, &statement, &token)?;
+                if corrupt_padding {
+                    let idle = (layout.rows() - 1) * layout.width() + PaymentLayout::WORK;
+                    trace.values_mut()[idle] = Goldilocks::ONE;
+                }
+
+                Ok(trace)
+            };
+            let trace = prepare().unwrap();
+            let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());
+            assert!(
+                !check_all_constraints(&air, &matrix, &statement.public_values, Some(4)).is_ok()
+            );
+            drop(matrix);
+            drop(trace);
+
+            let runtime = ProofRuntime::new();
+            let admission = runtime.acquire().unwrap();
+            let result = backend::prove_payment(
+                &admission,
+                &statement,
+                &crate::profile::payment::identity(layout.shape()),
+                &air,
+                prepare,
+                crate::cancellation::Attempt::new(&token).unwrap(),
+            );
+
+            #[cfg(debug_assertions)]
+            assert!(matches!(result, Err(backend::BackendError::ProvingFailed)));
+
+            #[cfg(not(debug_assertions))]
+            {
+                let proof = result.expect("release forgery must reach cryptographic verification");
+                assert!(
+                    backend::verify_payment(
+                        &admission,
+                        &statement,
+                        &crate::profile::payment::identity(layout.shape()),
+                        &air,
+                        &proof,
+                    )
+                    .is_err()
+                );
+            }
+        }
+    }
+
     /// Proves one complete checked shape and records only public artifacts when explicitly requested.
     fn proof_round_trip(inputs: usize, outputs: usize) {
         let fixture = fixture::PaymentFixture::new(inputs, outputs);
