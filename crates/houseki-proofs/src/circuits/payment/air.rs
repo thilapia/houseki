@@ -40,7 +40,7 @@ impl<'a> PaymentAir<'a> {
     }
 
     /// Evaluates one real scheduled row with its actual adjacent source cells.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "prover"))]
     pub(crate) fn valid_row(
         &self,
         rows: &[Goldilocks],

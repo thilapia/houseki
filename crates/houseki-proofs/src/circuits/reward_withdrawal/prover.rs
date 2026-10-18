@@ -33,14 +33,15 @@ pub fn prove_reward_withdrawal(
 ) -> Result<EncodedTransactionProof, ProveError> {
     let admission = runtime.acquire().map_err(|_| ProveError::Busy)?;
     let attempt = Attempt::new(cancellation).ok_or(ProveError::Cancelled)?;
-    let statement = Statement::withdrawal(body, context.expected(), context.identity())?;
+    let statement =
+        Statement::withdrawal(body, context.expected(), context.withdrawal_identity()?)?;
     check_withdrawal_output(body, opening).map_err(|_| ProveError::InvalidWitness)?;
 
     let air = WithdrawalAir::new();
     backend::prove_withdrawal(
         &admission,
         &statement,
-        context.identity(),
+        context.withdrawal_identity()?,
         &air,
         || trace::build(&air, opening, cancellation),
         attempt,

@@ -2,10 +2,6 @@
 
 mod opening;
 mod recipient_key;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "complete payment composition follows")
-)]
 mod spend;
 
 #[cfg(any(test, feature = "prover"))]

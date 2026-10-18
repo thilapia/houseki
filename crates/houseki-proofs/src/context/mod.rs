@@ -16,7 +16,7 @@ use houseki_types::{BodyCodecLimits, TransactionContext};
 ///
 /// Only profiles admitted by the compiled registry can be constructed.
 ///
-/// The `experimental-profiles` feature permits the explicitly experimental withdrawal profile
+/// The `experimental-profiles` feature permits the explicitly experimental withdrawal and payment profiles
 /// for qualification work without asserting production security or network activation.
 #[derive(Debug)]
 pub struct ProofContext {
@@ -50,6 +50,14 @@ impl ProofContext {
             });
         }
 
+        #[cfg(feature = "experimental-profiles")]
+        if expected.proof_profile_id() == crate::profile::payment::EXPERIMENTAL_PAYMENT_PROFILE {
+            return Ok(Self {
+                expected,
+                profile: RegisteredProfile::Payment,
+            });
+        }
+
         Err(ContextError::UnsupportedProfile)
     }
 
@@ -59,24 +67,18 @@ impl ProofContext {
     }
 
     /// Returns the immutable registry identity without interpreting an untrusted proof header.
-    pub(crate) const fn identity(&self) -> &ExpectedIdentity {
+    pub(crate) const fn withdrawal_identity(&self) -> Result<&ExpectedIdentity, StatementError> {
         self.profile.withdrawal_identity()
     }
 
     /// Resolves a complete payment family without admitting partial relation profiles.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "payment admission follows the complete family manifest"
-        )
-    )]
     pub(crate) fn payment_identity(
         &self,
-        _shape: SupportedPaymentShape,
+        shape: SupportedPaymentShape,
     ) -> Result<ExpectedIdentity, StatementError> {
         match self.profile {
             RegisteredProfile::RewardWithdrawal(_) => Err(StatementError::IdentityMismatch),
+            RegisteredProfile::Payment => Ok(crate::profile::payment::identity(shape)),
         }
     }
 
@@ -137,7 +139,7 @@ mod tests {
         let identity = crate::profile::reward_withdrawal::identity();
         let result = ProofContext::new(declared(1, identity.profile.value()));
         assert_eq!(result.is_ok(), cfg!(feature = "experimental-profiles"));
-        for profile in [0xffff0006, 0xffff0008] {
+        for profile in [0xffff0006, 0xffff0009] {
             assert!(matches!(
                 ProofContext::new(declared(1, profile)),
                 Err(ContextError::UnsupportedProfile)
@@ -154,7 +156,7 @@ mod tests {
             profile: RegisteredProfile::RewardWithdrawal(identity),
         };
 
-        assert_eq!(context.identity(), &identity);
+        assert_eq!(context.withdrawal_identity().unwrap(), &identity);
         assert_eq!(context.max_proof_bytes(), 2_097_152);
         assert_eq!(context.body_limits().max_body_bytes(), 16384);
         assert_eq!(context.body_limits().max_payload_bytes(), 4096);
@@ -175,6 +177,47 @@ mod tests {
                 ));
             }
         }
+    }
+
+    /// Complete payment registration is opt-in and every admitted shape remains family specific.
+    #[test]
+    fn payment_candidate_requires_explicit_opt_in() {
+        let result = ProofContext::new(declared(1, 0xffff0008));
+        assert_eq!(result.is_ok(), cfg!(feature = "experimental-profiles"));
+        let context = ProofContext {
+            expected: declared(1, 0xffff0008),
+            profile: RegisteredProfile::Payment,
+        };
+        assert!(matches!(
+            context.withdrawal_identity(),
+            Err(StatementError::IdentityMismatch)
+        ));
+        for inputs in 1..=4 {
+            for outputs in 1..=2 {
+                let shape = SupportedPaymentShape::new(inputs, outputs).unwrap();
+                assert_eq!(context.payment_identity(shape).unwrap().shape, shape.code());
+                context
+                    .body_limits()
+                    .payment_counts()
+                    .validate_shape(houseki_types::PaymentShape::new(inputs, outputs).unwrap())
+                    .unwrap();
+            }
+        }
+
+        assert!(
+            context
+                .body_limits()
+                .payment_counts()
+                .validate_shape(houseki_types::PaymentShape::new(5, 2).unwrap())
+                .is_err()
+        );
+        assert!(
+            context
+                .body_limits()
+                .payment_counts()
+                .validate_shape(houseki_types::PaymentShape::new(4, 3).unwrap())
+                .is_err()
+        );
     }
 
     /// Checks the complete protocol identifier before looking up a profile.

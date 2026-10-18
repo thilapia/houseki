@@ -22,21 +22,7 @@ mod witness;
 pub(crate) use codec::{CodecError, Layout, MAX_DECODED_BYTES};
 pub(crate) use error::{BackendError, VerificationError};
 #[cfg(feature = "prover")]
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "payment facade follows complete profile bounds"
-    )
-)]
 pub(crate) use payment::prove_payment;
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "payment facade follows complete profile bounds"
-    )
-)]
 pub(crate) use payment::verify_payment;
 #[cfg(feature = "prover")]
 pub(crate) use trace::Trace;

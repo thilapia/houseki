@@ -20,8 +20,14 @@ pub fn verify_reward_withdrawal<'a>(
     context: &'a ProofContext,
 ) -> Result<VerifiedRewardWithdrawal<'a>, VerifyError> {
     let admission = runtime.acquire().map_err(|_| VerifyError::Busy)?;
-    let statement = Statement::withdrawal(body, context.expected(), context.identity())?;
-    backend::verify_withdrawal(&admission, &statement, context.identity(), proof)?;
+    let statement =
+        Statement::withdrawal(body, context.expected(), context.withdrawal_identity()?)?;
+    backend::verify_withdrawal(
+        &admission,
+        &statement,
+        context.withdrawal_identity()?,
+        proof,
+    )?;
 
     Ok(VerifiedRewardWithdrawal { body, context })
 }

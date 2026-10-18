@@ -2,10 +2,6 @@
 
 mod error;
 mod payment;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "family AIR endpoint consumers follow")
-)]
 mod payment_values;
 mod withdrawal;
 mod withdrawal_values;

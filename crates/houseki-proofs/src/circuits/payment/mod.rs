@@ -2,16 +2,24 @@
 
 mod air;
 mod error;
+mod evidence;
 #[cfg(all(test, feature = "prover"))]
 mod fixture;
 mod layout;
+#[cfg(feature = "prover")]
+mod prover;
 mod schedule;
 #[cfg(feature = "prover")]
 mod trace;
+mod verifier;
 
 pub(crate) use air::PaymentAir;
 pub(crate) use error::PaymentLayoutError;
+pub use evidence::VerifiedPayment;
 pub(crate) use layout::PaymentLayout;
+#[cfg(feature = "prover")]
+pub use prover::prove_payment;
+pub use verifier::verify_payment;
 
 /// Complete-relation checks before any experimental profile can be admitted.
 #[cfg(all(test, feature = "prover"))]

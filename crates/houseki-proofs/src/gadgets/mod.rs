@@ -1,18 +1,7 @@
 //! Shared constraints and assignment helpers composed by individual circuit families.
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "circuit amount consumers follow in later increments"
-    )
-)]
 mod amount;
 mod encoding;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "complete payment composition follows")
-)]
 mod merkle;
 mod notes;
 #[cfg_attr(
