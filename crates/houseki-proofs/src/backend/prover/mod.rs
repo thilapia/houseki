@@ -76,6 +76,9 @@ where
             let config = config::assemble(request.prefix, random::fresh_generators()?);
 
             let matrix = RowMajorMatrix::new(trace.values().to_vec(), trace.width());
+            // The copy belongs to this protected scope. Release the separately guarded source
+            // before expansion, including when the source was allocated before entering the scope.
+            drop(trace);
             let proof = p3_uni_stark::prove(&config, request.air, matrix, request.public)
                 .map_err(|_| BackendError::ProvingFailed)?;
 
