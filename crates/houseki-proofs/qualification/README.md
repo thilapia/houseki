@@ -32,3 +32,33 @@ Accept the synthetic debug application installation on the phone when required. 
 The APK uses compressed shared libraries with extraction enabled and 16 KiB ELF segment alignment. This follows Android's [documented extraction alternative](https://developer.android.com/guide/practices/page-sizes) and works with installed build tools that predate `zipalign -P`. It does not establish a physical 16 KiB device pass. The APK is debuggable solely for controlled synthetic measurement and public evidence retrieval. Do not distribute it as a wallet or place real secrets in it.
 
 Application runs are explicitly exploratory until the contract's reference hardware, sample counts, power, battery, ambient and thermal conditions are satisfied. CLI execution and application execution remain separate evidence categories. iOS and Windows are deferred from the first-release matrix by the owner's decision.
+
+## Native campaigns and exchange
+
+The native measurement runner freezes its executable before any series and records exact source, compiler, binary digest and per-child kernel peak RSS. It preserves failed operations and all output. A failed proof, crash, allocation failure or supervision deadline never becomes a discarded timing sample. Medians, nearest-rank p95 and maxima remain separate by phase, workload and platform. Soft target misses are reported without turning them into proving timeouts.
+
+```sh
+python3 crates/houseki-proofs/qualification/campaign.py --self-test
+cargo build --manifest-path crates/houseki-proofs/qualification/Cargo.toml --release --features prover --locked
+python3 crates/houseki-proofs/qualification/campaign.py --binary crates/houseki-proofs/qualification/target/release/houseki-proofs-qualification --output /tmp/houseki-native-campaign --exploratory --cold 1 --warm 1 --soak-seconds 0
+```
+
+Remove `--exploratory` only for a contract campaign. The defaults require 30 cold samples, 100 warm samples and 900 sustained seconds for each of the nine workloads. Supply `--conditions` with measured `ambient_celsius` from 20 through 25, actual `power` as `external` or `battery`, `power_saver: false`, `physical: true` and the actual `reference_device` name. These are retained operator declarations, not an automatic hardware certification. The full platform and power matrix still needs a separate disposition. The `produce-for` consumer command executes sustained proofs in one process, using fresh fixtures and tokens, and lets an active proof finish after the requested duration.
+
+The exchange runner generates all nine public artifacts, hashes every file and retains the 104 byte encoded header for exact profile provenance. A verifier checks the complete inventory, source revision and all digests before invoking the independent public verifier. Altered or escaping manifest paths fail before cryptographic work.
+
+```sh
+python3 crates/houseki-proofs/qualification/interoperability.py produce --binary PRODUCER_BINARY --output /tmp/producer-set
+python3 crates/houseki-proofs/qualification/interoperability.py verify --binary VERIFIER_BINARY --input /tmp/producer-set --output /tmp/cross-verification
+```
+
+Build the verifier binary without `prover` and preserve it separately before building a producer in the same target directory. The native CI exchange uses Linux x86-64 and macOS ARM64 runners, generates real proofs on both and verifies every producer set on both. Runner architecture is checked explicitly. Hosted execution is interoperability evidence, not physical reference-device or mobile application qualification. Android application artifacts can be verified by the same default consumer using their independently selected workload.
+
+## Exact candidate package
+
+```sh
+python3 crates/houseki-proofs/qualification/release.py --self-test
+python3 crates/houseki-proofs/qualification/release.py --output /tmp/houseki-candidate --check-advisories
+```
+
+Run packaging only from a clean committed checkout. The package contains an exact Git source archive, SHA3-512 source inventory, resolved dependency and declared license inventory, all lockfiles, compiler identity, profile definition hashes and the tracked release policy. It does not require excluded local documents. Optional `--evidence` accepts an operator declaration naming that exact revision with `platforms` and `gates` statuses. Such declarations remain labeled operator evidence. Skipping independent review never becomes a passing independent assessment, even when other declared gates pass. The tool neither publishes nor enables production dispatch.
