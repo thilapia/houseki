@@ -1,5 +1,6 @@
 //! Constraints for the fixed application hash transcript and its field encoding.
 
+mod compact;
 mod extraction;
 mod framing;
 #[cfg(test)]
@@ -11,6 +12,7 @@ mod recipient_hash_air;
 mod scheduled;
 mod sponge;
 
+pub(crate) use compact::CompactHash;
 #[cfg(test)]
 pub(crate) use extraction::ExtractionRowAir;
 pub(crate) use framing::Frame;

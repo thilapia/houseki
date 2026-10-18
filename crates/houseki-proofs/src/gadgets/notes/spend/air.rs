@@ -47,7 +47,7 @@ impl BaseAir<Goldilocks> for SpendAir {
 
     /// Opens private continuity and the hash state, sample and extraction carry bridges.
     fn main_next_row_columns(&self) -> Vec<usize> {
-        (0..219).chain([1100]).collect()
+        (0..219).chain(235..323).chain([440]).collect()
     }
 
     /// Includes trusted selector multiplication of cubic permutation equations.
@@ -65,7 +65,7 @@ impl<AB: AirBuilder<F = Goldilocks>> Air<AB> for SpendAir {
     /// Binds every endpoint and constrains every idle cell independently of assignment.
     fn eval(&self, builder: &mut AB) {
         let main = builder.main();
-        let row: &[AB::Var; 1101] = main.current_slice().try_into().unwrap();
+        let row: &[AB::Var; 983] = main.current_slice().try_into().unwrap();
         let phases: Vec<AB::Expr> = builder
             .periodic_values()
             .iter()

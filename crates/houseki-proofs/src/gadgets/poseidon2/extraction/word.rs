@@ -42,12 +42,34 @@ pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
     encodings: &[[AB::Var; ENCODING]; SAMPLES],
     column: usize,
     incoming: AB::Expr,
-    bytes: &[AB::Var; 4],
+    bytes_output: &[AB::Var; 4],
+    bits: &[[AB::Var; 8]; 4],
+    carry_bits: &[AB::Var; CARRY_BITS],
+) -> AB::Expr {
+    let bytes = std::array::from_fn(|sample| std::array::from_fn(|byte| encodings[sample][byte]));
+    eval_encoded_bytes(
+        builder,
+        &bytes,
+        column,
+        incoming,
+        bytes_output,
+        bits,
+        carry_bits,
+    )
+}
+
+/// Constrains one output word from complete canonical sample bytes linked by the caller.
+pub(in crate::gadgets::poseidon2) fn eval_encoded_bytes<AB: AirBuilder<F = Goldilocks>>(
+    builder: &mut AB,
+    encodings: &[[AB::Var; 8]; SAMPLES],
+    column: usize,
+    incoming: AB::Expr,
+    bytes_output: &[AB::Var; 4],
     bits: &[[AB::Var; 8]; 4],
     carry_bits: &[AB::Var; CARRY_BITS],
 ) -> AB::Expr {
     assert!(column < WORDS);
-    eval_bytes(builder, bytes, bits);
+    eval_bytes(builder, bytes_output, bits);
     for bit in carry_bits {
         builder.assert_bool(*bit);
     }
@@ -66,7 +88,7 @@ pub(in crate::gadgets::poseidon2) fn eval<AB: AirBuilder<F = Goldilocks>>(
     }
 
     let mut output = AB::Expr::ZERO;
-    for (index, byte) in bytes.iter().enumerate() {
+    for (index, byte) in bytes_output.iter().enumerate() {
         output += *byte * Goldilocks::from_u64(1 << (index * 8));
     }
 

@@ -12,7 +12,7 @@ mod word;
 #[cfg(test)]
 pub(crate) use row_air::ExtractionRowAir;
 pub(super) use samples::eval as eval_samples;
-pub(super) use word::{carry, eval as eval_word};
+pub(super) use word::{carry, eval as eval_word, eval_encoded_bytes as eval_word_bytes};
 
 #[cfg(any(test, feature = "prover"))]
 pub(super) use samples::assign as assign_samples;

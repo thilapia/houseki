@@ -16,7 +16,7 @@ pub(crate) use error::SpendError;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use input::Input;
 
-use crate::gadgets::poseidon2::ScheduledHash;
+use crate::gadgets::poseidon2::CompactHash;
 use p3_air::AirBuilder;
 use p3_field::PrimeCharacteristicRing;
 use p3_goldilocks::Goldilocks;
@@ -25,27 +25,27 @@ use p3_goldilocks::Goldilocks;
 ///
 /// Columns 0 through 63 hold the keys and 64 through 191 hold their two complete digests.
 ///
-/// Columns 192 through 1100 reuse hash work cells across 21, 21, 23 and 23 consecutive rows.
+/// Columns 192 through 982 reuse hash work cells across 21, 21, 23 and 23 consecutive rows.
 ///
 /// The caller binds network, opening ownership, note commitment, original position and marker
 /// through the same endpoints throughout the invocation and owns inactive-row constraints.
 pub(crate) struct Spend {
     /// Network and spending secret commitment.
-    spending: ScheduledHash<4>,
+    spending: CompactHash<4>,
 
     /// Network and nullifier secret commitment.
-    nullifier_key: ScheduledHash<4>,
+    nullifier_key: CompactHash<4>,
 
     /// Network and both complete inner commitments.
-    ownership: ScheduledHash<6>,
+    ownership: CompactHash<6>,
 
     /// Network, V1 note version, nullifier secret, note commitment and original position.
-    nullifier: ScheduledHash<6>,
+    nullifier: CompactHash<6>,
 }
 
 impl Spend {
     /// Private key and digest registers followed by shared hash scratch.
-    pub(crate) const WIDTH: usize = 1101;
+    pub(crate) const WIDTH: usize = 983;
 
     /// Exact number of consecutive active phases without power-of-two padding.
     pub(crate) const ROWS: usize = 88;
@@ -53,13 +53,11 @@ impl Spend {
     /// Resolves exact native domains and part lengths without witness-dependent metadata.
     pub(crate) fn new() -> Self {
         Self {
-            spending: ScheduledHash::new(b"houseki/v1/ownership/spend-key", &[64, 32]).unwrap(),
-            nullifier_key: ScheduledHash::new(b"houseki/v1/ownership/nullifier-key", &[64, 32])
+            spending: CompactHash::new(b"houseki/v1/ownership/spend-key", &[64, 32]).unwrap(),
+            nullifier_key: CompactHash::new(b"houseki/v1/ownership/nullifier-key", &[64, 32])
                 .unwrap(),
-            ownership: ScheduledHash::new(b"houseki/v1/ownership/commitment", &[64, 64, 64])
-                .unwrap(),
-            nullifier: ScheduledHash::new(b"houseki/v1/note/nullifier", &[64, 4, 32, 64, 8])
-                .unwrap(),
+            ownership: CompactHash::new(b"houseki/v1/ownership/commitment", &[64, 64, 64]).unwrap(),
+            nullifier: CompactHash::new(b"houseki/v1/note/nullifier", &[64, 4, 32, 64, 8]).unwrap(),
         }
     }
 
@@ -69,8 +67,8 @@ impl Spend {
     pub(crate) fn eval<AB: AirBuilder<F = Goldilocks>>(
         &self,
         builder: &mut AB,
-        row: &[AB::Var; 1101],
-        next: &[AB::Var; 1101],
+        row: &[AB::Var; 983],
+        next: &[AB::Var; 983],
         phases: &[AB::Expr],
         endpoints: Endpoints<'_, AB::Expr>,
     ) {
@@ -152,7 +150,7 @@ mod tests {
 
         let air = air::SpendAir::new();
 
-        assert_eq!(air.width(), 1101);
+        assert_eq!(air.width(), 983);
         assert_eq!(
             get_max_constraint_degree(&air, AirLayout::from_air(&air), 128),
             4
@@ -250,10 +248,10 @@ mod tests {
             (42, 64),
             (42, 128),
             (64, 191),
-            (5, 1049),
-            (26, 1049),
-            (49, 1049),
-            (72, 1049),
+            (5, 389),
+            (26, 389),
+            (49, 389),
+            (72, 389),
             (127, 0),
         ] {
             let mut changed = rows.clone();
@@ -342,7 +340,7 @@ mod tests {
             Err(SpendError::InvalidByte)
         );
         assert!(rows.iter().all(|value| *value == Goldilocks::NEG_ONE));
-        for stride in [0, 1100, usize::MAX] {
+        for stride in [0, 982, usize::MAX] {
             assert_eq!(
                 spend.assign(input(&position), &mut rows, stride),
                 Err(SpendError::ShapeMismatch)
@@ -355,11 +353,12 @@ mod tests {
             .assign(input(&valid_position), &mut rows, 1110)
             .unwrap();
 
-        assert!(rows.as_chunks::<1110>().0.iter().all(|row| {
-            row[1101..]
+        assert!(
+            rows.as_chunks::<1110>()
+                .0
                 .iter()
-                .all(|value| *value == Goldilocks::NEG_ONE)
-        }));
+                .all(|row| { row[983..].iter().all(|value| *value == Goldilocks::NEG_ONE) })
+        );
     }
 
     /// The two independent inner-key digests retain the established native integer vectors.
