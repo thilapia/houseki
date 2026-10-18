@@ -9,6 +9,9 @@ thread_local! {
     /// Time at which an inner checkpoint observed the synthetic request.
     pub(crate) static INTERRUPTED_AT: Cell<Option<std::time::Instant>> = const { Cell::new(None) };
 
+    /// Largest live payload observed at transform, constraint, commitment, opening, fold and random checkpoints.
+    pub(crate) static PHASE_BYTES: Cell<[usize; 6]> = const { Cell::new([0; 6]) };
+
     /// Observed accounting from the last fully released attempt on this test thread.
     pub(crate) static LAST_USAGE: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
 }

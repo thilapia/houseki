@@ -4,10 +4,6 @@ mod opening;
 mod spend;
 
 pub(crate) use opening::OpeningFields;
-#[cfg_attr(
-    not(test),
-    expect(unused_imports, reason = "reserved for private family dispatch")
-)]
 pub(crate) use spend::SpendFields;
 
 use super::trace::Trace;

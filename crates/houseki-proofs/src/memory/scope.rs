@@ -47,6 +47,9 @@ impl Scope {
             return Err(MemoryError::Cancelled);
         }
 
+        #[cfg(test)]
+        super::PHASE_BYTES.with(|peaks| peaks.set([0; 6]));
+
         let account = Arc::new(Account {
             live: AtomicUsize::new(0),
             allocations: AtomicUsize::new(0),

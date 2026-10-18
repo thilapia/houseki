@@ -22,6 +22,32 @@ const HEADER_BYTES: usize = 96;
 /// Bound on requested decoded vector storage, including all nested vector headers.
 const MAX_DECODED_BYTES: usize = 16 * 1024 * 1024;
 
+/// Counts the exact canonical size of a valid generated proof for test resource measurements.
+///
+/// This observer allocates and encodes nothing and does not alter either codec cap.
+#[cfg(test)]
+pub(crate) fn measured_size(layout: Layout, proof: &crate::backend::config::BackendProof) -> usize {
+    let rounds = layout.log_rows + 1;
+    let chunks = layout.quotient_chunks;
+    let width = layout.width;
+    let main_points = if layout.main_next { 2 } else { 1 };
+    let mut bytes = 96 + 8 + 3 * 64 + main_points * width * 24 + chunks * 72 + 72;
+    bytes += 72 * (1 + main_points + chunks) + rounds * 64;
+    bytes += 128 * 8 * (6 + width + 3 + chunks * 6);
+    bytes += 128 * 32 * (2 + chunks);
+    let fri = &proof.opening_proof.1;
+    for opening in &fri.input_openings {
+        bytes += 4 + 64 * opening.opening_proof.1.sibling_hashes.len();
+    }
+
+    bytes += rounds * 128 * (24 + 32);
+    for opening in &fri.commit_phase_openings {
+        bytes += 4 + 64 * opening.opening_proof.1.sibling_hashes.len();
+    }
+
+    bytes + 24
+}
+
 /// Real proof encoding and hostile input boundary tests.
 #[cfg(test)]
 mod tests {
@@ -77,6 +103,7 @@ mod tests {
         )
         .unwrap();
         let encoded = encode(&identity(), layout(), &proof).unwrap();
+        assert_eq!(measured_size(layout(), &proof), encoded.as_bytes().len());
         let decoded = decode(&identity(), layout(), encoded.as_bytes()).unwrap();
 
         verifier::verify(

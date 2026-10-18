@@ -1,12 +1,32 @@
 //! Cooperative cancellation inside private backend phases.
 
 #[cfg(test)]
-use super::test_control::{INTERRUPT, INTERRUPTED_AT};
+use super::test_control::{INTERRUPT, INTERRUPTED_AT, PHASE_BYTES};
 use super::{ACTIVE, Cancelled};
 use std::sync::atomic::Ordering;
 
 /// Applies backend interruption without allocating diagnostics or exposing private values.
 pub(super) fn backend_checkpoint(phase: p3_util::prover_runtime::Phase) {
+    #[cfg(test)]
+    PHASE_BYTES.with(|observed| {
+        use p3_util::prover_runtime::Phase;
+        let index = match phase {
+            Phase::Transform => 0,
+            Phase::Constraint => 1,
+            Phase::Commitment => 2,
+            Phase::Opening => 3,
+            Phase::Fold => 4,
+            Phase::Random => 5,
+        };
+        ACTIVE.with(|active| {
+            // Safety: The active scope owns this account for the installed callback's lifetime.
+            let bytes = unsafe { &*active.get() }.bytes.load(Ordering::Relaxed);
+            let mut peaks = observed.get();
+            peaks[index] = peaks[index].max(bytes);
+            observed.set(peaks);
+        });
+    });
+
     #[cfg(test)]
     INTERRUPT.with(|slot| {
         if let Some((selected, left, failure)) = slot.get()

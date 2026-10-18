@@ -21,7 +21,7 @@ pub(crate) use error::MemoryError;
 pub(crate) use public_copy::public_copy;
 pub(crate) use scope::Scope;
 #[cfg(test)]
-pub(crate) use test_control::{INTERRUPTED_AT, LAST_USAGE, interrupt_at};
+pub(crate) use test_control::{INTERRUPTED_AT, LAST_USAGE, PHASE_BYTES, interrupt_at};
 pub(crate) use usage::Usage;
 
 use account::Account;

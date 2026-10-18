@@ -83,6 +83,9 @@ where
                 .map_err(|_| BackendError::ProvingFailed)?;
 
             memory::checkpoint();
+            #[cfg(test)]
+            super::LAST_PROOF_SIZE
+                .with(|size| size.set(Some(codec::measured_size(request.layout, &proof))));
             let encoded = codec::encode(request.identity, request.layout, &proof)
                 .map_err(BackendError::from)?;
 

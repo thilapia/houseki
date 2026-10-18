@@ -6,6 +6,7 @@ mod error;
 #[cfg(test)]
 mod gadget_checks;
 mod hash;
+mod payment;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
 mod random;
@@ -21,12 +22,35 @@ mod witness;
 pub(crate) use codec::{CodecError, Layout};
 pub(crate) use error::{BackendError, VerificationError};
 #[cfg(feature = "prover")]
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "payment facade follows complete profile bounds"
+    )
+)]
+pub(crate) use payment::prove_payment;
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "payment facade follows complete profile bounds"
+    )
+)]
+pub(crate) use payment::verify_payment;
+#[cfg(feature = "prover")]
 pub(crate) use trace::Trace;
 #[cfg(feature = "prover")]
 pub(crate) use withdrawal::prove_withdrawal;
 pub(crate) use withdrawal::verify_withdrawal;
 #[cfg(feature = "prover")]
-pub(crate) use witness::OpeningFields;
+pub(crate) use witness::{OpeningFields, SpendFields};
+
+#[cfg(test)]
+thread_local! {
+    /// Public size observation retained without allocating inside the protected attempt.
+    pub(crate) static LAST_PROOF_SIZE: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
 
 /// Real backend behavior under an internal synthetic relation.
 #[cfg(test)]
