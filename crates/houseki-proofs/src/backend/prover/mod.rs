@@ -81,13 +81,13 @@ where
 
             memory::checkpoint();
             let encoded = codec::encode(request.identity, request.layout, &proof)
-                .map_err(|_| BackendError::ProvingFailed)?;
+                .map_err(BackendError::from)?;
 
             let public = memory::public_copy(encoded.as_bytes()).map_err(memory_error)?;
             memory::checkpoint();
 
             EncodedTransactionProof::new(public, MAX_PROOF_BYTES)
-                .map_err(|_| BackendError::ProvingFailed)
+                .map_err(|_| BackendError::ProofTooLarge)
         }));
 
         let result = match result {

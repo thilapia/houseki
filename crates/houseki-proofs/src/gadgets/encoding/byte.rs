@@ -18,10 +18,6 @@ use zeroize::Zeroizing;
 ///
 /// The caller supplies trace cells and retains responsibility for scheduling this relation and
 /// linking the value to the rest of its circuit.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "circuit consumers follow in later increments")
-)]
 pub(crate) fn eval_byte<AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
     value: AB::Var,
@@ -50,13 +46,6 @@ pub(crate) fn eval_byte<AB: AirBuilder<F = Goldilocks>>(
 /// Returns [`EncodingError::InvalidByte`] before changing any destination cell when the canonical
 /// input value exceeds 255.
 #[cfg(any(test, feature = "prover"))]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "circuit trace builders follow in later increments"
-    )
-)]
 pub(crate) fn assign_byte(
     value: &Goldilocks,
     bits: &mut [Goldilocks; 8],

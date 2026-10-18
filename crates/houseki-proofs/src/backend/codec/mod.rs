@@ -7,10 +7,6 @@ mod layout;
 mod reader;
 mod writer;
 
-#[cfg_attr(
-    not(test),
-    expect(unused_imports, reason = "reserved for private family dispatch")
-)]
 pub(crate) use decode::decode;
 #[cfg_attr(
     not(any(test, feature = "prover")),

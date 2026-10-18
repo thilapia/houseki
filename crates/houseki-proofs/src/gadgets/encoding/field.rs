@@ -26,10 +26,6 @@ use zeroize::Zeroizing;
 /// field reconstruction alone would accept.
 ///
 /// The caller supplies all cells and remains responsible for trace scheduling and circuit links.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "circuit consumers follow in later increments")
-)]
 pub(crate) fn eval_field_bytes<AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
     value: AB::Var,
@@ -70,13 +66,6 @@ pub(crate) fn eval_field_bytes<AB: AirBuilder<F = Goldilocks>>(
 ///
 /// Assignment does not establish constraints, so the consuming AIR must call [`eval_field_bytes`].
 #[cfg(any(test, feature = "prover"))]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "circuit trace builders follow in later increments"
-    )
-)]
 pub(crate) fn assign_field_bytes(
     value: &Goldilocks,
     bytes: &mut [Goldilocks; 8],

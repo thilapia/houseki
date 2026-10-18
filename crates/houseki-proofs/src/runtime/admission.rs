@@ -4,10 +4,6 @@ use super::ProofRuntime;
 use std::sync::atomic::Ordering;
 
 /// Releases admission on success, failure or normal unwinding.
-#[cfg_attr(
-    not(any(test, feature = "prover")),
-    expect(dead_code, reason = "used by private proof execution")
-)]
 pub(crate) struct Admission<'a> {
     /// Runtime whose operation slot is currently held.
     pub(super) runtime: &'a ProofRuntime,

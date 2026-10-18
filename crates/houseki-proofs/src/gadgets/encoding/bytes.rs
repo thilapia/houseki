@@ -16,10 +16,6 @@ use zeroize::Zeroizing;
 /// or omitted high bytes even for identifiers wider than a field element.
 ///
 /// The caller retains responsibility for trace scheduling and linking every byte to its circuit.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "circuit consumers follow in later increments")
-)]
 pub(crate) fn eval_bytes<const N: usize, AB: AirBuilder<F = Goldilocks>>(
     builder: &mut AB,
     values: &[AB::Var; N],
@@ -44,13 +40,6 @@ pub(crate) fn eval_bytes<const N: usize, AB: AirBuilder<F = Goldilocks>>(
 /// Returns [`EncodingError::InvalidByte`] without changing any destination cell if any input's
 /// canonical value exceeds 255.
 #[cfg(any(test, feature = "prover"))]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "circuit trace builders follow in later increments"
-    )
-)]
 pub(crate) fn assign_bytes<const N: usize>(
     values: &[Goldilocks; N],
     bits: &mut [[Goldilocks; 8]; N],

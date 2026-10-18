@@ -50,10 +50,6 @@ impl ProofRuntime {
     }
 
     /// Acquires the combined work slot without waiting for another request.
-    #[cfg_attr(
-        not(any(test, feature = "prover")),
-        expect(dead_code, reason = "used by private proof execution")
-    )]
     pub(crate) fn acquire(&self) -> Result<Admission<'_>, RuntimeError> {
         self.busy
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)

@@ -54,10 +54,6 @@ impl ProofContext {
     }
 
     /// Returns the immutable registry identity without interpreting an untrusted proof header.
-    #[expect(
-        dead_code,
-        reason = "family facade consumes the resolved identity next"
-    )]
     pub(crate) const fn identity(&self) -> &ExpectedIdentity {
         &self.identity
     }
@@ -74,10 +70,6 @@ impl ProofContext {
 }
 
 /// Checks exact expected context equality without interpreting activation policy.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by family statement construction")
-)]
 pub(crate) fn require_context(
     expected: TransactionContext,
     actual: TransactionContext,

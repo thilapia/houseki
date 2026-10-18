@@ -1,5 +1,7 @@
 //! Public transaction proof failures with bounded diagnostics and no backend or witness values.
 
+#[cfg(feature = "prover")]
+use crate::backend::BackendError;
 use crate::{StatementError, backend::CodecError};
 use houseki_types::BodyCodecError;
 
@@ -106,6 +108,16 @@ impl From<CodecError> for VerifyError {
     }
 }
 
+impl From<crate::backend::VerificationError> for VerifyError {
+    /// Keeps canonical decoding failures distinct from an invalid cryptographic proof.
+    fn from(error: crate::backend::VerificationError) -> Self {
+        match error {
+            crate::backend::VerificationError::Encoding(error) => error.into(),
+            crate::backend::VerificationError::InvalidProof => Self::InvalidProof,
+        }
+    }
+}
+
 /// Failure to prepare or prove an opening without revealing any private input or backend string.
 #[cfg(feature = "prover")]
 #[derive(Debug, thiserror::Error)]
@@ -162,6 +174,22 @@ impl From<StatementError> for ProveError {
         match error {
             StatementError::InvalidBody(BodyCodecError::AllocationFailed) => Self::AllocationFailed,
             error => Self::Statement(error),
+        }
+    }
+}
+
+#[cfg(feature = "prover")]
+impl From<BackendError> for ProveError {
+    /// Maps private execution failures to fixed public categories without backend diagnostics.
+    fn from(error: BackendError) -> Self {
+        match error {
+            BackendError::EntropyUnavailable => Self::EntropyUnavailable,
+            BackendError::AllocationFailed => Self::AllocationFailed,
+            BackendError::Cancelled => Self::Cancelled,
+            BackendError::BackendUnavailable => Self::BackendUnavailable,
+            BackendError::InvalidTrace => Self::InvalidWitness,
+            BackendError::ProofTooLarge => Self::ProofTooLarge,
+            BackendError::ProvingFailed | BackendError::InvalidProof => Self::BackendFailure,
         }
     }
 }

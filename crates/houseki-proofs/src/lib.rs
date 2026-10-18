@@ -6,7 +6,6 @@
 mod backend;
 #[cfg(any(test, feature = "prover"))]
 mod cancellation;
-#[cfg_attr(not(test), allow(dead_code))]
 mod circuits;
 mod context;
 mod gadgets;
@@ -27,6 +26,9 @@ mod test_allocator;
 pub use cancellation::CancellationToken;
 #[cfg(feature = "prover")]
 pub use circuits::ProveError;
+#[cfg(feature = "prover")]
+pub use circuits::reward_withdrawal::prove_reward_withdrawal;
+pub use circuits::reward_withdrawal::{VerifiedRewardWithdrawal, verify_reward_withdrawal};
 pub use circuits::{ProofEncodingError, VerifyError};
 pub use context::{ContextError, ProofContext};
 #[cfg(feature = "prover")]

@@ -8,10 +8,6 @@ mod payment;
 )]
 mod payment_values;
 mod withdrawal;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "family AIR endpoint consumers follow")
-)]
 mod withdrawal_values;
 
 pub use error::StatementError;

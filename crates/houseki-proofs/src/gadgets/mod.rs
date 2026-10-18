@@ -9,13 +9,6 @@
 )]
 mod amount;
 mod encoding;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "circuit note consumers follow in later increments"
-    )
-)]
 mod notes;
 #[cfg_attr(
     not(test),

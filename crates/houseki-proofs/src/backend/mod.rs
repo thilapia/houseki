@@ -44,13 +44,17 @@ mod square_air;
 #[cfg(any(test, feature = "prover"))]
 mod trace;
 mod verifier;
+mod withdrawal;
 #[cfg(feature = "prover")]
 mod witness;
 
 pub(crate) use codec::{CodecError, Layout};
-pub(crate) use error::BackendError;
+pub(crate) use error::{BackendError, VerificationError};
 #[cfg(feature = "prover")]
 pub(crate) use trace::Trace;
+#[cfg(feature = "prover")]
+pub(crate) use withdrawal::prove_withdrawal;
+pub(crate) use withdrawal::verify_withdrawal;
 #[cfg(feature = "prover")]
 pub(crate) use witness::OpeningFields;
 
