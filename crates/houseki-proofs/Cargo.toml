@@ -39,3 +39,12 @@ getrandom = { workspace = true, optional = true }
 [dev-dependencies]
 p3-util = { workspace = true, features = ["prover-runtime"] }
 getrandom.workspace = true
+
+[[example]]
+name = "reward_withdrawal"
+path = "examples/reward_withdrawal/main.rs"
+required-features = ["prover", "experimental-profiles"]
+
+[[example]]
+name = "verify_reward_withdrawal"
+required-features = ["experimental-profiles"]
