@@ -1,46 +1,14 @@
 //! Private hiding proof execution with separate proving and verification capabilities.
 
-#[cfg(test)]
-mod addition_proof;
-#[cfg(test)]
-mod amount_proof;
-#[cfg(test)]
-mod application_hash_proof;
-#[cfg(test)]
-mod byte_proof;
-#[cfg(test)]
-mod bytes_proof;
 mod codec;
 mod config;
 mod error;
 #[cfg(test)]
-mod extraction_proof;
-#[cfg(test)]
-mod field_proof;
-#[cfg(test)]
-mod framed_sponge_proof;
-#[cfg(test)]
-mod framing_block_proof;
-#[cfg(test)]
-mod framing_proof;
-#[cfg(test)]
-mod gadget_proof;
+mod gadget_checks;
 mod hash;
-#[cfg(test)]
-mod inactive_withdrawal_air;
-#[cfg(test)]
-mod opening_proof;
-#[cfg(test)]
-mod opening_statement;
-#[cfg(test)]
-mod permutation_proof;
 #[cfg(any(test, feature = "prover"))]
 mod prover;
 mod random;
-#[cfg(test)]
-mod recipient_hash_proof;
-#[cfg(test)]
-mod recipient_pair_proof;
 #[cfg(test)]
 mod square_air;
 #[cfg(any(test, feature = "prover"))]

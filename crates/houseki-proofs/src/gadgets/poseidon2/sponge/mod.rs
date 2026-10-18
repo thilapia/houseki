@@ -4,11 +4,15 @@
 mod air;
 #[cfg(any(test, feature = "prover"))]
 mod error;
+#[cfg(test)]
+mod framed_air;
 
 #[cfg(test)]
 pub(super) use air::SpongeAir;
 #[cfg(any(test, feature = "prover"))]
 pub(crate) use error::SpongeError;
+#[cfg(test)]
+pub(crate) use framed_air::FramedSpongeAir;
 
 use super::{
     permutation,

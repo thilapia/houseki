@@ -3,8 +3,6 @@
 #[cfg(test)]
 mod air;
 mod block;
-#[cfg(test)]
-mod block_air;
 mod byte;
 mod error;
 
@@ -12,7 +10,7 @@ mod error;
 pub(crate) use air::FramingAir;
 pub(crate) use block::Block;
 #[cfg(test)]
-pub(crate) use block_air::BlockAir;
+pub(crate) use block::BlockAir;
 pub(crate) use error::FramingError;
 
 use super::profile::RATE;
