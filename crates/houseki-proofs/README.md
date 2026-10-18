@@ -54,6 +54,11 @@ Profile identities bind exact statements, shapes, constraints, transcript rules,
 
 The consuming protocol owns activation, deprecation and emergency admission policy. Disabling new proofs must remain distinct from historical verification under the original rules. Keep the original verification implementation and profile artifacts available for historical statements according to that protocol's retention policy.
 
-The qualification [release tool](qualification/release.py) packages committed source, resolved dependency and license metadata, lockfile hashes, profile definition hashes, compiler identity and explicit evidence dispositions. It excludes local reports and caches. An optional exact-version OSV query records outstanding upstream advisories without treating database silence as a security proof. The current workspace disables package publication and has no selected Houseki project license. Those facts remain visible in the candidate manifest.
+The qualification [release tool](qualification/release.py) packages committed source, resolved dependency and license
+metadata, lockfile hashes, profile definition hashes, compiler identity and explicit evidence dispositions. It excludes
+local reports and caches. An optional exact-version OSV query records outstanding upstream advisories without treating
+database silence as a security proof. Package publication remains disabled. The project now includes the
+[Unlicense](../../UNLICENSE), while Cargo package license metadata remains unspecified. Candidate manifests retain the
+metadata and evidence for their exact source revision.
 
 Diagnostics may contain fixed public error categories, supported profile identifiers, encoded sizes and timing. Never log keys, private openings, raw traces or private witness values. An upstream security change requires checking its effect on the retained dependency version and local patches, then rerunning affected qualification and review gates. Preparing a source package does not publish it or activate any network profile.
