@@ -40,7 +40,9 @@ impl Layout {
 
     /// Bounds canonical bytes for every possible valid binary multiproof frontier.
     ///
-    /// All scalar, salt and vector dimensions are exact. Frontier maxima are summed independently,
+    /// All scalar, salt and vector dimensions are exact.
+    ///
+    /// Frontier maxima are summed independently,
     /// which remains conservative when batches and rounds share the same sampled query indices.
     pub(crate) fn encoded_upper_bound(self) -> Result<usize, CodecError> {
         self.validate()?;
@@ -70,7 +72,9 @@ impl Layout {
 
     /// Bounds all decoded vector payloads and nested headers on supported 32-bit and 64-bit targets.
     ///
-    /// Scalar and digest storage is covered by encoded bytes. Additional 24-byte vector headers,
+    /// Scalar and digest storage is covered by encoded bytes.
+    ///
+    /// Additional 24-byte vector headers,
     /// 72-byte opening records and the omitted zero grinding vector cover every Reader allocation.
     pub(crate) fn decoded_upper_bound(self) -> Result<usize, CodecError> {
         let encoded = self.encoded_upper_bound()? as u128;
@@ -118,8 +122,12 @@ impl Layout {
 
 /// Maximum frontier among at most 128 distinct leaves in a binary tree of the trusted height.
 ///
-/// The query bound is a power of two. Filling that many root branches leaves at most one missing
-/// sibling per selected branch at each deeper level. Short trees saturate at half their leaves.
+/// The query bound is a power of two.
+///
+/// Filling that many root branches leaves at most one missing
+/// sibling per selected branch at each deeper level.
+///
+/// Short trees saturate at half their leaves.
 pub(super) fn frontier_maximum(height: usize) -> usize {
     let selected = QUERIES.min(1 << (height - 1));
     selected * (height - selected.ilog2() as usize)
