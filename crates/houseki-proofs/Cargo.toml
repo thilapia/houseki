@@ -52,3 +52,8 @@ required-features = ["experimental-profiles"]
 [[example]]
 name = "verify_payment"
 required-features = ["experimental-profiles"]
+
+[[example]]
+name = "payment"
+path = "examples/payment/main.rs"
+required-features = ["prover", "experimental-profiles"]
