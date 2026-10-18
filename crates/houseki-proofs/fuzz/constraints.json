@@ -1,0 +1,86 @@
+[
+  {
+    "id": "byte-boolean",
+    "path": "crates/houseki-proofs/src/gadgets/encoding/byte/mod.rs",
+    "before": "builder.assert_bool(*bit);",
+    "after": "",
+    "test": "non_boolean_bits_are_rejected_even_when_reconstruction_matches"
+  },
+  {
+    "id": "field-canonical",
+    "path": "crates/houseki-proofs/src/gadgets/encoding/field/mod.rs",
+    "before": "builder.assert_zero(high_is_max * low.clone());",
+    "after": "",
+    "test": "modulus_aliases_are_rejected_with_valid_byte_ranges"
+  },
+  {
+    "id": "positive-note",
+    "path": "crates/houseki-proofs/src/gadgets/amount/range/mod.rs",
+    "before": "builder.assert_one(sum * nonzero_inverse);",
+    "after": "let _ = sum * nonzero_inverse;",
+    "test": "zero_note_cannot_fake_positivity"
+  },
+  {
+    "id": "addition-overflow",
+    "path": "crates/houseki-proofs/src/gadgets/amount/addition/mod.rs",
+    "before": "builder.assert_zero(incoming);",
+    "after": "",
+    "test": "overflow_cannot_wrap_at_the_final_limb"
+  },
+  {
+    "id": "addition-boolean",
+    "path": "crates/houseki-proofs/src/gadgets/amount/addition/mod.rs",
+    "before": "builder.assert_bool(*outgoing);",
+    "after": "",
+    "test": "modular_alias_cannot_use_non_boolean_carries"
+  },
+  {
+    "id": "framing-padding",
+    "path": "crates/houseki-proofs/src/gadgets/poseidon2/framing/mod.rs",
+    "before": "builder.assert_one(words[self.packed_words]);",
+    "after": "",
+    "test": "every_cell_is_constrained_without_public_input_links"
+  },
+  {
+    "id": "kem-cap",
+    "path": "crates/houseki-proofs/src/gadgets/notes/opening/compact/coefficient.rs",
+    "before": "builder.assert_zero(helper * bits[8] * low);",
+    "after": "let _ = low;",
+    "test": "compact_coefficient_bound_is_exact_for_every_twelve_bit_value"
+  },
+  {
+    "id": "occupied-position",
+    "path": "crates/houseki-proofs/src/gadgets/merkle/mod.rs",
+    "before": "self.eval_occupancy(builder, row, phases[130].clone(), &endpoints);",
+    "after": "",
+    "test": "membership_occupancy_rejects_coherently_rehashed_invalid_count"
+  },
+  {
+    "id": "withdrawal-amount",
+    "path": "crates/houseki-proofs/src/circuits/reward_withdrawal/air.rs",
+    "before": ".when(selectors[76].clone())",
+    "after": ".when(AB::Expr::ZERO)",
+    "test": "reward_withdrawal_air_rejects_every_public_amount_byte_change"
+  },
+  {
+    "id": "payment-registers",
+    "path": "crates/houseki-proofs/src/circuits/payment/air.rs",
+    "before": ".assert_eq(row[column], next[column]);",
+    "after": ".assert_eq(row[column], row[column]);",
+    "test": "payment_coherent_input_splices_fail_at_register_seams"
+  },
+  {
+    "id": "payment-totals",
+    "path": "crates/houseki-proofs/src/circuits/payment/air.rs",
+    "before": "builder.when_transition().assert_eq(\n                next[byte],",
+    "after": "builder.when(AB::Expr::ZERO).assert_eq(\n                next[byte],",
+    "test": "payment_coherent_accumulator_resets_fail_at_continuity"
+  },
+  {
+    "id": "payment-opening-amount",
+    "path": "crates/houseki-proofs/src/circuits/payment/air.rs",
+    "before": ".assert_eq(work[64 + byte], row[32 + byte]);",
+    "after": ".assert_eq(work[64 + byte], work[64 + byte]);",
+    "test": "payment_coherent_output_amount_fails_at_opening_seam"
+  }
+]
