@@ -171,6 +171,9 @@ impl<'a> Reader<'a> {
             return Err(CodecError::TrailingBytes);
         }
 
+        #[cfg(test)]
+        super::DECODED_VECTOR_BYTES.with(|bytes| bytes.set(self.allocated));
+
         Ok(self.allocated)
     }
 }

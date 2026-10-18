@@ -20,7 +20,13 @@ pub(crate) use layout::Layout;
 const HEADER_BYTES: usize = 96;
 
 /// Bound on requested decoded vector storage, including all nested vector headers.
-const MAX_DECODED_BYTES: usize = 16 * 1024 * 1024;
+pub(crate) const MAX_DECODED_BYTES: usize = 16 * 1024 * 1024;
+
+#[cfg(test)]
+thread_local! {
+    /// Exact vector payload budget from the last successful scan, excluding allocator ownership headers.
+    static DECODED_VECTOR_BYTES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 /// Counts the exact canonical size of a valid generated proof for test resource measurements.
 ///

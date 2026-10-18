@@ -19,7 +19,7 @@ mod withdrawal;
 #[cfg(feature = "prover")]
 mod witness;
 
-pub(crate) use codec::{CodecError, Layout};
+pub(crate) use codec::{CodecError, Layout, MAX_DECODED_BYTES};
 pub(crate) use error::{BackendError, VerificationError};
 #[cfg(feature = "prover")]
 #[cfg_attr(

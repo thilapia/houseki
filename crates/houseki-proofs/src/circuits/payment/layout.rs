@@ -30,7 +30,22 @@ impl PaymentLayout {
             return Err(PaymentLayoutError::InvalidGeometry);
         }
 
-        Ok(Self { schedule, rows })
+        let layout = Self { schedule, rows };
+        if layout
+            .codec()
+            .encoded_upper_bound()
+            .map_err(|_| PaymentLayoutError::InvalidGeometry)?
+            > crate::profile::MAX_PROOF_BYTES
+            || layout
+                .codec()
+                .decoded_upper_bound()
+                .map_err(|_| PaymentLayoutError::InvalidGeometry)?
+                > crate::backend::MAX_DECODED_BYTES
+        {
+            return Err(PaymentLayoutError::InvalidGeometry);
+        }
+
+        Ok(layout)
     }
 
     /// Returns the exact supported public count pair.
