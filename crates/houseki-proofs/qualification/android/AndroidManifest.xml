@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.houseki.proofs.qualification" android:versionCode="1" android:versionName="0.1">
+    <uses-sdk android:minSdkVersion="34" android:targetSdkVersion="34" />
+    <uses-feature android:glEsVersion="0x00020000" android:required="false" />
+    <application android:label="Houseki proof qualification" android:hasCode="false"
+        android:debuggable="true" android:allowBackup="false" android:fullBackupContent="false"
+        android:extractNativeLibs="true">
+        <activity android:name="android.app.NativeActivity" android:exported="true"
+            android:configChanges="orientation|keyboardHidden|screenSize">
+            <meta-data android:name="android.app.lib_name" android:value="houseki_qualification" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

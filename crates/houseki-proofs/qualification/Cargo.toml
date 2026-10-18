@@ -13,6 +13,7 @@ crate-type = ["rlib", "staticlib"]
 [features]
 default = []
 prover = ["houseki-proofs/prover", "dep:houseki-crypto", "dep:houseki-notes", "dep:houseki-state"]
+mobile = ["prover"]
 
 [dependencies]
 houseki-proofs = { path = "..", features = ["experimental-profiles"] }

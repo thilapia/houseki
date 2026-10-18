@@ -3,6 +3,8 @@
 mod error;
 #[cfg(feature = "prover")]
 mod lifecycle;
+#[cfg(feature = "mobile")]
+mod mobile;
 #[cfg(feature = "prover")]
 #[path = "../../examples/payment/owner.rs"]
 #[allow(
