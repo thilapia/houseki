@@ -98,7 +98,7 @@ mod tests {
         )
     }
 
-    /// Never turns unknown or experimental profile identifiers into supported profiles.
+    /// Rejects unregistered profiles, including identities reserved for synthetic tests.
     #[test]
     fn unknown_profile_is_rejected() {
         for id in [0, 1, 2, 0xffff0003, 0xffff0004, u32::MAX] {
