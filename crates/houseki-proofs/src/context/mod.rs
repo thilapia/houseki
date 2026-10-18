@@ -4,7 +4,10 @@ mod error;
 
 pub use error::ContextError;
 
-use crate::profile::ExpectedIdentity;
+use crate::{
+    StatementError,
+    profile::{ExpectedIdentity, RegisteredProfile, payment::SupportedPaymentShape},
+};
 use houseki_types::{BodyCodecLimits, TransactionContext};
 
 /// Recognized rules paired with the caller's complete expected transaction context.
@@ -21,7 +24,7 @@ pub struct ProofContext {
     expected: TransactionContext,
 
     /// Exact relation identity resolved independently of any supplied proof bytes.
-    identity: ExpectedIdentity,
+    profile: RegisteredProfile,
 }
 
 impl ProofContext {
@@ -41,7 +44,9 @@ impl ProofContext {
         {
             return Ok(Self {
                 expected,
-                identity: crate::profile::reward_withdrawal::identity(),
+                profile: RegisteredProfile::RewardWithdrawal(
+                    crate::profile::reward_withdrawal::identity(),
+                ),
             });
         }
 
@@ -55,12 +60,29 @@ impl ProofContext {
 
     /// Returns the immutable registry identity without interpreting an untrusted proof header.
     pub(crate) const fn identity(&self) -> &ExpectedIdentity {
-        &self.identity
+        self.profile.withdrawal_identity()
+    }
+
+    /// Resolves a complete payment family without admitting partial relation profiles.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "payment admission follows the complete family manifest"
+        )
+    )]
+    pub(crate) fn payment_identity(
+        &self,
+        _shape: SupportedPaymentShape,
+    ) -> Result<ExpectedIdentity, StatementError> {
+        match self.profile {
+            RegisteredProfile::RewardWithdrawal(_) => Err(StatementError::IdentityMismatch),
+        }
     }
 
     /// Returns the representation bounds applied before allocating a canonical body.
     pub fn body_limits(&self) -> BodyCodecLimits {
-        crate::profile::body_limits()
+        self.profile.body_limits()
     }
 
     /// Returns the inclusive complete proof byte bound.
@@ -120,6 +142,38 @@ mod tests {
                 ProofContext::new(declared(1, profile)),
                 Err(ContextError::UnsupportedProfile)
             ));
+        }
+    }
+
+    /// Withdrawal recognition retains its original bounds and cannot supply a payment identity.
+    #[test]
+    fn profile_bounds_and_identities_remain_family_specific() {
+        let identity = crate::profile::reward_withdrawal::identity();
+        let context = ProofContext {
+            expected: declared(1, identity.profile.value()),
+            profile: RegisteredProfile::RewardWithdrawal(identity),
+        };
+
+        assert_eq!(context.identity(), &identity);
+        assert_eq!(context.max_proof_bytes(), 2_097_152);
+        assert_eq!(context.body_limits().max_body_bytes(), 16384);
+        assert_eq!(context.body_limits().max_payload_bytes(), 4096);
+        assert!(
+            context
+                .body_limits()
+                .payment_counts()
+                .validate_shape(houseki_types::PaymentShape::new(4, 2).unwrap())
+                .is_err()
+        );
+        for inputs in 1..=4 {
+            for outputs in 1..=2 {
+                let shape = SupportedPaymentShape::new(inputs, outputs).unwrap();
+
+                assert!(matches!(
+                    context.payment_identity(shape),
+                    Err(StatementError::IdentityMismatch)
+                ));
+            }
         }
     }
 

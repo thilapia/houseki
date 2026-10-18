@@ -17,7 +17,7 @@ impl Statement {
         require_context(expected, body.context()).map_err(|_| StatementError::ContextMismatch)?;
         require_identity(identity, expected, Relation::RewardWithdrawal, 1)?;
 
-        let body_bytes = body.to_bytes(crate::profile::body_limits())?;
+        let body_bytes = body.to_bytes(crate::profile::reward_withdrawal::body_limits())?;
 
         let mut public = reserve(WithdrawalValues::<u8>::LENGTH)?;
         public.extend_from_slice(expected.network_id().as_bytes());

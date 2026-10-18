@@ -2,7 +2,7 @@
 
 use crate::{
     gadgets::OpeningFixture,
-    profile::{ExpectedIdentity, Relation, body_limits},
+    profile::{ExpectedIdentity, Relation, payment, reward_withdrawal},
     statement::Statement,
 };
 use houseki_types::{NoteCount, NoteTreeAnchor, PaymentBody, ProofProfileId, RewardWithdrawalBody};
@@ -19,6 +19,12 @@ pub(super) fn statement(
     opaque: u8,
 ) -> (ExpectedIdentity, Statement) {
     let payment = inputs != 0;
+    let limits = if payment {
+        payment::body_limits()
+    } else {
+        reward_withdrawal::body_limits()
+    };
+
     let identity = ExpectedIdentity {
         profile: ProofProfileId::new(0xffff000f),
         relation: if payment {
@@ -85,15 +91,15 @@ pub(super) fn statement(
     }
 
     let statement = if payment {
-        let body = PaymentBody::from_bytes(&bytes, body_limits()).unwrap();
+        let body = PaymentBody::from_bytes(&bytes, limits).unwrap();
         let anchor = NoteTreeAnchor::new(
             body.context().network_id(),
             NoteCount::new(1 << 64).unwrap(),
             body.inputs().anchor(),
         );
-        Statement::payment(&body, &anchor, body.context(), &identity).unwrap()
+        Statement::payment(&body, &anchor, body.context(), &identity, limits).unwrap()
     } else {
-        let body = RewardWithdrawalBody::from_bytes(&bytes, body_limits()).unwrap();
+        let body = RewardWithdrawalBody::from_bytes(&bytes, limits).unwrap();
         Statement::withdrawal(&body, body.context(), &identity).unwrap()
     };
 

@@ -1,4 +1,6 @@
-//! Borrowed semantic fields for every supported frozen payment shape.
+//! Borrowed semantic fields for every supported bounded payment shape.
+
+use crate::profile::payment::SupportedPaymentShape;
 
 /// Retains trusted public shape metadata while exposing only the selected statement's fields.
 pub(crate) struct PaymentValues<'a, T> {
@@ -13,13 +15,13 @@ pub(crate) struct PaymentValues<'a, T> {
 }
 
 impl<'a, T> PaymentValues<'a, T> {
-    /// Computes the public length only for the four supported V1 shapes.
+    /// Computes the public length only for the eight supported payment shapes.
     pub(crate) fn length(inputs: usize, outputs: usize) -> Option<usize> {
-        if !(1..=2).contains(&inputs) || !(1..=2).contains(&outputs) {
-            return None;
-        }
-
-        Some(160 + 64 * (inputs + outputs))
+        Some(
+            SupportedPaymentShape::new(inputs, outputs)
+                .ok()?
+                .public_values_len(),
+        )
     }
 
     /// Checks exact storage length against caller-selected shape without reading witness data.
@@ -84,8 +86,8 @@ mod tests {
     /// Shared lengths preserve the frozen order and never admit ambiguous extra cells or indices.
     #[test]
     fn payment_view_preserves_all_shapes_and_endpoints() {
-        let values: Vec<_> = (0..417).collect();
-        for inputs in 1..=2 {
+        let values: Vec<_> = (0..545).collect();
+        for inputs in 1..=4 {
             for outputs in 1..=2 {
                 let length = 160 + 64 * (inputs + outputs);
                 let view = PaymentValues::new(&values[..length], inputs, outputs).unwrap();
@@ -116,7 +118,7 @@ mod tests {
             }
         }
 
-        for (inputs, outputs) in [(0, 1), (1, 0), (3, 1), (1, 3), (usize::MAX, usize::MAX)] {
+        for (inputs, outputs) in [(0, 1), (1, 0), (5, 1), (1, 3), (usize::MAX, usize::MAX)] {
             assert!(PaymentValues::new(&values, inputs, outputs).is_none());
             assert!(PaymentValues::<u8>::length(inputs, outputs).is_none());
         }

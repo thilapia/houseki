@@ -2,7 +2,7 @@
 
 use super::{ExpectedIdentity, Relation};
 use crate::{backend::Layout, circuits::reward_withdrawal::WithdrawalAir, gadgets::Opening};
-use houseki_types::ProofProfileId;
+use houseki_types::{BodyCodecLimits, PaymentCountLimits, ProofProfileId};
 use sha3::{Digest, Sha3_512};
 
 /// Qualification profile for the complete withdrawal relation, available only by explicit opt-in.
@@ -57,6 +57,15 @@ pub(crate) fn identity() -> ExpectedIdentity {
         shape: 1,
         manifest: Sha3_512::digest(MANIFEST).into(),
     }
+}
+
+/// Withdrawal representation bounds applied before body encoding or statement allocation.
+pub(crate) fn body_limits() -> BodyCodecLimits {
+    BodyCodecLimits::new(
+        PaymentCountLimits::new(2, 2).expect("nonzero fixed counts"),
+        4096,
+        16384,
+    )
 }
 
 /// Trusted geometry must agree with symbolic constraints before any encoded proof is accepted.
