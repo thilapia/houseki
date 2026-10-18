@@ -45,14 +45,17 @@ def dependencies(repository, manifest):
         "--all-features", "--locked"], cwd=repository, text=True))
     return [{"name": package["name"], "version": package["version"],
              "license": package["license"], "license_file_declared": package["license_file"] is not None,
-             "source": package["source"] or "workspace or retained vendor patch",
+             "source": package["source"] or (
+                 "retained vendor patch" if Path(package["manifest_path"]).resolve().is_relative_to(
+                     (repository / "vendor").resolve()) else "workspace"),
              "repository": package["repository"]}
             for package in sorted(metadata["packages"], key=lambda value: (value["name"], value["version"]))]
 
 
 def advisories(packages):
     """Query OSV for exact registry versions while preserving unavailable and untriaged outcomes."""
-    registry = [package for package in packages if package["source"].startswith("registry+")]
+    registry = [package for package in packages if package["source"].startswith("registry+")
+                or package["source"] == "retained vendor patch"]
     queries = [{"package": {"ecosystem": "crates.io", "name": package["name"]},
                 "version": package["version"]} for package in registry]
     request = urllib.request.Request("https://api.osv.dev/v1/querybatch",
@@ -60,7 +63,7 @@ def advisories(packages):
                                      headers={"Content-Type": "application/json"})
     report = {"service": "https://api.osv.dev/v1/querybatch",
               "checked_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              "scope": "exact registry versions, local vendor patch behavior requires separate assessment"}
+              "scope": "exact registry and vendored upstream versions, local patch behavior requires separate assessment"}
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             data = response.read(4 * 1024 * 1024 + 1)
