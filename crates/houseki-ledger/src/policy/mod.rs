@@ -1,8 +1,10 @@
 //! Exact activation, fees and bounded resource policy.
 
+mod context;
 mod error;
 mod limits;
 
+pub use context::CheckpointRules;
 pub use error::PolicyError;
 pub use limits::ExecutionLimits;
 
@@ -353,6 +355,30 @@ mod tests {
         assert!(matches!(
             policy.payment_fee(&body(4, 2)),
             Err(PolicyError::FeeOverflow)
+        ));
+    }
+
+    /// Ensures first and final checkpoint advancement cannot wrap.
+    #[test]
+    fn checkpoint_sequence_never_wraps() {
+        let policy = ExecutionPolicy::development().unwrap();
+        assert_eq!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(0))
+                .unwrap()
+                .sequence()
+                .value(),
+            1
+        );
+        assert_eq!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX - 1))
+                .unwrap()
+                .sequence()
+                .value(),
+            u64::MAX
+        );
+        assert!(matches!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX)),
+            Err(PolicyError::SequenceExhausted)
         ));
     }
 
