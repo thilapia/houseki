@@ -1,4 +1,4 @@
-//! Fallible complete-width canonical record writer.
+//! Fallible complete width canonical record writer.
 
 use crate::ArtifactError;
 
@@ -54,6 +54,7 @@ impl Writer {
         for value in values {
             self.blob(&encode(value)?)?;
         }
+
         Ok(())
     }
 

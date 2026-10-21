@@ -1,4 +1,4 @@
-//! Public representation of the canonical snapshot record record.
+//! Public representation of the canonical snapshot record.
 
 use crate::{AnchorRecord, CommitteeEntry, ExecutionPolicy};
 use houseki_types::{
@@ -40,7 +40,8 @@ pub struct SnapshotRecord {
 }
 
 impl SnapshotRecord {
-    /// Copies bounded complete logical records for canonical encoding without conferring trust.
+    /// Copies bounded complete logical records for canonical encoding without
+    /// conferring trust.
     ///
     /// # Errors
     ///
@@ -51,6 +52,7 @@ impl SnapshotRecord {
             .try_reserve_exact(state.spent.len())
             .map_err(|_| crate::ArtifactError::Allocation)?;
         spent.extend(state.spent().copied());
+
         let mut accounts = Vec::new();
         accounts
             .try_reserve_exact(state.accounts.len())
@@ -60,16 +62,19 @@ impl SnapshotRecord {
                 .accounts()
                 .map(|(id, a)| (RewardAccountId::from_bytes(*id), a.clone())),
         );
+
         let mut anchors = Vec::new();
         anchors
             .try_reserve_exact(state.anchors().len())
             .map_err(|_| crate::ArtifactError::Allocation)?;
         anchors.extend_from_slice(state.anchors());
+
         let mut committee = Vec::new();
         committee
             .try_reserve_exact(state.committee.len())
             .map_err(|_| crate::ArtifactError::Allocation)?;
         committee.extend(state.committee().cloned());
+
         Ok(Self {
             network: state.network(),
             note_anchor: state.note_anchor(),

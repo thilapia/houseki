@@ -21,9 +21,17 @@ pub enum ArtifactError {
 
     /// An embedded native transaction body failed its existing codec.
     #[error(transparent)]
-    Body(#[from] houseki_types::BodyCodecError),
+    Body(
+        /// Original body failure retained as the source.
+        #[from]
+        houseki_types::BodyCodecError,
+    ),
 
     /// A decoded policy failed its invariants.
     #[error(transparent)]
-    Policy(#[from] crate::PolicyError),
+    Policy(
+        /// Original policy failure retained as the source.
+        #[from]
+        crate::PolicyError,
+    ),
 }

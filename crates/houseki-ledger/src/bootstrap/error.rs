@@ -13,7 +13,11 @@ pub enum BootstrapError {
 
     /// Complete canonical representation could not be constructed.
     #[error(transparent)]
-    Artifact(#[from] crate::ArtifactError),
+    Artifact(
+        /// Original artifact failure retained as the source.
+        #[from]
+        crate::ArtifactError,
+    ),
 
     /// A manifest list or key descriptor exceeds the selected reference capacity.
     #[error("bootstrap capacity exceeded")]
@@ -61,13 +65,25 @@ pub enum BootstrapError {
 
     /// Policy validation failed before state reconstruction.
     #[error(transparent)]
-    Policy(#[from] crate::PolicyError),
+    Policy(
+        /// Original policy failure retained as the source.
+        #[from]
+        crate::PolicyError,
+    ),
 
     /// Fixed account identity hashing failed.
     #[error(transparent)]
-    AccountHash(#[from] houseki_crypto::CryptoFramingError),
+    AccountHash(
+        /// Original accounthash failure retained as the source.
+        #[from]
+        houseki_crypto::CryptoFramingError,
+    ),
 
     /// Concrete note tree reconstruction failed.
     #[error(transparent)]
-    Tree(#[from] houseki_state::NoteTreeError),
+    Tree(
+        /// Original tree failure retained as the source.
+        #[from]
+        houseki_state::NoteTreeError,
+    ),
 }

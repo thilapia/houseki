@@ -51,6 +51,7 @@ fn encode_envelope(value: &TransactionEnvelope) -> Result<Vec<u8>, ArtifactError
             if e.proof().byte_len() > 2097152 {
                 return Err(ArtifactError::Bound);
             }
+
             w.blob(e.proof().as_bytes())?;
             w.blob(&[])?;
         }
@@ -60,10 +61,12 @@ fn encode_envelope(value: &TransactionEnvelope) -> Result<Vec<u8>, ArtifactError
             if e.proof().byte_len() > 2097152 {
                 return Err(ArtifactError::Bound);
             }
+
             w.blob(e.proof().as_bytes())?;
             w.blob(e.signature().as_bytes())?;
         }
     }
+
     Ok(w.finish())
 }
 
@@ -81,6 +84,7 @@ fn decode_envelope(
     if proof.len() > 2097152 {
         return Err(ArtifactError::Bound);
     }
+
     let proof = EncodedTransactionProof::new(copied(proof)?, 2097152)
         .map_err(|_| ArtifactError::Invalid)?;
     match kind {
@@ -128,17 +132,28 @@ fn decode_occurrence(bytes: &[u8], limits: DecodeLimits) -> Result<Occurrence, A
     ))
 }
 
-/// Encodes the complete length-prefixed occurrence list used for component accounting.
+/// Encodes the complete length prefixed occurrence list used for component accounting.
+///
+/// Rejects more than 128 occurrences before encoding nested envelopes, then preserves
+/// native body codec failures and allocation errors.
+///
+/// Returns a new complete buffer that includes list and record length prefixes.
 pub fn encode_occurrences(values: &[Occurrence]) -> Result<Vec<u8>, ArtifactError> {
     if values.len() > 128 {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.list(values, encode_occurrence)?;
     Ok(w.finish())
 }
 
 /// Decodes a complete bounded occurrence list without establishing source validity.
+///
+/// Applies the caller’s [`DecodeLimits`] and the 128 occurrence cap before allocating a
+/// list, then validates nested body representations and rejects trailing bytes.
+///
+/// Decoded proofs and signatures remain unverified.
 pub fn decode_occurrences(
     bytes: &[u8],
     limits: DecodeLimits,
@@ -197,6 +212,7 @@ fn encode_receipt(value: &Receipt) -> Result<Vec<u8>, ArtifactError> {
             w.u32(reason_code(r))?
         }
     }
+
     Ok(w.finish())
 }
 
@@ -210,21 +226,32 @@ pub(super) fn decode_receipt(bytes: &[u8], limits: DecodeLimits) -> Result<Recei
         (2, code) => ExecutionOutcome::Rejected(reason(code)?),
         _ => return Err(ArtifactError::Invalid),
     };
+
     r.finish()?;
     Ok(Receipt::new(vertex, index, outcome))
 }
 
 /// Encodes every occurrence receipt in execution order.
+///
+/// Rejects more than 64 receipts before allocating output and preserves allocation
+/// failures.
+///
+/// Outcome and reason codes use the fixed reference schema rather than enum declaration
+/// order.
 pub fn encode_receipts(values: &[Receipt]) -> Result<Vec<u8>, ArtifactError> {
     if values.len() > 64 {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.list(values, encode_receipt)?;
     Ok(w.finish())
 }
 
 /// Decodes bounded receipt representations without an acceptance claim.
+///
+/// Applies the caller’s [`DecodeLimits`] and the 64 receipt cap before list allocation,
+/// then rejects unknown outcome codes, invalid outcome/reason pairs and trailing bytes.
 pub fn decode_receipts(bytes: &[u8], limits: DecodeLimits) -> Result<Vec<Receipt>, ArtifactError> {
     let mut r = Reader::new(bytes, limits)?;
     let values = r.list(64, |b| decode_receipt(b, limits))?;
@@ -242,6 +269,7 @@ fn sorted<T>(values: &[T], key: impl Fn(&T) -> [u8; 64]) -> Result<Vec<&T>, Arti
     if refs.windows(2).any(|v| key(v[0]) == key(v[1])) {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(refs)
 }
 
@@ -302,6 +330,7 @@ fn encode_committee(value: &CommitteeEntry) -> Result<Vec<u8>, ArtifactError> {
     if value.weight() == 0 || value.key_descriptor().len() > 16384 {
         return Err(ArtifactError::Invalid);
     }
+
     let mut w = Writer::new();
     w.raw(value.validator().as_bytes())?;
     w.u128(value.weight())?;
@@ -320,12 +349,19 @@ fn decode_committee(bytes: &[u8], limits: DecodeLimits) -> Result<CommitteeEntry
     if key.len() > 16384 || weight == 0 {
         return Err(ArtifactError::Invalid);
     }
+
     let value = CommitteeEntry::new(validator, weight, account, copied(key)?);
     r.finish()?;
     Ok(value)
 }
 
 /// Encodes every policy field in the governing schema order.
+///
+/// Validates resource bounds, anchor retention and reserved fee schedule rates before
+/// allocating the complete policy record.
+///
+/// Preserves policy and allocation errors without establishing profile recognition or
+/// activation authority.
 pub fn encode_policy(value: &ExecutionPolicy) -> Result<Vec<u8>, ArtifactError> {
     value.validate()?;
     let mut w = Writer::new();
@@ -333,9 +369,11 @@ pub fn encode_policy(value: &ExecutionPolicy) -> Result<Vec<u8>, ArtifactError> 
     w.list(value.payment_profiles(), |p| {
         Ok(p.value().to_le_bytes().to_vec())
     })?;
+
     w.list(value.withdrawal_profiles(), |p| {
         Ok(p.value().to_le_bytes().to_vec())
     })?;
+
     w.u32(value.fee_schedule().value())?;
     w.u128(value.payment_base_fee().atoms())?;
     w.u128(value.per_input_fee().atoms())?;
@@ -362,7 +400,16 @@ pub fn encode_policy(value: &ExecutionPolicy) -> Result<Vec<u8>, ArtifactError> 
     Ok(w.finish())
 }
 
-/// Decodes a V1 policy without changing proof-registry recognition or admission.
+/// Decodes a V1 policy without changing proof registry recognition or admission.
+///
+/// Accepts protocol 1 and at most one payment profile `0xffff0008` and withdrawal profile
+/// `0xffff0007` each.
+///
+/// Nonempty activation lists require the `experimental-profiles` feature.
+///
+/// Applies the caller’s [`DecodeLimits`], rejects unsupported schema codes and trailing
+/// bytes, validates policy invariants, and requires exact canonical reencoding before
+/// returning the policy.
 pub fn decode_policy(bytes: &[u8], limits: DecodeLimits) -> Result<ExecutionPolicy, ArtifactError> {
     let mut r = Reader::new(bytes, limits)?;
     let protocol = ProtocolVersion::new(r.u32()?);
@@ -372,6 +419,7 @@ pub fn decode_policy(bytes: &[u8], limits: DecodeLimits) -> Result<ExecutionPoli
         p.finish()?;
         Ok(v)
     };
+
     let payment_profiles = r.list(1, profile)?;
     let withdrawal_profiles = r.list(1, profile)?;
     if protocol.value() != 1
@@ -380,11 +428,13 @@ pub fn decode_policy(bytes: &[u8], limits: DecodeLimits) -> Result<ExecutionPoli
     {
         return Err(ArtifactError::Invalid);
     }
+
     if !cfg!(feature = "experimental-profiles")
         && (!payment_profiles.is_empty() || !withdrawal_profiles.is_empty())
     {
         return Err(ArtifactError::Invalid);
     }
+
     let fee_schedule = FeeScheduleId::new(r.u32()?);
     let payment_base_fee = amount(&mut r)?;
     let per_input_fee = amount(&mut r)?;
@@ -407,9 +457,11 @@ pub fn decode_policy(bytes: &[u8], limits: DecodeLimits) -> Result<ExecutionPoli
         anchor_window: r.u64()?,
         anchor_retention: r.u64()?,
     };
+
     if (r.u32()?, r.u32()?, r.u32()?) != (1, 1, 1) {
         return Err(ArtifactError::Invalid);
     }
+
     r.finish()?;
     let value = ExecutionPolicy {
         protocol,
@@ -422,14 +474,24 @@ pub fn decode_policy(bytes: &[u8], limits: DecodeLimits) -> Result<ExecutionPoli
         withdrawal_fee,
         limits: resource,
     };
+
     value.validate()?;
     if encode_policy(&value)? != bytes {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(value)
 }
 
-/// Encodes the complete flat logical state record with canonical full-key sorting.
+/// Encodes the complete flat logical state record with canonical full key sorting.
+///
+/// Checks list capacities and the note anchor network before writing, then sorts complete
+/// spent, account and validator keys and rejects duplicates.
+///
+/// Preserves nested policy errors and allocation failures.
+///
+/// The result is a flat representation and does not reconstruct the tree or authenticate
+/// its roots.
 pub fn encode_snapshot(value: &SnapshotRecord) -> Result<Vec<u8>, ArtifactError> {
     if value.spent.len() > 4096
         || value.accounts.len() > 64
@@ -439,6 +501,7 @@ pub fn encode_snapshot(value: &SnapshotRecord) -> Result<Vec<u8>, ArtifactError>
     {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.raw(value.network.as_bytes())?;
     w.raw(value.note_anchor.root().as_bytes())?;
@@ -446,9 +509,11 @@ pub fn encode_snapshot(value: &SnapshotRecord) -> Result<Vec<u8>, ArtifactError>
     w.list(&sorted(&value.spent, |v| v.into_bytes())?, |v| {
         Ok(v.as_bytes().to_vec())
     })?;
+
     w.list(&sorted(&value.accounts, |v| v.0.into_bytes())?, |v| {
         encode_account(v)
     })?;
+
     w.list(&value.anchors, encode_anchor)?;
     w.blob(&encode_policy(&value.policy)?)?;
     w.u64(value.committee_context.epoch().value())?;
@@ -463,6 +528,12 @@ pub fn encode_snapshot(value: &SnapshotRecord) -> Result<Vec<u8>, ArtifactError>
 }
 
 /// Decodes canonical snapshot fields without reconstructing a trusted logical state.
+///
+/// Applies the caller’s [`DecodeLimits`] and each reference list cap before allocation,
+/// then validates the embedded policy and requires exact canonical reencoding.
+///
+/// Rejects duplicate or noncanonical map order and trailing bytes without installing the
+/// reported state.
 pub fn decode_snapshot(
     bytes: &[u8],
     limits: DecodeLimits,
@@ -477,6 +548,7 @@ pub fn decode_snapshot(
         r.finish()?;
         Ok(v)
     })?;
+
     let accounts = r.list(64, |b| decode_account(b, limits))?;
     let anchors = r.list(64, |b| decode_anchor(b, limits))?;
     let policy = decode_policy(r.blob()?, limits)?;
@@ -498,9 +570,11 @@ pub fn decode_snapshot(
         pool,
         issued,
     };
+
     if encode_snapshot(&value)? != bytes {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(value)
 }
 
@@ -515,7 +589,7 @@ fn encode_account_effect(v: &AccountEffect) -> Result<Vec<u8>, ArtifactError> {
     Ok(w.finish())
 }
 
-/// Decodes full-width account effects without authorizing their application.
+/// Decodes full width account effects without authorizing their application.
 fn decode_account_effect(b: &[u8], l: DecodeLimits) -> Result<AccountEffect, ArtifactError> {
     let mut r = Reader::new(b, l)?;
     let v = AccountEffect {
@@ -525,6 +599,7 @@ fn decode_account_effect(b: &[u8], l: DecodeLimits) -> Result<AccountEffect, Art
         after_balance: amount(&mut r)?,
         after_nonce: WithdrawalNonce::new(r.u64()?),
     };
+
     r.finish()?;
     Ok(v)
 }
@@ -538,6 +613,7 @@ fn encode_effect(v: &EffectRecord) -> Result<Vec<u8>, ArtifactError> {
         if a.nullifiers.len() > 4 || a.appends.len() > 2 || a.accounts.len() > 2 {
             return Err(ArtifactError::Bound);
         }
+
         let mut p = Writer::new();
         p.list(&a.nullifiers, |n| Ok(n.as_bytes().to_vec()))?;
         p.list(&a.appends, |a| {
@@ -546,9 +622,11 @@ fn encode_effect(v: &EffectRecord) -> Result<Vec<u8>, ArtifactError> {
             w.raw(a.commitment.as_bytes())?;
             Ok(w.finish())
         })?;
+
         p.list(&sorted(&a.accounts, |a| a.account_id.into_bytes())?, |v| {
             encode_account_effect(v)
         })?;
+
         p.u128(a.before_pool.atoms())?;
         p.u128(a.after_pool.atoms())?;
         w.u32(1)?;
@@ -557,6 +635,7 @@ fn encode_effect(v: &EffectRecord) -> Result<Vec<u8>, ArtifactError> {
         w.u32(0)?;
         w.blob(&[])?
     }
+
     Ok(w.finish())
 }
 
@@ -578,15 +657,18 @@ pub(super) fn decode_effect(b: &[u8], l: DecodeLimits) -> Result<EffectRecord, A
                 r.finish()?;
                 Ok(v)
             })?;
+
             let appends = p.list(2, |b| {
                 let mut r = Reader::new(b, l)?;
                 let a = NoteAppend {
                     position: NotePosition::new(r.u64()?),
                     commitment: NoteCommitment::from_bytes(r.fixed()?),
                 };
+
                 r.finish()?;
                 Ok(a)
             })?;
+
             let accounts = p.list(2, |b| decode_account_effect(b, l))?;
             let before_pool = amount(&mut p)?;
             let after_pool = amount(&mut p)?;
@@ -601,28 +683,42 @@ pub(super) fn decode_effect(b: &[u8], l: DecodeLimits) -> Result<EffectRecord, A
         }
         _ => return Err(ArtifactError::Invalid),
     };
+
     let v = EffectRecord {
         vertex_id,
         transaction_index,
         accepted,
     };
+
     if encode_effect(&v)? != b {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(v)
 }
 
 /// Encodes aligned public effect records in occurrence order.
+///
+/// Rejects more than 64 records before output allocation, then checks complete accepted
+/// payload bounds and canonical account changes.
+///
+/// Preserves allocation failures without applying any effect.
 pub fn encode_effects(values: &[EffectRecord]) -> Result<Vec<u8>, ArtifactError> {
     if values.len() > 64 {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.list(values, encode_effect)?;
     Ok(w.finish())
 }
 
 /// Decodes bounded effect representations without establishing their execution.
+///
+/// Applies the caller’s [`DecodeLimits`] and the 64 record cap before list allocation, then
+/// validates outcome payloads, sorted account changes and complete nested records.
+///
+/// Rejects trailing bytes and preserves allocation failures without applying any effect.
 pub fn decode_effects(b: &[u8], l: DecodeLimits) -> Result<Vec<EffectRecord>, ArtifactError> {
     let mut r = Reader::new(b, l)?;
     let v = r.list(64, |b| decode_effect(b, l))?;
@@ -630,7 +726,7 @@ pub fn decode_effects(b: &[u8], l: DecodeLimits) -> Result<Vec<EffectRecord>, Ar
     Ok(v)
 }
 
-/// Checks exact order-range arithmetic without authenticating the source.
+/// Checks exact order range arithmetic without authenticating the source.
 fn check_order(v: &OrderBinding) -> Result<(), ArtifactError> {
     if v.start_offset > v.end_offset
         || v.end_offset > v.unit_occurrence_count
@@ -639,6 +735,7 @@ fn check_order(v: &OrderBinding) -> Result<(), ArtifactError> {
     {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(())
 }
 
@@ -664,17 +761,25 @@ fn decode_order(b: &[u8], l: DecodeLimits) -> Result<OrderBinding, ArtifactError
         end_offset: r.u64()?,
         unit_occurrence_count: r.u64()?,
     };
+
     r.finish()?;
     check_order(&v)?;
     Ok(v)
 }
 
 /// Encodes every artifact header field in the governing acyclic order.
+///
+/// Checks source range arithmetic before subtraction, then rejects schema codes other than
+/// 1 or a receipt count that differs from the range length.
+///
+/// Returns a new buffer or an allocation error without deriving or certifying any
+/// referenced root.
 pub fn encode_artifact_header(v: &ArtifactHeader) -> Result<Vec<u8>, ArtifactError> {
     check_order(&v.order)?;
     if v.schema != 1 || v.occurrence_count != v.order.end_offset - v.order.start_offset {
         return Err(ArtifactError::Invalid);
     }
+
     let mut w = Writer::new();
     w.u32(v.schema)?;
     w.raw(v.policy_id.as_bytes())?;
@@ -695,6 +800,11 @@ pub fn encode_artifact_header(v: &ArtifactHeader) -> Result<Vec<u8>, ArtifactErr
 }
 
 /// Decodes a complete header without certifying its referenced roots.
+///
+/// Applies the caller’s [`DecodeLimits`], checks source range and count consistency through
+/// canonical reencoding, and rejects trailing bytes.
+///
+/// Allocation failures remain errors and the decoded roots remain unauthenticated.
 pub fn decode_artifact_header(b: &[u8], l: DecodeLimits) -> Result<ArtifactHeader, ArtifactError> {
     let mut r = Reader::new(b, l)?;
     let v = ArtifactHeader {
@@ -716,14 +826,22 @@ pub fn decode_artifact_header(b: &[u8], l: DecodeLimits) -> Result<ArtifactHeade
         effects_root: r.fixed()?,
         system_events_root: r.fixed()?,
     };
+
     r.finish()?;
     if encode_artifact_header(&v)? != b {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(v)
 }
 
 /// Encodes a complete source unit including its predecessor and every envelope byte.
+///
+/// Retains the complete predecessor and occurrence list, including each proof and
+/// signature.
+///
+/// Preserves the 128 occurrence cap, native body failures and allocation errors from
+/// [`encode_occurrences`].
 pub fn encode_fixture_unit(v: &FixtureUnitRecord) -> Result<Vec<u8>, ArtifactError> {
     let mut w = Writer::new();
     w.u64(v.ordinal)?;
@@ -733,6 +851,11 @@ pub fn encode_fixture_unit(v: &FixtureUnitRecord) -> Result<Vec<u8>, ArtifactErr
 }
 
 /// Decodes a complete source unit without authenticating its manifest membership.
+///
+/// Applies the caller’s [`DecodeLimits`] and the 128 occurrence cap before list allocation,
+/// then validates nested envelopes and rejects trailing bytes.
+///
+/// The decoded ordinal and predecessor remain declarations until source verification.
 pub fn decode_fixture_unit(b: &[u8], l: DecodeLimits) -> Result<FixtureUnitRecord, ArtifactError> {
     let mut r = Reader::new(b, l)?;
     let ordinal = r.u64()?;
@@ -747,10 +870,16 @@ pub fn decode_fixture_unit(b: &[u8], l: DecodeLimits) -> Result<FixtureUnitRecor
 }
 
 /// Encodes a finite fixture stream bound to network and trusted starting identity.
+///
+/// Rejects more than 64 unit identities before allocating output, then preserves their
+/// supplied order and complete identifier widths.
+///
+/// Preserves allocation failures without authenticating any source declaration.
 pub fn encode_fixture_stream(v: &FixtureStreamRecord) -> Result<Vec<u8>, ArtifactError> {
     if v.unit_ids.len() > 64 {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.raw(v.network.as_bytes())?;
     w.raw(v.starting_artifact_id.as_bytes())?;
@@ -759,6 +888,11 @@ pub fn encode_fixture_stream(v: &FixtureStreamRecord) -> Result<Vec<u8>, Artifac
 }
 
 /// Decodes a finite stream representation without installing fixture trust.
+///
+/// Applies the caller’s [`DecodeLimits`] and the 64 identity cap before list allocation,
+/// then rejects incomplete identifiers and trailing bytes.
+///
+/// The returned network and identities remain unauthenticated declarations.
 pub fn decode_fixture_stream(
     b: &[u8],
     l: DecodeLimits,
@@ -772,6 +906,7 @@ pub fn decode_fixture_stream(
         r.finish()?;
         Ok(v)
     })?;
+
     r.finish()?;
     Ok(FixtureStreamRecord {
         network,

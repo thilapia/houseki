@@ -1,4 +1,4 @@
-//! Exact schema-1 replay container carrying public representations only.
+//! Exact schema 1 replay container carrying public representations only.
 
 use super::{DecodeLimits, reader::Reader, records, writer::Writer};
 use crate::store::{ExpectedCheckpoint, ReplayArchive};
@@ -10,7 +10,8 @@ use crate::{
 use houseki_types::{NetworkId, NoteCommitment};
 use std::sync::Arc;
 
-/// Derives the conservative maximum complete encoded archive from exact bounded record widths.
+/// Derives the conservative maximum complete encoded archive from exact bounded record
+/// widths.
 fn maximum_bytes() -> u128 {
     let policy = 244_u128;
     let list = |count: u128, size: u128| 8 + count * (8 + size);
@@ -36,6 +37,7 @@ fn encode_expected(v: &ExpectedCheckpoint) -> Result<Vec<u8>, ArtifactError> {
     {
         return Err(ArtifactError::Invalid);
     }
+
     let mut w = Writer::new();
     w.blob(&encode_artifact_header(&v.header)?)?;
     w.raw(&encode_receipts(&v.receipts)?)?;
@@ -59,6 +61,7 @@ fn decode_expected(b: &[u8], l: DecodeLimits) -> Result<ExpectedCheckpoint, Arti
         r.finish()?;
         Ok(value)
     })?;
+
     let cursor = SourceCursor::from_bytes(r.blob()?).map_err(|_| ArtifactError::Invalid)?;
     r.finish()?;
     let value = ExpectedCheckpoint {
@@ -69,9 +72,11 @@ fn decode_expected(b: &[u8], l: DecodeLimits) -> Result<ExpectedCheckpoint, Arti
         leaves,
         cursor,
     };
+
     if encode_expected(&value)? != b {
         return Err(ArtifactError::Invalid);
     }
+
     Ok(value)
 }
 
@@ -84,6 +89,7 @@ pub(crate) fn encode_archive(v: &ReplayArchive) -> Result<Vec<u8>, ArtifactError
     {
         return Err(ArtifactError::Bound);
     }
+
     let mut w = Writer::new();
     w.u32(1)?;
     w.raw(v.network.as_bytes())?;
@@ -95,26 +101,32 @@ pub(crate) fn encode_archive(v: &ReplayArchive) -> Result<Vec<u8>, ArtifactError
         if bytes.len() > 33554432 + 72 {
             return Err(ArtifactError::Bound);
         }
+
         Ok(bytes.to_vec())
     })?;
+
     w.list(&v.anchors, records::encode_anchor)?;
     w.list(&v.expected, |v| encode_expected(v))?;
     let bytes = w.finish();
     if bytes.len() as u128 > maximum_bytes() {
         return Err(ArtifactError::Bound);
     }
+
     Ok(bytes)
 }
 
-/// Decodes bounded public records without installing expected state or verification evidence.
+/// Decodes bounded public records without installing expected state or verification
+/// evidence.
 pub(crate) fn decode_archive(b: &[u8], l: DecodeLimits) -> Result<ReplayArchive, ArtifactError> {
     if b.len() as u128 > maximum_bytes() {
         return Err(ArtifactError::Bound);
     }
+
     let mut r = Reader::new(b, l)?;
     if r.u32()? != 1 {
         return Err(ArtifactError::Invalid);
     }
+
     let network = NetworkId::from_bytes(r.fixed()?);
     let starting_artifact = ExecutionArtifactId::from_bytes(r.fixed()?);
     let starting_state = StateCommitment::from_bytes(r.fixed()?);
@@ -125,21 +137,26 @@ pub(crate) fn decode_archive(b: &[u8], l: DecodeLimits) -> Result<ReplayArchive,
         r.finish()?;
         Ok(v)
     })?;
+
     for (i, id) in unit_ids.iter().enumerate() {
         if unit_ids[..i].contains(id) {
             return Err(ArtifactError::Invalid);
         }
     }
+
     let units = r.list(64, |b| {
         if b.len() > 33554432 + 72 {
             return Err(ArtifactError::Bound);
         }
+
         let _decoded = decode_fixture_unit(b, l)?;
         Ok(Arc::from(b))
     })?;
+
     if units.len() > unit_ids.len() {
         return Err(ArtifactError::Invalid);
     }
+
     let anchors = r.list(8256, |b| records::decode_anchor(b, l))?;
     let expected = r.list(8192, |b| decode_expected(b, l).map(Arc::new))?;
     r.finish()?;

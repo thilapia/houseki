@@ -19,7 +19,8 @@ pub struct CommitteeEntry {
 }
 
 impl CommitteeEntry {
-    /// Retains declared metadata without authenticating a consensus key or registration.
+    /// Retains declared metadata without authenticating a consensus key or
+    /// registration.
     pub fn new(
         validator: ValidatorId,
         weight: u128,

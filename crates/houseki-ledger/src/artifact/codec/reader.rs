@@ -18,6 +18,7 @@ impl<'a> Reader<'a> {
         if bytes.len() > limits.max_bytes {
             return Err(ArtifactError::Bound);
         }
+
         Ok(Self { bytes, limits })
     }
 
@@ -31,7 +32,7 @@ impl<'a> Reader<'a> {
         Ok(head)
     }
 
-    /// Copies an exact fixed-width field.
+    /// Copies an exact fixed width field.
     pub(super) fn fixed<const N: usize>(&mut self) -> Result<[u8; N], ArtifactError> {
         Ok(self.take(N)?.try_into().expect("exact prefix width"))
     }
@@ -51,16 +52,18 @@ impl<'a> Reader<'a> {
         Ok(u128::from_le_bytes(self.fixed()?))
     }
 
-    /// Reads a bounded length-prefixed slice without copying its contents.
+    /// Reads a bounded length prefixed slice without copying its contents.
     pub(super) fn blob(&mut self) -> Result<&'a [u8], ArtifactError> {
         let len = usize::try_from(self.u64()?).map_err(|_| ArtifactError::Bound)?;
         if len > self.limits.max_bytes {
             return Err(ArtifactError::Bound);
         }
+
         self.take(len)
     }
 
-    /// Reserves a bounded collection only after its count and minimal framing fit the input.
+    /// Reserves a bounded collection only after its count and minimal framing fit the
+    /// input.
     pub(super) fn list<T>(
         &mut self,
         max: usize,
@@ -77,6 +80,7 @@ impl<'a> Reader<'a> {
         {
             return Err(ArtifactError::Bound);
         }
+
         let mut values = Vec::new();
         values
             .try_reserve_exact(count)
@@ -84,6 +88,7 @@ impl<'a> Reader<'a> {
         for _ in 0..count {
             values.push(decode(self.blob()?)?);
         }
+
         Ok(values)
     }
 

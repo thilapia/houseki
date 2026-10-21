@@ -5,7 +5,7 @@
 pub struct LedgerEngine;
 
 impl LedgerEngine {
-    /// Constructs a stateless native executor without caller-selected rules.
+    /// Constructs a stateless native executor without caller selected rules.
     pub const fn new() -> Self {
         Self
     }

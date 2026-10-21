@@ -23,6 +23,7 @@ pub use codec::{
     encode_artifact_header, encode_effects, encode_fixture_stream, encode_fixture_unit,
     encode_occurrences, encode_policy, encode_receipts, encode_snapshot,
 };
+pub(crate) use codec::{decode_archive, encode_archive};
 pub use effect::EffectRecord;
 pub use error::ArtifactError;
 pub use execution_artifact::ExecutionArtifact;
@@ -34,5 +35,3 @@ pub use identifier::{
 };
 pub use order_binding::OrderBinding;
 pub use snapshot_record::SnapshotRecord;
-
-pub(crate) use codec::{decode_archive, encode_archive};

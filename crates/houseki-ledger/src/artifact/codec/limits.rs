@@ -11,7 +11,8 @@ pub struct DecodeLimits {
 }
 
 impl DecodeLimits {
-    /// Returns bounded reference decoding limits, including the largest complete source unit.
+    /// Returns bounded reference decoding limits, including the largest complete source
+    /// unit.
     pub const fn reference() -> Self {
         Self {
             max_bytes: 67_108_864,
