@@ -1,5 +1,6 @@
 //! Exact local V1 encodings with bounded decoding and no trust promotion.
 
+mod archive;
 mod limits;
 mod reader;
 mod records;
@@ -302,3 +303,5 @@ mod tests {
         assert!(decode_occurrences(&huge, DecodeLimits::reference()).is_err());
     }
 }
+
+pub(crate) use archive::{decode_archive, encode_archive};

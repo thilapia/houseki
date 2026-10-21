@@ -7,6 +7,7 @@ mod bootstrap;
 mod order;
 mod policy;
 mod state;
+mod store;
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod test_support;
 
@@ -21,7 +22,13 @@ pub use artifact::{
     encode_receipts, encode_snapshot,
 };
 pub use bootstrap::{BootstrapCandidate, BootstrapError, BootstrapManifest, CommitteeEntry};
-pub use order::{OrderError, SourceCursor};
+pub use bootstrap::{ValidatedBootstrap, validate_bootstrap};
+pub use order::{
+    FixtureManifest, FixtureOrderVerifier, OrderError, RawOrderUnit, SourceCursor,
+    VerifiedOrderUnit,
+};
 pub use policy::CheckpointRules;
 pub use policy::{ExecutionLimits, ExecutionPolicy, PolicyError};
 pub use state::{AnchorRecord, LogicalState, StateError, WorkingState};
+pub use state::{HeadRecord, ParentSnapshot, ParentToken, ReplayInputs};
+pub use store::ReplayArchive;

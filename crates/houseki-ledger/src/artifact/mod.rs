@@ -34,3 +34,5 @@ pub use identifier::{
 };
 pub use order_binding::OrderBinding;
 pub use snapshot_record::SnapshotRecord;
+
+pub(crate) use codec::{decode_archive, encode_archive};

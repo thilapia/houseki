@@ -2,11 +2,22 @@
 
 mod anchor;
 mod error;
+mod head;
 mod logical;
+mod record;
+mod replay_inputs;
+mod snapshot;
+mod token;
 mod working;
+
 pub use anchor::AnchorRecord;
 pub use error::StateError;
+pub use head::HeadRecord;
 pub use logical::LogicalState;
+pub(crate) use record::CommittedRecord;
+pub use replay_inputs::ReplayInputs;
+pub use snapshot::ParentSnapshot;
+pub use token::ParentToken;
 pub use working::WorkingState;
 
 /// Working-state isolation and resource validation tests.

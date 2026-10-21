@@ -3,10 +3,12 @@
 mod candidate;
 mod committee;
 mod error;
+mod validate;
 
 pub use candidate::BootstrapCandidate;
 pub use committee::CommitteeEntry;
 pub use error::BootstrapError;
+pub use validate::{ValidatedBootstrap, validate_bootstrap};
 
 use crate::{AnchorRecord, ExecutionPolicy, LogicalState, SourceCursor};
 use houseki_crypto::MlDsa87VerificationKey;
