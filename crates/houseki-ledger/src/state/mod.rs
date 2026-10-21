@@ -1,6 +1,7 @@
 //! Immutable logical state and independently owned working trees.
 
 mod anchor;
+mod apply;
 mod error;
 mod head;
 mod logical;
