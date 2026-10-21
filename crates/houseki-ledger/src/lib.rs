@@ -3,6 +3,7 @@
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 
 mod artifact;
+mod batch;
 mod bootstrap;
 mod eligibility;
 mod engine;
@@ -24,6 +25,7 @@ pub use artifact::{
     encode_effects, encode_fixture_stream, encode_fixture_unit, encode_occurrences, encode_policy,
     encode_receipts, encode_snapshot,
 };
+pub use batch::{PreparationError, PreparationMetrics, PreparedCheckpoint};
 pub use bootstrap::{BootstrapCandidate, BootstrapError, BootstrapManifest, CommitteeEntry};
 pub use bootstrap::{ValidatedBootstrap, validate_bootstrap};
 pub use eligibility::{AuthorizedUnit, UnitPreparationError};
