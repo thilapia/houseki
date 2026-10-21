@@ -7,8 +7,13 @@ use houseki_types::{
     Amount, CheckpointSequence, CommitteeContext, CommitteeId, EncodedMlDsa87PublicKey, Epoch,
     NetworkId, NoteCommitment, RewardAccount, ValidatorId, WithdrawalNonce,
 };
+use houseki_types::{
+    EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope, FeeScheduleId, NoteOutput, NoteRoot,
+    Nullifier, PaymentBody, PaymentCountLimits, PaymentInputs, PaymentOutputs, ProofProfileId,
+    ProtocolVersion, TransactionContext, ValidityCheckpointRange,
+};
 
-/// Builds a closed one-account fixture with one retained note leaf.
+/// Builds a closed one account fixture with one retained note leaf.
 pub(crate) fn manifest() -> BootstrapManifest {
     let network = NetworkId::from_bytes([7; 64]);
     let authority = EncodedMlDsa87PublicKey::from_bytes([14; 2592]);
@@ -51,12 +56,6 @@ pub(crate) fn manifest() -> BootstrapManifest {
         issued: Amount::from_atoms(100).unwrap(),
     }
 }
-
-use houseki_types::{
-    EncodedMlKem1024Ciphertext, EncryptedNoteEnvelope, FeeScheduleId, NoteOutput, NoteRoot,
-    Nullifier, PaymentBody, PaymentCountLimits, PaymentInputs, PaymentOutputs, ProofProfileId,
-    ProtocolVersion, TransactionContext, ValidityCheckpointRange,
-};
 
 /// Builds an unverified declared payment for canonical record fixtures.
 pub(crate) fn payment_body(inputs: usize, outputs: usize) -> PaymentBody {

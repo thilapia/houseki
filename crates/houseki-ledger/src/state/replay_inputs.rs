@@ -13,7 +13,8 @@ pub enum ReplayInputs {
         Arc<BootstrapManifest>,
     ),
 
-    /// Complete source bytes and authenticated historical metadata for execution replay.
+    /// Complete source bytes and authenticated historical metadata for execution
+    /// replay.
     Execution {
         /// Canonical complete source unit including envelopes and origin metadata.
         source_unit: Arc<[u8]>,
@@ -21,7 +22,8 @@ pub enum ReplayInputs {
         /// Complete finite unit identity list authenticated by the expected stream.
         unit_ids: Arc<[crate::FixtureUnitId]>,
 
-        /// Independently authenticated descriptors retained beyond eligibility pruning.
+        /// Independently authenticated descriptors retained beyond eligibility
+        /// pruning.
         trusted_anchors: Arc<[NoteTreeAnchor]>,
     },
 }

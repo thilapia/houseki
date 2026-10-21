@@ -17,13 +17,14 @@ fn bytes(name: &str) -> Vec<u8> {
     .unwrap()
 }
 
-/// Decodes one complete fixed-width public fixture digest.
+/// Decodes one complete fixed width public fixture digest.
 fn digest(name: &str) -> [u8; 64] {
     let text = String::from_utf8(bytes(name)).unwrap();
     std::array::from_fn(|i| u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).unwrap())
 }
 
-/// Reconstructs independently retained public bootstrap declarations and the real seed occurrence.
+/// Reconstructs independently retained public bootstrap declarations and the real seed
+/// occurrence.
 pub(crate) fn seed_fixture() -> (BootstrapManifest, Occurrence) {
     let record = decode_snapshot(&bytes("bootstrap-state.bin"), DecodeLimits::reference()).unwrap();
     let raw = bytes("unit.bin");
@@ -55,5 +56,6 @@ pub(crate) fn seed_fixture() -> (BootstrapManifest, Occurrence) {
         pool: record.pool,
         issued: record.issued,
     };
+
     (manifest, unit.occurrences[0].clone())
 }

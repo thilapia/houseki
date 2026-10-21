@@ -1,10 +1,10 @@
-//! Exact expected-parent token for later compare-and-publish operations.
+//! Exact expected parent token for later compare and publish operations.
 
 use super::HeadRecord;
 use crate::{ExecutionArtifactId, SourceCursor, StateCommitment};
 use houseki_types::CheckpointSequence;
 
-/// Complete expected head identity with no caller-selected mutable fields.
+/// Complete expected head identity with no caller selected mutable fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParentToken {
     /// Sequence, artifact, state root and cursor copied from a validated snapshot.

@@ -125,7 +125,8 @@ impl LogicalState {
     ///
     /// # Errors
     ///
-    /// Rejects overflow or any difference between pool plus account balances and issuance.
+    /// Rejects overflow or any difference between pool plus account balances and
+    /// issuance.
     pub fn validate_conservation(&self) -> Result<(), StateError> {
         let sum = self
             .accounts
@@ -134,9 +135,11 @@ impl LogicalState {
                 sum.checked_add(a.balance().atoms())
             })
             .ok_or(StateError::Conservation)?;
+
         if sum != self.issued.atoms() || sum > Amount::MAX_ATOMS {
             return Err(StateError::Conservation);
         }
+
         Ok(())
     }
 }

@@ -23,7 +23,7 @@ impl ParentSnapshot {
         &self.image.current.head
     }
 
-    /// Copies all expected-parent fields for a later compare-and-publish attempt.
+    /// Copies all expected parent fields for a later compare and publish attempt.
     pub fn token(&self) -> ParentToken {
         ParentToken {
             head: self.image.current.head.clone(),
@@ -45,7 +45,8 @@ impl ParentSnapshot {
         &self.image.current.effects
     }
 
-    /// Borrows all unit identities bound by the original independently expected source stream.
+    /// Borrows all unit identities bound by the original independently expected source
+    /// stream.
     pub(crate) fn source_unit_ids(&self) -> &[crate::FixtureUnitId] {
         match self.replay_inputs() {
             ReplayInputs::Bootstrap(m) => &m.fixture_unit_ids,
@@ -58,7 +59,8 @@ impl ParentSnapshot {
         &self.image.history
     }
 
-    /// Iterates independently authenticated historical descriptors, including pruned anchors.
+    /// Iterates independently authenticated historical descriptors, including pruned
+    /// anchors.
     pub(crate) fn known_anchors(&self) -> impl Iterator<Item = houseki_types::NoteTreeAnchor> + '_ {
         self.image
             .history

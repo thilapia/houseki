@@ -21,5 +21,9 @@ pub enum StateError {
 
     /// The underlying tree could not complete construction or append.
     #[error(transparent)]
-    Tree(#[from] houseki_state::NoteTreeError),
+    Tree(
+        /// Original tree failure retained as the source.
+        #[from]
+        houseki_state::NoteTreeError,
+    ),
 }

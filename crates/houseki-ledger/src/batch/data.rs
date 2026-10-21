@@ -1,4 +1,4 @@
-//! Complete immutable next-record owner and exact parent comparison token.
+//! Complete immutable next record owner and exact parent comparison token.
 
 use crate::{ParentToken, state::CommittedRecord};
 use std::sync::Arc;

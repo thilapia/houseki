@@ -11,31 +11,59 @@ pub enum PreparationError {
     #[error("checkpoint allocation failed")]
     Allocation,
 
-    /// Whole-unit authorization is incompatible with the parent interpretation.
+    /// Whole unit authorization is incompatible with the parent interpretation.
     #[error(transparent)]
-    Unit(#[from] crate::UnitPreparationError),
+    Unit(
+        /// Original unit failure retained as the source.
+        #[from]
+        crate::UnitPreparationError,
+    ),
 
     /// The canonical source cannot continue from the persisted cursor.
     #[error(transparent)]
-    Order(#[from] crate::OrderError),
+    Order(
+        /// Original order failure retained as the source.
+        #[from]
+        crate::OrderError,
+    ),
 
     /// Checkpoint progression or policy derivation failed.
     #[error(transparent)]
-    Policy(#[from] crate::PolicyError),
+    Policy(
+        /// Original policy failure retained as the source.
+        #[from]
+        crate::PolicyError,
+    ),
 
     /// Working state reconstruction or application failed.
     #[error(transparent)]
-    State(#[from] crate::StateError),
+    State(
+        /// Original state failure retained as the source.
+        #[from]
+        crate::StateError,
+    ),
 
     /// Ordered state evaluation failed locally.
     #[error(transparent)]
-    Execution(#[from] crate::ExecutionError),
+    Execution(
+        /// Original execution failure retained as the source.
+        #[from]
+        crate::ExecutionError,
+    ),
 
     /// Complete canonical artifact representation failed.
     #[error(transparent)]
-    Artifact(#[from] crate::ArtifactError),
+    Artifact(
+        /// Original artifact failure retained as the source.
+        #[from]
+        crate::ArtifactError,
+    ),
 
     /// Fixed native commitment construction failed.
     #[error(transparent)]
-    Hash(#[from] houseki_crypto::CryptoFramingError),
+    Hash(
+        /// Original hash failure retained as the source.
+        #[from]
+        houseki_crypto::CryptoFramingError,
+    ),
 }

@@ -16,12 +16,13 @@ pub struct WorkingState {
 }
 
 impl WorkingState {
-    /// Rebuilds the concrete tree and copies mutable maps under the parent's policy bounds.
+    /// Rebuilds the concrete tree and copies mutable maps under the parent's policy
+    /// bounds.
     ///
     /// # Errors
     ///
-    /// Rejects capacity or conservation failures before reconstructing, then preserves local
-    /// allocation, tree and integrity failures without mutating the parent.
+    /// Rejects capacity or conservation failures before reconstructing, then preserves
+    /// local allocation, tree and integrity failures without mutating the parent.
     pub fn reconstruct(state: &LogicalState) -> Result<Self, StateError> {
         let limits = state.policy.limits();
         if state.leaves.len() as u128 > u128::from(limits.note_leaves())
@@ -30,6 +31,7 @@ impl WorkingState {
         {
             return Err(StateError::Capacity);
         }
+
         state.validate_conservation()?;
         let mut tree = NoteTree::new(state.network)?;
         let mut leaves = Vec::new();
@@ -40,9 +42,11 @@ impl WorkingState {
             tree.append(leaf)?;
             leaves.push(leaf);
         }
+
         if tree.anchor() != state.tree.anchor() {
             return Err(StateError::Integrity);
         }
+
         let mut spent = HashMap::new();
         spent
             .try_reserve(state.spent.len())
@@ -51,8 +55,10 @@ impl WorkingState {
             if &key != value.as_bytes() {
                 return Err(StateError::Integrity);
             }
+
             spent.insert(key, value);
         }
+
         let mut accounts = HashMap::new();
         accounts
             .try_reserve(state.accounts.len())
@@ -63,11 +69,13 @@ impl WorkingState {
                 .iter()
                 .map(|(&key, value)| (key, value.clone())),
         );
+
         let mut anchors = Vec::new();
         anchors
             .try_reserve_exact(state.anchors.len())
             .map_err(|_| StateError::Allocation)?;
         anchors.extend_from_slice(&state.anchors);
+
         Ok(Self {
             poisoned: false,
             state: LogicalState {
@@ -91,7 +99,8 @@ impl WorkingState {
         &self.state
     }
 
-    /// Reports whether a local application failure has invalidated this disposable state.
+    /// Reports whether a local application failure has invalidated this disposable
+    /// state.
     pub(crate) const fn is_poisoned(&self) -> bool {
         self.poisoned
     }
@@ -105,7 +114,8 @@ impl WorkingState {
     ///
     /// # Errors
     ///
-    /// Checks reference capacity and storage before tree mutation and preserves tree failures.
+    /// Checks reference capacity and storage before tree mutation and preserves tree
+    /// failures.
     pub(crate) fn append(
         &mut self,
         commitment: NoteCommitment,
@@ -113,6 +123,7 @@ impl WorkingState {
         if self.state.leaves.len() as u128 >= u128::from(self.state.policy.limits().note_leaves()) {
             return Err(StateError::Capacity);
         }
+
         self.state
             .leaves
             .try_reserve(1)
@@ -125,6 +136,7 @@ impl WorkingState {
                 houseki_state::NoteTreeError::Full => StateError::Integrity,
                 error => StateError::Tree(error),
             })?;
+
         self.state.leaves.push(commitment);
         Ok(position)
     }

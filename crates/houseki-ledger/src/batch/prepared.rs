@@ -39,12 +39,13 @@ impl PreparedCheckpoint {
         }
     }
 
-    /// Borrows local phase observations that are never part of canonical checkpoint bytes.
+    /// Borrows local phase observations that are never part of canonical checkpoint
+    /// bytes.
     pub fn metrics(&self) -> &super::PreparationMetrics {
         &self.data.metrics
     }
 
-    /// Borrows the reproducible native summary without a committed-status claim.
+    /// Borrows the reproducible native summary without a committed status claim.
     pub fn artifact(&self) -> &ExecutionArtifact {
         self.data
             .record
@@ -53,7 +54,7 @@ impl PreparedCheckpoint {
             .expect("prepared records always have an artifact")
     }
 
-    /// Borrows every original-order occurrence receipt.
+    /// Borrows every original order occurrence receipt.
     pub fn receipts(&self) -> &[Receipt] {
         &self.data.record.receipts
     }
@@ -73,7 +74,7 @@ impl PreparedCheckpoint {
         self.data.record.head.source_cursor()
     }
 
-    /// Borrows disposable post-state for preview without publishing it.
+    /// Borrows disposable post state for preview without publishing it.
     pub fn post_state(&self) -> &LogicalState {
         &self.data.record.state
     }

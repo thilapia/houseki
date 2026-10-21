@@ -1,5 +1,8 @@
-//! Thread-local fault injection at actual disposable-state and publication boundaries.
+//! Thread local fault injection at actual disposable state and publication boundaries.
 
+mod injection;
+
+use injection::Injection;
 use std::cell::Cell;
 
 /// One observable stage boundary in the reference executor.
@@ -8,14 +11,23 @@ pub(crate) enum FailurePoint {
     /// A reconstructed working tree has completed.
     Reconstruct,
 
-    /// One original-order nullifier was inserted.
-    NullifierInsert(usize),
+    /// One original order nullifier was inserted.
+    NullifierInsert(
+        /// Zero based index of the inserted nullifier.
+        usize,
+    ),
 
-    /// One original-order output was appended.
-    NoteAppend(usize),
+    /// One original order output was appended.
+    NoteAppend(
+        /// Zero based index of the appended note.
+        usize,
+    ),
 
     /// One coalesced account replacement was staged.
-    AccountReplace(usize),
+    AccountReplace(
+        /// Zero based index of the replaced account.
+        usize,
+    ),
 
     /// Shielded accounting was replaced.
     PoolReplace,
@@ -24,7 +36,10 @@ pub(crate) enum FailurePoint {
     AnchorPrune,
 
     /// One named commitment completed.
-    Commitment(&'static str),
+    Commitment(
+        /// Name of the commitment whose construction has completed.
+        &'static str,
+    ),
 
     /// The complete immutable candidate is about to be sealed.
     Seal,
@@ -38,23 +53,13 @@ pub(crate) enum FailurePoint {
 
 thread_local! {
     /// Fault selected only by private tests on the current test thread.
-    static SELECTED:Cell<Option<FailurePoint>>=const{Cell::new(None)};
+    static SELECTED: Cell<Option<FailurePoint>> = const { Cell::new(None) };
 }
 
 /// Installs one private test fault until the returned scope guard is dropped.
 pub(crate) fn inject(point: FailurePoint) -> Injection {
     SELECTED.set(Some(point));
     Injection
-}
-
-/// Restores normal execution even when a test assertion unwinds.
-pub(crate) struct Injection;
-
-impl Drop for Injection {
-    /// Removes this thread's selected test failure.
-    fn drop(&mut self) {
-        SELECTED.set(None)
-    }
 }
 
 /// Reports whether this actual boundary should fail locally in the current test.

@@ -1,4 +1,4 @@
-//! Complete immutable committed record representation before a store is public.
+//! Complete immutable state, artifacts and replay inputs retained by a store image.
 
 use super::{HeadRecord, LogicalState, ReplayInputs};
 use crate::{EffectRecord, ExecutionArtifact};

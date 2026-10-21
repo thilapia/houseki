@@ -10,7 +10,7 @@ pub use measurement::PreparationMetrics;
 pub use prepared::PreparedCheckpoint;
 
 #[cfg(all(test, feature = "experimental-profiles"))]
-use crate::test_support::failure::{FailurePoint, hit};
+use crate::test_support::{FailurePoint, hit};
 use crate::{
     AnchorRecord, AuthorizedUnit, EffectRecord, ExecutionArtifact, ExecutionArtifactId,
     ExecutionPolicyId, HeadRecord, LedgerEngine, LogicalState, ParentSnapshot, ReplayInputs,
@@ -26,14 +26,17 @@ use houseki_types::{ExecutionOutcome, NoteOutput, Occurrence, Receipt, Transacti
 use std::{sync::Arc, time::Instant};
 
 impl LedgerEngine {
-    /// Prepares one greedily derived range against an independent disposable working state.
+    /// Prepares one greedily derived range against an independent disposable working
+    /// state.
     ///
-    /// Every outcome, effect, commitment and replay prerequisite is complete before return.
+    /// Every outcome, effect, commitment and replay prerequisite is complete before
+    /// return.
     ///
     /// # Errors
     ///
-    /// Reports parent/dependency/source inconsistency before state work and aborts the entire
-    /// candidate on every local reconstruction, application, allocation or commitment failure.
+    /// Reports parent/dependency/source inconsistency before state work and aborts the
+    /// entire candidate on every local reconstruction, application, allocation or
+    /// commitment failure.
     pub fn prepare_next(
         &self,
         parent: &ParentSnapshot,
@@ -49,6 +52,7 @@ impl LedgerEngine {
         {
             return Err(PreparationError::Integrity);
         }
+
         unit.require_compatible(parent)?;
         let rules = crate::CheckpointRules::derive(parent.state(), parent.head().sequence())?;
         let range = next_range(
@@ -64,6 +68,7 @@ impl LedgerEngine {
         if hit(FailurePoint::Reconstruct) {
             return Err(PreparationError::Allocation);
         }
+
         let mut receipts = Vec::new();
         let mut effects = Vec::new();
         receipts
@@ -85,6 +90,7 @@ impl LedgerEngine {
                     },
                 ),
             };
+
             receipts.push(Receipt::new(
                 occurrence.occurrence().vertex_id(),
                 occurrence.occurrence().transaction_index(),
@@ -92,6 +98,7 @@ impl LedgerEngine {
             ));
             effects.push(effect);
         }
+
         working
             .state
             .anchors
@@ -107,10 +114,12 @@ impl LedgerEngine {
             let remove = working.state.anchors.len() - retention;
             working.state.anchors.drain(..remove);
         }
+
         #[cfg(all(test, feature = "experimental-profiles"))]
         if hit(FailurePoint::AnchorPrune) {
             return Err(PreparationError::Allocation);
         }
+
         working.validate_conservation()?;
         let occurrences = &unit.order_unit().occurrences()[range.host.clone()];
         validate_alignment(
@@ -155,6 +164,7 @@ impl LedgerEngine {
             effects_root,
             system_events_root,
         };
+
         let identity = ExecutionArtifactId::from_bytes(houseki_crypto::ledger_execution_artifact(
             &encode_artifact_header(&header)?,
         )?);
@@ -168,18 +178,21 @@ impl LedgerEngine {
             receipts: receipts.clone(),
             effects: effects.clone(),
         };
+
         let trusted_anchors: Vec<_> = unit.trusted_anchors().collect();
         let replay_inputs = ReplayInputs::Execution {
             source_unit: unit.order_unit().canonical_owner(),
             unit_ids: Arc::from(parent.source_unit_ids()),
             trusted_anchors: trusted_anchors.into(),
         };
+
         let head = HeadRecord {
             sequence: rules.sequence(),
             artifact_id: identity,
             state_commitment: post_state,
             source_cursor: range.next_cursor,
         };
+
         let record = CommittedRecord {
             state: working.state,
             head,
@@ -188,16 +201,19 @@ impl LedgerEngine {
             effects,
             replay_inputs,
         };
+
         #[cfg(all(test, feature = "experimental-profiles"))]
         if hit(FailurePoint::Seal) {
             return Err(PreparationError::Allocation);
         }
+
         let metrics = PreparationMetrics {
             reconstruction,
             execution,
             commitments,
             total: total_started.elapsed(),
         };
+
         Ok(PreparedCheckpoint::seal(parent.token(), record, metrics))
     }
 }
@@ -213,6 +229,7 @@ fn validate_alignment(
     if occurrences.len() != receipts.len() || occurrences.len() != effects.len() {
         return Err(PreparationError::Integrity);
     }
+
     let mut next = before.note_anchor().count().value();
     let mut pool = before.pool();
     for ((occurrence, receipt), effect) in occurrences.iter().zip(receipts).zip(effects) {
@@ -223,6 +240,7 @@ fn validate_alignment(
         {
             return Err(PreparationError::Integrity);
         }
+
         match (receipt.outcome(), &effect.accepted) {
             (ExecutionOutcome::Rejected(_), None) => {}
             (ExecutionOutcome::Accepted, Some(accepted)) => {
@@ -231,48 +249,59 @@ fn validate_alignment(
                         if accepted.nullifiers != e.body().inputs().nullifiers() {
                             return Err(PreparationError::Integrity);
                         }
+
                         e.body().outputs().outputs()
                     }
                     TransactionEnvelope::RewardWithdrawal(e) => {
                         if !accepted.nullifiers.is_empty() {
                             return Err(PreparationError::Integrity);
                         }
+
                         std::slice::from_ref(e.body().output())
                     }
                 };
+
                 if outputs.len() != accepted.appends.len() || accepted.before_pool != pool {
                     return Err(PreparationError::Integrity);
                 }
+
                 for (output, append) in outputs.iter().zip(&accepted.appends) {
                     if u128::from(append.position.value()) != next
                         || append.commitment != output.commitment()
                     {
                         return Err(PreparationError::Integrity);
                     }
+
                     let position =
                         usize::try_from(next).map_err(|_| PreparationError::Integrity)?;
                     if after.leaves().get(position) != Some(&append.commitment) {
                         return Err(PreparationError::Integrity);
                     }
+
                     next = next.checked_add(1).ok_or(PreparationError::Integrity)?;
                 }
+
                 pool = accepted.after_pool;
             }
             _ => return Err(PreparationError::Integrity),
         }
     }
+
     if next != after.note_anchor().count().value() || pool != after.pool() {
         return Err(PreparationError::Integrity);
     }
+
     Ok(())
 }
 
-/// Injects a local commitment failure only in private tests at an actual completed boundary.
+/// Injects a local commitment failure only in private tests at an actual completed
+/// boundary.
 fn boundary(_kind: &'static str) -> Result<(), PreparationError> {
     #[cfg(all(test, feature = "experimental-profiles"))]
     if hit(FailurePoint::Commitment(_kind)) {
         return Err(PreparationError::Allocation);
     }
+
     Ok(())
 }
 
@@ -280,13 +309,14 @@ fn boundary(_kind: &'static str) -> Result<(), PreparationError> {
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use crate::eligibility::authorize_for_test;
-    use crate::test_support::{execution::payment, fixture_source_for, trusted_manifest};
+    use crate::test_support::{fixture_source_for, payment, trusted_manifest};
     use crate::{
         FixtureOrderVerifier, LedgerEngine, SnapshotRecord, encode_snapshot, validate_bootstrap,
     };
     use houseki_types::ValidatorId;
 
-    /// Produces an owned synthetic unit for state mechanics without weakening production checks.
+    /// Produces an owned synthetic unit for state mechanics without weakening
+    /// production checks.
     fn fixture(count: usize) -> (crate::ParentSnapshot, crate::AuthorizedUnit) {
         let m = trusted_manifest();
         let base = validate_bootstrap(m.clone()).unwrap().into_snapshot();
@@ -302,13 +332,17 @@ mod tests {
         (parent, authorized)
     }
 
-    /// Every origin receives exactly one aligned receipt/effect while only accepted outputs append.
+    /// Every origin receives exactly one aligned receipt/effect while only accepted
+    /// outputs append.
     #[test]
     fn prepare_matches_order_and_seals_all_records() {
         let (parent, unit) = fixture(3);
+
         let before = encode_snapshot(&SnapshotRecord::from_state(parent.state()).unwrap()).unwrap();
         let token = parent.token();
+
         let prepared = LedgerEngine::new().prepare_next(&parent, &unit).unwrap();
+
         assert_eq!(prepared.receipts().len(), 3);
         assert_eq!(prepared.effects().len(), 3);
         assert_eq!(prepared.artifact().header().sequence.value(), 1);
@@ -338,7 +372,9 @@ mod tests {
     #[test]
     fn empty_unit_produces_one_bound_artifact() {
         let (parent, unit) = fixture(0);
+
         let prepared = LedgerEngine::new().prepare_next(&parent, &unit).unwrap();
+
         assert!(prepared.receipts().is_empty());
         assert_eq!(prepared.post_state().anchors().len(), 2);
         assert!(matches!(
@@ -347,12 +383,15 @@ mod tests {
         ));
     }
 
-    /// Retained candidate clones share identical canonical summaries and expected parent identity.
+    /// Retained candidate clones share identical canonical summaries and expected
+    /// parent identity.
     #[test]
     fn cloned_candidate_is_identical() {
         let (parent, unit) = fixture(1);
+
         let prepared = LedgerEngine::new().prepare_next(&parent, &unit).unwrap();
         let clone = prepared.clone();
+
         assert_eq!(
             prepared.artifact().canonical_header().unwrap(),
             clone.artifact().canonical_header().unwrap()
@@ -361,12 +400,14 @@ mod tests {
         assert_eq!(prepared.effects(), clone.effects());
     }
 
-    /// Each actual preparation boundary aborts without changing any committed parent component.
+    /// Each actual preparation boundary aborts without changing any committed parent
+    /// component.
     #[test]
     fn every_preparation_failpoint_preserves_parent() {
-        use crate::test_support::failure::{FailurePoint as F, inject};
+        use crate::test_support::{FailurePoint as F, inject};
         let (parent, unit) = fixture(2);
         let token = parent.token();
+
         let state = encode_snapshot(&SnapshotRecord::from_state(parent.state()).unwrap()).unwrap();
         for point in [
             F::Reconstruct,
@@ -387,6 +428,7 @@ mod tests {
             F::Seal,
         ] {
             let _injection = inject(point);
+
             assert!(
                 LedgerEngine::new().prepare_next(&parent, &unit).is_err(),
                 "{point:?}"
@@ -399,26 +441,34 @@ mod tests {
             assert!(parent.receipts().is_empty());
         }
     }
-    /// A newly recorded root becomes eligible only under the following checkpoint's fixed view.
+
+    /// A newly recorded root becomes eligible only under the following checkpoint's
+    /// fixed view.
     #[test]
     fn same_checkpoint_new_anchor_is_ineligible() {
         let (parent, unit) = fixture(1);
+
         let prepared = LedgerEngine::new().prepare_next(&parent, &unit).unwrap();
         let before =
             crate::CheckpointRules::derive(parent.state(), parent.head().sequence()).unwrap();
+
         assert!(!before.allows_anchor(prepared.post_state().note_anchor()));
+
         let next = crate::CheckpointRules::derive(
             prepared.post_state(),
             houseki_types::CheckpointSequence::new(1),
         )
         .unwrap();
+
         assert!(next.allows_anchor(prepared.post_state().note_anchor()));
     }
 
-    /// Incomplete, duplicated or mismatched output/effect joins cannot seal a checkpoint.
+    /// Incomplete, duplicated or mismatched output/effect joins cannot seal a
+    /// checkpoint.
     #[test]
     fn accepted_appends_match_exact_body_outputs() {
         let (parent, unit) = fixture(1);
+
         let prepared = LedgerEngine::new().prepare_next(&parent, &unit).unwrap();
         let original = prepared.effects().to_vec();
         for change in 0..3 {
@@ -434,6 +484,7 @@ mod tests {
                         houseki_types::NoteCommitment::from_bytes([99; 64])
                 }
             };
+
             assert!(
                 super::validate_alignment(
                     parent.state(),
@@ -447,14 +498,17 @@ mod tests {
         }
     }
 
-    /// Independent native executors produce complete identical summaries through each unit slice.
+    /// Independent native executors produce complete identical summaries through each
+    /// unit slice.
     #[test]
     fn independent_executors_construct_the_same_checkpoint() {
         let (mut a, unit_a) = fixture(65);
         let (mut b, unit_b) = fixture(65);
+
         for _ in 0..2 {
             let left = LedgerEngine::new().prepare_next(&a, &unit_a).unwrap();
             let right = LedgerEngine::new().prepare_next(&b, &unit_b).unwrap();
+
             assert_eq!(
                 left.artifact().canonical_header().unwrap(),
                 right.artifact().canonical_header().unwrap()
@@ -469,6 +523,7 @@ mod tests {
                 encode_snapshot(&SnapshotRecord::from_state(left.post_state()).unwrap()).unwrap(),
                 encode_snapshot(&SnapshotRecord::from_state(right.post_state()).unwrap()).unwrap()
             );
+
             a = crate::ParentSnapshot {
                 image: std::sync::Arc::new(crate::store::StoreImage {
                     current: std::sync::Arc::clone(&left.data.record),
@@ -482,6 +537,7 @@ mod tests {
                 }),
             };
         }
+
         assert!(matches!(
             a.head().source_cursor(),
             crate::SourceCursor::Exhausted { .. }
@@ -489,7 +545,8 @@ mod tests {
         assert!(LedgerEngine::new().prepare_next(&a, &unit_a).is_err());
     }
 
-    /// An invalid late proof in a byte-sliced complete unit prevents the first candidate.
+    /// An invalid late proof in a byte sliced complete unit prevents the first
+    /// candidate.
     #[test]
     fn invalid_last_proof_cannot_prepare_first_slice() {
         use crate::test_support::seed_fixture;
@@ -514,6 +571,7 @@ mod tests {
             } else {
                 original.envelope().clone()
             };
+
             occurrences.push(Occurrence::new(
                 original.vertex_id(),
                 original.vertex_author(),
@@ -522,11 +580,14 @@ mod tests {
                 envelope,
             ));
         }
+
         let (parent, manifest, raw) = fixture_source_for(m, vec![occurrences]);
+
         let unit = FixtureOrderVerifier::new(manifest, &parent)
             .unwrap()
             .verify_unit(raw[0].clone())
             .unwrap();
+
         assert!(
             LedgerEngine::new()
                 .authorize_unit(&parent, unit, &houseki_proofs::ProofRuntime::new())

@@ -21,23 +21,26 @@ pub use snapshot::ParentSnapshot;
 pub use token::ParentToken;
 pub use working::WorkingState;
 
-/// Working-state isolation and resource validation tests.
+/// Working state isolation and resource validation tests.
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use crate::test_support::manifest;
     use crate::{StateError, WorkingState};
     use houseki_types::{NoteCommitment, Nullifier};
 
-    /// Appending twice to a reconstructed tree leaves the parent root, count and leaves intact.
+    /// Appending twice to a reconstructed tree leaves the parent root, count and leaves
+    /// intact.
     #[test]
     fn working_tree_is_independent() {
         let candidate = manifest().candidate().unwrap();
         let parent = candidate.state();
         let anchor = parent.note_anchor();
         let leaves = parent.leaves().to_vec();
+
         let mut working = WorkingState::reconstruct(parent).unwrap();
         working.append(NoteCommitment::from_bytes([3; 64])).unwrap();
         working.append(NoteCommitment::from_bytes([3; 64])).unwrap();
+
         assert_eq!(parent.note_anchor(), anchor);
         assert_eq!(parent.leaves(), leaves);
         assert_eq!(working.state().leaves().len(), 3);
@@ -46,6 +49,7 @@ mod tests {
             &[NoteCommitment::from_bytes([3; 64]); 2]
         );
         assert_ne!(working.state().note_anchor(), anchor);
+
         working.validate_conservation().unwrap();
     }
 
@@ -61,6 +65,7 @@ mod tests {
                 .spent
                 .insert(bytes, Nullifier::from_bytes(bytes));
         }
+
         assert!(matches!(
             WorkingState::reconstruct(&candidate.state),
             Err(StateError::Capacity)
