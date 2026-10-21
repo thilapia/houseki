@@ -7,6 +7,7 @@ mod image;
 mod native;
 mod output;
 mod projection;
+mod replay;
 mod result;
 
 pub use archive::ReplayArchive;
@@ -15,6 +16,7 @@ pub(crate) use expected::ExpectedCheckpoint;
 pub(crate) use image::StoreImage;
 pub(crate) use native::NativeCheckpoint;
 pub use output::{AcceptedOutput, OutputBody};
+pub use replay::replay;
 pub use result::{CommitResult, CommittedCheckpoint};
 
 #[cfg(all(test, feature = "experimental-profiles"))]

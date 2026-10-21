@@ -52,6 +52,6 @@ pub use store::{
     ReplayArchive,
 };
 
-pub use store::ReplayError;
+pub use store::{ReplayError, replay};
 
 pub use batch::PreparationMetrics;
