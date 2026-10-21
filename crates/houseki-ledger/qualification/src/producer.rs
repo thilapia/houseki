@@ -150,3 +150,215 @@ pub fn seed(directory: &Path) -> Result<(), Box<dyn Error>> {
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
+
+/// Generates a complete public corpus without exporting private fixture owners.
+pub fn generate(
+    workload: crate::Workload,
+    directory: &Path,
+) -> Result<crate::PublicFixture, crate::QualificationError> {
+    if directory.exists() {
+        return Err(crate::QualificationError::Input(
+            "fixture destination already exists",
+        ));
+    }
+    generate_inner(workload, directory).map_err(crate::QualificationError::Native)
+}
+
+/// Dispatches fresh proving and public native execution before writing a new corpus.
+fn generate_inner(
+    workload: crate::Workload,
+    directory: &Path,
+) -> Result<crate::PublicFixture, Box<dyn Error>> {
+    let mut fixture = match workload {
+        crate::Workload::ValueLoop
+        | crate::Workload::FailedEarlyCopy
+        | crate::Workload::SharedBeneficiary => crate::loop_fixture::build(workload)?,
+        crate::Workload::Withdrawal => withdrawal_workload()?,
+        _ => payment_workload(workload)?,
+    };
+    workload.validate_checkpoints(&fixture.checkpoints)?;
+    fixture.directory = directory.to_path_buf();
+    fixture.write(workload)?;
+    Ok(fixture)
+}
+
+/// Proves one complete payment through the protected native owner API and records only duration.
+pub(crate) fn prove_payment_body(
+    body: &houseki_types::PaymentBody,
+    anchor: &houseki_types::NoteTreeAnchor,
+    spends: &[houseki_notes::SpendWitness<'_>],
+    outputs: &[&houseki_notes::NoteOpening],
+    measurement: &mut crate::Measurement,
+) -> Result<houseki_types::EncodedTransactionProof, Box<dyn Error>> {
+    let context = ProofContext::new(body.context())?;
+    let witness = houseki_proofs::PaymentWitness::new(spends, outputs)?;
+    let started = Instant::now();
+    let proof = houseki_proofs::prove_payment(
+        &ProofRuntime::new(),
+        body,
+        anchor,
+        &witness,
+        &context,
+        &CancellationToken::new(),
+    )?;
+    measurement.proving += started.elapsed();
+    Ok(proof)
+}
+
+/// Builds actual family, repeated-output, conflict and historical-anchor payment workloads.
+fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, Box<dyn Error>> {
+    use crate::{
+        Measurement, Workload,
+        execution::{bootstrap, occurrence, run},
+        payment_fixture::Fixture as PaymentFixture,
+    };
+    use houseki_crypto::MlDsa87SigningKey;
+    use houseki_ledger::{DecodeLimits, ExecutionPolicy, OutputBody, decode_policy, encode_policy};
+    use houseki_types::{ExecutionOutcome, ExecutionRejectionReason, PaymentEnvelope};
+    let (inputs, outputs, repeated) = match workload {
+        Workload::Payment { inputs, outputs } => (inputs, outputs, false),
+        Workload::RepeatedCommitments => (2, 2, true),
+        Workload::Conflicts | Workload::AnchorPruning => (1, 1, false),
+        _ => return Err("not a payment workload".into()),
+    };
+    let fixture = PaymentFixture::new(inputs, outputs, repeated)?;
+    let mut measurement = Measurement::default();
+    let proof = prove_payment_body(
+        &fixture.body,
+        &fixture.anchor,
+        &fixture.spends(),
+        &fixture.outputs(),
+        &mut measurement,
+    )?;
+    let a = MlDsa87SigningKey::generate()?;
+    let b = MlDsa87SigningKey::generate()?;
+    let c = MlDsa87SigningKey::generate()?;
+    let mut policy = ExecutionPolicy::development()?;
+    if workload == Workload::AnchorPruning {
+        let mut bytes = encode_policy(&policy)?;
+        bytes[136..144].copy_from_slice(&1_u64.to_le_bytes());
+        policy = decode_policy(&bytes, DecodeLimits::reference())?;
+    }
+    let m = bootstrap(
+        fixture.initial_leaves()?,
+        inputs as u128 * 100,
+        &[&a, &b, &c],
+        &[0, 0, 0],
+        &[0, 1, 2],
+        policy,
+    )?;
+    let envelope = PaymentEnvelope::new(fixture.body.clone(), proof);
+    let first = occurrence(envelope.clone().into(), 0, 11, 0);
+    let units = match workload {
+        Workload::Conflicts => vec![vec![first, occurrence(envelope.clone().into(), 1, 12, 0)]],
+        Workload::AnchorPruning => {
+            let mut units = vec![vec![first, occurrence(envelope.clone().into(), 0, 11, 1)]];
+            for _ in 1..63 {
+                units.push(vec![]);
+            }
+            units.push(vec![occurrence(envelope.into(), 1, 12, 0)]);
+            units
+        }
+        _ => vec![vec![first]],
+    };
+    let public = run(m, units, measurement)?;
+    let mut nullifiers = vec![];
+    for checkpoint in &public.checkpoints {
+        for output in checkpoint.accepted_outputs() {
+            let OutputBody::Payment(body) = output.body() else {
+                return Err("unexpected output family".into());
+            };
+            let owner = fixture.output_owner(output.output_index() as usize);
+            let recovered = houseki_notes::recover_payment_output(
+                body,
+                output.output_index(),
+                &owner.recipient,
+                &owner.decryption,
+                crate::payment_fixture::limits(),
+                4096,
+            )?;
+            if recovered.commitment()? != output.output().commitment() {
+                return Err("committed output recovery mismatch".into());
+            }
+            nullifiers.push(houseki_notes::derive_nullifier(
+                &recovered,
+                &owner.nullifier,
+                &output.position(),
+            )?);
+        }
+    }
+    if repeated && (nullifiers.len() != 2 || nullifiers[0] == nullifiers[1]) {
+        return Err("repeated commitments lost distinct note positions".into());
+    }
+    if workload == Workload::Conflicts {
+        assert_eq!(
+            public.checkpoints[0].receipts()[1].outcome(),
+            ExecutionOutcome::Rejected(ExecutionRejectionReason::SpentNullifier)
+        );
+    }
+    if workload == Workload::AnchorPruning {
+        assert_eq!(public.checkpoints.len(), 65);
+        assert_eq!(
+            public.checkpoints.last().unwrap().receipts()[0].outcome(),
+            ExecutionOutcome::Rejected(ExecutionRejectionReason::DisallowedAnchor)
+        );
+        assert_eq!(
+            public.checkpoints.last().unwrap().state().anchors()[0]
+                .sequence()
+                .value(),
+            2
+        );
+    }
+    Ok(public)
+}
+
+/// Builds a real signed withdrawal and recovers only through its committed output context.
+fn withdrawal_workload() -> Result<crate::PublicFixture, Box<dyn Error>> {
+    let fixture = Fixture::new()?;
+    let context = ProofContext::new(fixture.body.context())?;
+    let signature = fixture
+        .authority
+        .sign_reward_withdrawal(&fixture.body, context.body_limits())?;
+    let mut measurement = crate::Measurement::default();
+    let started = Instant::now();
+    let proof = prove_reward_withdrawal(
+        &ProofRuntime::new(),
+        &fixture.body,
+        &fixture.opening,
+        &context,
+        &CancellationToken::new(),
+    )?;
+    measurement.proving += started.elapsed();
+    let b = houseki_crypto::MlDsa87SigningKey::generate()?;
+    let c = houseki_crypto::MlDsa87SigningKey::generate()?;
+    let m = crate::execution::bootstrap(
+        vec![],
+        0,
+        &[&fixture.authority, &b, &c],
+        &[100, 0, 0],
+        &[0, 1, 2],
+        ExecutionPolicy::development()?,
+    )?;
+    let occurrence = crate::execution::occurrence(
+        RewardWithdrawalEnvelope::new(fixture.body.clone(), proof, signature).into(),
+        1,
+        12,
+        0,
+    );
+    let public = crate::execution::run(m, vec![vec![occurrence]], measurement)?;
+    for output in public.checkpoints[0].accepted_outputs() {
+        let houseki_ledger::OutputBody::RewardWithdrawal(body) = output.body() else {
+            return Err("unexpected payment output".into());
+        };
+        let recovered = houseki_notes::recover_withdrawal_output(
+            body,
+            &fixture.recipient,
+            &fixture.decryption,
+            4096,
+        )?;
+        assert_eq!(recovered.amount().atoms(), 3);
+        assert_eq!(recovered.commitment()?, output.output().commitment());
+    }
+    assert_eq!(public.checkpoints[0].state().pool().atoms(), 3);
+    Ok(public)
+}
