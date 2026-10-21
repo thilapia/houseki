@@ -28,3 +28,7 @@ p3-dft = { path = "../../../vendor/plonky3/dft" }
 p3-fri = { path = "../../../vendor/plonky3/fri" }
 p3-uni-stark = { path = "../../../vendor/plonky3/uni-stark" }
 p3-air = { path = "../../../vendor/plonky3/air" }
+
+[[bin]]
+name = "seed"
+required-features = ["prover"]
