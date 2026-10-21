@@ -21,6 +21,17 @@ mod wallet;
 #[cfg(feature = "prover")]
 pub use producer::seed;
 
+#[cfg(feature = "prover")]
+mod execution;
+#[cfg(feature = "prover")]
+mod measurement;
+#[cfg(feature = "prover")]
+mod public_fixture;
+#[cfg(feature = "prover")]
+pub use measurement::Measurement;
+#[cfg(feature = "prover")]
+pub use public_fixture::PublicFixture;
+
 /// Installs protected private allocation only in the explicitly proving test process.
 #[cfg(all(test, feature = "prover"))]
 #[global_allocator]
