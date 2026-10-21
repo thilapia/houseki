@@ -53,7 +53,8 @@ impl ExecutionPolicy {
     ///
     /// # Errors
     ///
-    /// Reports inconsistent fixed fee identity or anchor bounds if the preset is invalid.
+    /// Reports inconsistent fixed fee identity or anchor bounds if the preset is
+    /// invalid.
     #[cfg(feature = "experimental-profiles")]
     pub fn development() -> Result<Self, PolicyError> {
         let policy = Self {
@@ -67,6 +68,7 @@ impl ExecutionPolicy {
             withdrawal_fee: Amount::from_atoms(1).expect("one is bounded"),
             limits: ExecutionLimits::reference(),
         };
+
         policy.validate()?;
         Ok(policy)
     }
@@ -78,6 +80,7 @@ impl ExecutionPolicy {
         {
             return Err(PolicyError::AnchorRetention);
         }
+
         let maximum = ExecutionLimits::reference();
         if self.limits.body_bytes > maximum.body_bytes
             || self.limits.proof_bytes > maximum.proof_bytes
@@ -97,6 +100,7 @@ impl ExecutionPolicy {
         {
             return Err(PolicyError::ResourceBounds);
         }
+
         if self.fee_schedule.value() == 0xffff0001
             && (
                 self.payment_base_fee.atoms(),
@@ -107,6 +111,7 @@ impl ExecutionPolicy {
         {
             return Err(PolicyError::FeeScheduleIdentity);
         }
+
         Ok(())
     }
 
@@ -116,13 +121,14 @@ impl ExecutionPolicy {
     ///
     /// # Errors
     ///
-    /// Rejects shapes outside one through four inputs and one through two outputs before
-    /// reporting arithmetic overflow or a fee above the amount bound.
+    /// Rejects shapes outside one through four inputs and one through two outputs
+    /// before reporting arithmetic overflow or a fee above the amount bound.
     pub fn payment_fee(&self, body: &PaymentBody) -> Result<Amount, PolicyError> {
         let shape = body.shape();
         if !(1..=4).contains(&shape.input_count()) || !(1..=2).contains(&shape.output_count()) {
             return Err(PolicyError::UnsupportedShape);
         }
+
         let inputs = (shape.input_count() as u128)
             .checked_mul(self.per_input_fee.atoms())
             .ok_or(PolicyError::FeeOverflow)?;
@@ -138,14 +144,17 @@ impl ExecutionPolicy {
         Amount::from_atoms(total).map_err(|_| PolicyError::FeeOverflow)
     }
 
-    /// Tests activation of an already understood context without performing recognition.
+    /// Tests activation of an already understood context without performing
+    /// recognition.
     ///
-    /// Network, validity, schedule and exact fee checks belong to separate ordered decisions.
+    /// Network, validity, schedule and exact fee checks belong to separate ordered
+    /// decisions.
     pub fn activates(&self, kind: TransactionKind, context: TransactionContext) -> bool {
         let profiles = match kind {
             TransactionKind::Payment => &self.payment_profiles,
             TransactionKind::RewardWithdrawal => &self.withdrawal_profiles,
         };
+
         context.protocol_version() == self.protocol
             && profiles.contains(&context.proof_profile_id())
     }
@@ -222,7 +231,7 @@ mod tests {
         TransactionContext, ValidityCheckpointRange,
     };
 
-    /// Creates representation-only bodies under deliberately loose count limits.
+    /// Creates representation only bodies under deliberately loose count limits.
     fn body(inputs: usize, outputs: usize) -> PaymentBody {
         let limits = PaymentCountLimits::new(8, 8).unwrap();
         let context = TransactionContext::new(
@@ -274,6 +283,7 @@ mod tests {
                 expected
             );
         }
+
         assert_eq!(policy.withdrawal_fee().atoms(), 1);
         assert_eq!(policy.fee_schedule().value(), 0xffff0001);
         assert_eq!(policy.protocol().value(), 1);
@@ -285,7 +295,9 @@ mod tests {
             policy.withdrawal_profiles(),
             &[ProofProfileId::new(0xffff0007)]
         );
+
         let limits = policy.limits();
+
         assert_eq!(
             (
                 limits.body_bytes(),
@@ -342,43 +354,25 @@ mod tests {
                 Err(PolicyError::UnsupportedShape)
             ));
         }
+
         policy.per_input_fee = Amount::from_atoms(0).unwrap();
+
         assert!(matches!(
             policy.validate(),
             Err(PolicyError::FeeScheduleIdentity)
         ));
+
         policy.fee_schedule = FeeScheduleId::new(0xffff0002);
         policy.validate().unwrap();
+
         assert_eq!(policy.payment_fee(&body(4, 2)).unwrap().atoms(), 2);
         assert!(policy.payment_fee(&body(5, 1)).is_err());
+
         policy.per_input_fee = Amount::from_atoms(Amount::MAX_ATOMS).unwrap();
+
         assert!(matches!(
             policy.payment_fee(&body(4, 2)),
             Err(PolicyError::FeeOverflow)
-        ));
-    }
-
-    /// Ensures first and final checkpoint advancement cannot wrap.
-    #[test]
-    fn checkpoint_sequence_never_wraps() {
-        let policy = ExecutionPolicy::development().unwrap();
-        assert_eq!(
-            CheckpointRules::next(&policy, CheckpointSequence::new(0))
-                .unwrap()
-                .sequence()
-                .value(),
-            1
-        );
-        assert_eq!(
-            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX - 1))
-                .unwrap()
-                .sequence()
-                .value(),
-            u64::MAX
-        );
-        assert!(matches!(
-            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX)),
-            Err(PolicyError::SequenceExhausted)
         ));
     }
 
@@ -387,21 +381,27 @@ mod tests {
     fn anchor_configuration_is_validated() {
         let mut policy = ExecutionPolicy::development().unwrap();
         policy.limits.anchor_window = 0;
+
         assert!(matches!(
             policy.validate(),
             Err(PolicyError::AnchorRetention)
         ));
+
         policy.limits.anchor_window = 65;
+
         assert!(matches!(
             policy.validate(),
             Err(PolicyError::AnchorRetention)
         ));
     }
-    /// Trusted configuration cannot enlarge the absolute reference state/input capacity envelope.
+
+    /// Trusted configuration cannot enlarge the absolute reference state/input capacity
+    /// envelope.
     #[test]
     fn policy_cannot_expand_reference_caps() {
         let mut policy = ExecutionPolicy::development().unwrap();
         policy.limits.note_leaves = 4097;
+
         assert!(matches!(
             policy.validate(),
             Err(PolicyError::ResourceBounds)

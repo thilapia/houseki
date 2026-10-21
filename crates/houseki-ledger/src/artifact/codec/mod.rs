@@ -6,6 +6,7 @@ mod reader;
 mod records;
 mod writer;
 
+pub(crate) use archive::{decode_archive, encode_archive};
 pub use limits::DecodeLimits;
 pub use records::{
     decode_artifact_header, decode_effects, decode_fixture_stream, decode_fixture_unit,
@@ -18,7 +19,8 @@ pub use records::{
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use super::*;
-    use crate::test_support::{manifest, payment_body};
+    use crate::test_support::{manifest, payment_body, trusted_manifest};
+    use crate::{SnapshotRecord, validate_bootstrap};
     use houseki_types::{
         EncodedTransactionProof, ExecutionOutcome, ExecutionRejectionReason as R, Occurrence,
         PaymentEnvelope, Receipt, ValidatorId, VertexId,
@@ -43,6 +45,7 @@ mod tests {
     #[test]
     fn record_vectors_match_independent_offsets() {
         let bytes = encode_occurrences(&[occurrence()]).unwrap();
+
         assert_eq!(&bytes[..8], &1_u64.to_le_bytes());
         assert_eq!(&bytes[16..80], &[1; 64]);
         assert_eq!(&bytes[80..144], &[2; 64]);
@@ -54,12 +57,15 @@ mod tests {
         );
     }
 
-    /// Includes the outer count and every occurrence length prefix in component accounting.
+    /// Includes the outer count and every occurrence length prefix in component
+    /// accounting.
     #[test]
     fn component_bytes_include_every_prefix() {
         assert_eq!(encode_occurrences(&[]).unwrap(), 0_u64.to_le_bytes());
+
         let bytes = encode_occurrences(&[occurrence()]).unwrap();
         let record_len = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+
         assert_eq!(bytes.len() as u64, 16 + record_len);
         assert_eq!(
             encode_occurrences(&[occurrence(), occurrence()])
@@ -84,13 +90,16 @@ mod tests {
             R::NonceExhausted,
             R::StateBoundsExceeded,
         ];
+
         for (i, reason) in reasons.into_iter().enumerate() {
             let receipt = Receipt::new(
                 VertexId::from_bytes([1; 64]),
                 u64::MAX,
                 ExecutionOutcome::Rejected(reason),
             );
+
             let bytes = encode_receipts(&[receipt]).unwrap();
+
             assert_eq!(&bytes[88..92], &2_u32.to_le_bytes());
             assert_eq!(&bytes[92..96], &((i + 1) as u32).to_le_bytes());
             assert_eq!(
@@ -98,7 +107,9 @@ mod tests {
                 vec![receipt]
             );
         }
+
         let accepted = Receipt::new(VertexId::from_bytes([1; 64]), 0, ExecutionOutcome::Accepted);
+
         assert_eq!(
             &encode_receipts(&[accepted]).unwrap()[88..96],
             &[1, 0, 0, 0, 0, 0, 0, 0]
@@ -110,11 +121,16 @@ mod tests {
     fn all_record_fixtures_are_canonical() {
         let limits = DecodeLimits::reference();
         let policy = include_bytes!("../../../fixtures/reference-v1/policy.bin");
+
         let decoded = decode_policy(policy, limits).unwrap();
+
         assert_eq!(decoded.payment_fee(&payment_body(4, 2)).unwrap().atoms(), 6);
         assert_eq!(encode_policy(&decoded).unwrap(), policy);
+
         let snapshot = include_bytes!("../../../fixtures/reference-v1/snapshot.bin");
+
         let decoded = decode_snapshot(snapshot, limits).unwrap();
+
         assert_eq!(
             decoded.accounts[0].1.next_nonce().value(),
             0x0102030405060708
@@ -124,15 +140,22 @@ mod tests {
             0x0102030405060708090a0b0c0d0e0f10
         );
         assert_eq!(encode_snapshot(&decoded).unwrap(), snapshot);
+
         let occurrences = include_bytes!("../../../fixtures/reference-v1/occurrences.bin");
+
         assert_eq!(encode_occurrences(&[occurrence()]).unwrap(), occurrences);
+
         let receipts = include_bytes!("../../../fixtures/reference-v1/receipts.bin");
+
         assert_eq!(
             encode_receipts(&decode_receipts(receipts, limits).unwrap()).unwrap(),
             receipts
         );
+
         let effects = include_bytes!("../../../fixtures/reference-v1/effects.bin");
+
         let decoded = decode_effects(effects, limits).unwrap();
+
         assert_eq!(
             decoded[0].accepted.as_ref().unwrap().appends[0]
                 .position
@@ -140,26 +163,34 @@ mod tests {
             0x0102030405060708
         );
         assert_eq!(encode_effects(&decoded).unwrap(), effects);
+
         let header = include_bytes!("../../../fixtures/reference-v1/artifact_header.bin");
+
         let decoded = decode_artifact_header(header, limits).unwrap();
+
         assert_eq!(decoded.sequence.value(), 0x0102030405060708);
         assert_eq!(encode_artifact_header(&decoded).unwrap(), header);
+
         let unit = include_bytes!("../../../fixtures/reference-v1/fixture_unit.bin");
+
         assert_eq!(
             encode_fixture_unit(&decode_fixture_unit(unit, limits).unwrap()).unwrap(),
             unit
         );
+
         let stream = include_bytes!("../../../fixtures/reference-v1/fixture_stream.bin");
+
         assert_eq!(
             encode_fixture_stream(&decode_fixture_stream(stream, limits).unwrap()).unwrap(),
             stream
         );
     }
 
-    /// One decoder's acceptance predicate for common malformed-input checks.
+    /// One decoder's acceptance predicate for common malformed input checks.
     type DecoderAccepts = fn(&[u8], DecodeLimits) -> bool;
 
-    /// Rejects inverted source offsets through the public encoder rather than panicking.
+    /// Rejects inverted source offsets through the public encoder rather than
+    /// panicking.
     #[test]
     fn inverted_header_offsets_are_rejected() {
         let mut header = decode_artifact_header(
@@ -169,6 +200,7 @@ mod tests {
         .unwrap();
         header.order.start_offset = 2;
         header.order.end_offset = 1;
+
         assert!(encode_artifact_header(&header).is_err());
     }
 
@@ -176,6 +208,7 @@ mod tests {
     #[test]
     fn every_decoder_rejects_bad_prefixes_and_extensions() {
         let limits = DecodeLimits::reference();
+
         let cases: &[(&[u8], DecoderAccepts)] = &[
             (
                 include_bytes!("../../../fixtures/reference-v1/policy.bin"),
@@ -206,8 +239,10 @@ mod tests {
             for length in [0, 1, 7, bytes.len() - 1] {
                 assert!(!accepts(&bytes[..length], limits));
             }
+
             let mut extended = bytes.to_vec();
             extended.push(0);
+
             assert!(!accepts(&extended, limits));
             assert!(!accepts(
                 bytes,
@@ -217,9 +252,11 @@ mod tests {
                 }
             ));
         }
+
         let mut policy = include_bytes!("../../../fixtures/reference-v1/policy.bin").to_vec();
         let len = policy.len();
         policy[len - 4..].copy_from_slice(&2_u32.to_le_bytes());
+
         assert!(decode_policy(&policy, limits).is_err());
     }
 
@@ -243,10 +280,12 @@ mod tests {
             )
             .into(),
         );
+
         assert_ne!(
             encode_occurrences(std::slice::from_ref(&original)).unwrap(),
             encode_occurrences(&[changed]).unwrap()
         );
+
         let body = payment_body(1, 1);
         let withdrawal = RewardWithdrawalBody::new(
             body.context(),
@@ -272,15 +311,19 @@ mod tests {
                 .into(),
             )
         };
+
         let first = encode_occurrences(&[make(0)]).unwrap();
+
         assert_eq!(&first[232..236], &2_u32.to_le_bytes());
         assert_ne!(first, encode_occurrences(&[make(1)]).unwrap());
         assert_eq!(
             decode_occurrences(&first, DecodeLimits::reference()).unwrap(),
             vec![make(0)]
         );
+
         let mut ciphertext = encode_occurrences(&[original]).unwrap();
         ciphertext[244 + 196 + 64 + 64] ^= 1;
+
         assert_ne!(
             decode_occurrences(&ciphertext, DecodeLimits::reference()).unwrap(),
             vec![occurrence()]
@@ -291,17 +334,42 @@ mod tests {
     #[test]
     fn decode_rejects_hostile_lengths() {
         assert!(decode_occurrences(&u64::MAX.to_le_bytes(), DecodeLimits::reference()).is_err());
+
         let bytes = encode_occurrences(&[occurrence()]).unwrap();
         for length in [0, 7, 15, 231, bytes.len() - 1] {
             assert!(decode_occurrences(&bytes[..length], DecodeLimits::reference()).is_err());
         }
+
         let mut extra = bytes.clone();
         extra.push(0);
+
         assert!(decode_occurrences(&extra, DecodeLimits::reference()).is_err());
+
         let mut huge = bytes;
         huge[8..16].copy_from_slice(&u64::MAX.to_le_bytes());
+
         assert!(decode_occurrences(&huge, DecodeLimits::reference()).is_err());
     }
-}
 
-pub(crate) use archive::{decode_archive, encode_archive};
+    /// Complete key sorting removes host insertion order from reference bytes.
+    #[test]
+    fn snapshot_sorting_is_canonical() {
+        let parent = validate_bootstrap(trusted_manifest())
+            .unwrap()
+            .into_snapshot();
+        let mut record = SnapshotRecord::from_state(parent.state()).unwrap();
+        record.spent = vec![
+            houseki_types::Nullifier::from_bytes([2; 64]),
+            houseki_types::Nullifier::from_bytes([1; 64]),
+        ];
+
+        let first = encode_snapshot(&record).unwrap();
+        record.spent.reverse();
+
+        assert_eq!(encode_snapshot(&record).unwrap(), first);
+
+        record.spent.push(record.spent[0]);
+
+        assert!(encode_snapshot(&record).is_err());
+    }
+}

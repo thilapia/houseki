@@ -23,11 +23,12 @@ impl CheckpointRules {
         &self.eligible_anchors
     }
 
-    /// Fixes policy from actual logical state before deriving the next checkpoint rules.
+    /// Fixes policy from actual logical state before deriving the next checkpoint
+    /// rules.
     ///
     /// # Errors
     ///
-    /// Preserves policy validation and exhausted-sequence failures.
+    /// Preserves policy validation and exhausted sequence failures.
     pub fn derive(
         state: &crate::LogicalState,
         parent_sequence: CheckpointSequence,
@@ -45,10 +46,12 @@ impl CheckpointRules {
                 rules.eligible_anchors.push(record.anchor());
             }
         }
+
         Ok(rules)
     }
 
-    /// Derives the next sequence and fixes its policy without authenticating parent state.
+    /// Derives the next sequence and fixes its policy without authenticating parent
+    /// state.
     ///
     /// # Errors
     ///
@@ -97,7 +100,8 @@ mod tests {
     use super::*;
     use crate::test_support::manifest;
 
-    /// Prevents off by one errors at genesis, full window and retained-history boundaries.
+    /// Prevents off by one errors at genesis, full window and retained history
+    /// boundaries.
     #[test]
     fn eligible_window_is_inclusive() {
         let candidate = manifest().candidate().unwrap();
@@ -105,7 +109,33 @@ mod tests {
             let rules =
                 CheckpointRules::derive(candidate.state(), CheckpointSequence::new(next - 1))
                     .unwrap();
+
             assert_eq!(rules.eligible_sequences(), first..=last);
         }
+    }
+
+    /// Ensures first and final checkpoint advancement cannot wrap.
+    #[test]
+    fn checkpoint_sequence_never_wraps() {
+        let policy = ExecutionPolicy::development().unwrap();
+
+        assert_eq!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(0))
+                .unwrap()
+                .sequence()
+                .value(),
+            1
+        );
+        assert_eq!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX - 1))
+                .unwrap()
+                .sequence()
+                .value(),
+            u64::MAX
+        );
+        assert!(matches!(
+            CheckpointRules::next(&policy, CheckpointSequence::new(u64::MAX)),
+            Err(PolicyError::SequenceExhausted)
+        ));
     }
 }

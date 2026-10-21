@@ -48,3 +48,28 @@ pub struct ArtifactHeader {
     /// Fixed empty system event commitment.
     pub system_events_root: [u8; 64],
 }
+
+/// Identity construction has no self reference in its canonical header.
+#[cfg(all(test, feature = "experimental-profiles"))]
+mod tests {
+    use crate::{DecodeLimits, decode_artifact_header, encode_artifact_header};
+
+    /// Header identity excludes itself while binding both state commitments.
+    #[test]
+    fn artifact_identity_has_no_cycle() {
+        let bytes = include_bytes!("../../fixtures/reference-v1/artifact_header.bin");
+
+        let mut header = decode_artifact_header(bytes, DecodeLimits::reference()).unwrap();
+
+        assert_eq!(encode_artifact_header(&header).unwrap(), bytes);
+
+        let original = houseki_crypto::ledger_execution_artifact(bytes).unwrap();
+        header.post_state = crate::StateCommitment::from_bytes([8; 64]);
+
+        assert_ne!(
+            houseki_crypto::ledger_execution_artifact(&encode_artifact_header(&header).unwrap())
+                .unwrap(),
+            original
+        );
+    }
+}

@@ -1,4 +1,4 @@
-//! Independent expected-root validation before constructing any parent capability.
+//! Independent expected root validation before constructing any parent capability.
 
 use crate::state::CommittedRecord;
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
 };
 use std::sync::Arc;
 
-/// Bootstrap representation sealed after independent expected-state comparison.
+/// Bootstrap representation sealed after independent expected state comparison.
 pub struct ValidatedBootstrap {
     /// Actual reconstructed state and expected operational declarations.
     candidate: BootstrapCandidate,
@@ -26,6 +26,7 @@ impl ValidatedBootstrap {
             state_commitment: candidate.expected_state_commitment,
             source_cursor: candidate.source_cursor,
         };
+
         let record = Arc::new(CommittedRecord {
             state: candidate.state,
             head,
@@ -34,18 +35,25 @@ impl ValidatedBootstrap {
             effects: vec![],
             replay_inputs: ReplayInputs::Bootstrap(self.manifest),
         });
+
         ParentSnapshot {
             image: Arc::new(crate::store::StoreImage::bootstrap(record)),
         }
     }
 }
 
-/// Authenticates the actual rebuilt state against the independently expected fixture digest.
+/// Authenticates the actual rebuilt state against the independently expected fixture
+/// digest.
 ///
 /// # Errors
 ///
-/// Checks bounded manifest representation before cloning retained inputs, then rejects any
-/// expected-state mismatch after exact canonical encoding and the registered reference hash.
+/// Checks manifest capacities before cloning retained source identities, then verifies
+/// their stream commitment and initial cursor before reconstructing the candidate state.
+///
+/// Source binding errors therefore precede candidate validation errors.
+///
+/// The independently expected state digest is compared only after reconstruction, canonical
+/// encoding and the registered reference hash have succeeded.
 pub fn validate_bootstrap(
     manifest: BootstrapManifest,
 ) -> Result<ValidatedBootstrap, BootstrapError> {
@@ -71,37 +79,43 @@ pub fn validate_bootstrap(
             && manifest.fixture_unit_ids.first() == Some(unit_id) => {}
         _ => return Err(BootstrapError::SourceBinding),
     }
+
     let candidate = manifest.clone().candidate()?;
     let canonical = encode_snapshot(&SnapshotRecord::from_state(candidate.state())?)?;
     let actual = StateCommitment::from_bytes(houseki_crypto::ledger_reference_state(&canonical)?);
     if actual != candidate.expected_state_commitment {
         return Err(BootstrapError::StateCommitment);
     }
+
     Ok(ValidatedBootstrap {
         candidate,
         manifest: Arc::new(manifest),
     })
 }
 
-/// Trust sealing and committed-field binding tests.
+/// Trust sealing and committed field binding tests.
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use super::*;
     use crate::test_support::trusted_manifest;
     use crate::{SnapshotRecord, encode_snapshot};
 
-    /// A correct reconstructed state remains untrusted until its independent digest matches.
+    /// A correct reconstructed state remains untrusted until its independent digest
+    /// matches.
     #[test]
     fn bootstrap_requires_expected_root() {
         let mut wrong = trusted_manifest();
         wrong.expected_state_commitment = crate::StateCommitment::from_bytes([9; 64]);
+
         assert!(matches!(
             validate_bootstrap(wrong),
             Err(crate::BootstrapError::StateCommitment)
         ));
+
         let parent = validate_bootstrap(trusted_manifest())
             .unwrap()
             .into_snapshot();
+
         assert_eq!(parent.state().pool().atoms(), 100);
         assert_eq!(parent.head().sequence().value(), 0);
         assert_eq!(parent.token().sequence().value(), 0);
@@ -111,31 +125,15 @@ mod tests {
         );
     }
 
-    /// Complete-key sorting removes host insertion order from reference bytes.
-    #[test]
-    fn snapshot_sorting_is_canonical() {
-        let parent = validate_bootstrap(trusted_manifest())
-            .unwrap()
-            .into_snapshot();
-        let mut record = SnapshotRecord::from_state(parent.state()).unwrap();
-        record.spent = vec![
-            houseki_types::Nullifier::from_bytes([2; 64]),
-            houseki_types::Nullifier::from_bytes([1; 64]),
-        ];
-        let first = encode_snapshot(&record).unwrap();
-        record.spent.reverse();
-        assert_eq!(encode_snapshot(&record).unwrap(), first);
-        record.spent.push(record.spent[0]);
-        assert!(encode_snapshot(&record).is_err());
-    }
-
-    /// Each mutable or immutable logical field class contributes to its state commitment.
+    /// Each mutable or immutable logical field class contributes to its state
+    /// commitment.
     #[test]
     fn state_commitment_binds_all_record_fields() {
         let parent = validate_bootstrap(trusted_manifest())
             .unwrap()
             .into_snapshot();
         let record = SnapshotRecord::from_state(parent.state()).unwrap();
+
         let original =
             houseki_crypto::ledger_reference_state(&encode_snapshot(&record).unwrap()).unwrap();
         for change in 0..7 {
@@ -186,9 +184,11 @@ mod tests {
                     )
                 }
             }
+
             if change == 3 {
                 r.policy.fee_schedule = houseki_types::FeeScheduleId::new(0xffff0002);
             }
+
             assert_ne!(
                 houseki_crypto::ledger_reference_state(&encode_snapshot(&r).unwrap()).unwrap(),
                 original
