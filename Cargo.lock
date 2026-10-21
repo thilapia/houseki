@@ -244,6 +244,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "houseki-ledger"
+version = "0.1.0"
+dependencies = [
+ "houseki-crypto",
+ "houseki-proofs",
+ "houseki-state",
+ "houseki-types",
+ "sha3",
+ "thiserror",
+]
+
+[[package]]
 name = "houseki-notes"
 version = "0.1.0"
 dependencies = [

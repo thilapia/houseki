@@ -11,6 +11,8 @@ publish = false
 [workspace.dependencies]
 # internal
 houseki-crypto = { path = "crates/houseki-crypto" }
+houseki-ledger = { path = "crates/houseki-ledger" }
+houseki-proofs = { path = "crates/houseki-proofs", default-features = false }
 houseki-notes = { path = "crates/houseki-notes" }
 houseki-state = { path = "crates/houseki-state" }
 houseki-types = { path = "crates/houseki-types" }
