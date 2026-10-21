@@ -1,6 +1,6 @@
 //! Common rejection priority and complete payment delta preflight.
 
-use super::{Decision, ExecutionError, TransactionDelta, common};
+use super::{Decision, ExecutionError, TransactionDelta, context};
 use crate::eligibility::AuthorizedOccurrence;
 use crate::{
     AcceptedEffect, AccountEffect, CheckpointRules, EffectRecord, NoteAppend, WorkingState,
@@ -13,9 +13,10 @@ pub(super) fn evaluate_payment(
     working: &WorkingState,
     occurrence: &AuthorizedOccurrence<'_>,
 ) -> Result<Decision, ExecutionError> {
-    if let Some(reason) = common::check(rules, working, occurrence)? {
+    if let Some(reason) = context::check(rules, working, occurrence)? {
         return Ok(Decision::Reject(reason));
     }
+
     let TransactionEnvelope::Payment(envelope) = occurrence.occurrence().envelope() else {
         return Err(ExecutionError::Integrity);
     };
@@ -26,13 +27,16 @@ pub(super) fn evaluate_payment(
     if !rules.allows_anchor(anchor) {
         return Ok(Decision::Reject(R::DisallowedAnchor));
     }
+
     if body.context().fee_schedule_id() != policy.fee_schedule() {
         return Ok(Decision::Reject(R::WrongFeeSchedule));
     }
+
     let fee = policy.payment_fee(body)?;
     if body.public_fee() != fee {
         return Ok(Decision::Reject(R::WrongFee));
     }
+
     if body
         .inputs()
         .nullifiers()
@@ -41,6 +45,7 @@ pub(super) fn evaluate_payment(
     {
         return Ok(Decision::Reject(R::SpentNullifier));
     }
+
     let beneficiary = state
         .beneficiary(occurrence.occurrence().vertex_author())
         .ok_or(ExecutionError::Integrity)?;
@@ -56,6 +61,7 @@ pub(super) fn evaluate_payment(
     if !enough_notes || !enough_spent || after_balance.is_err() || after_pool.is_err() {
         return Ok(Decision::Reject(R::StateBoundsExceeded));
     }
+
     let start = u64::try_from(state.note_anchor().count().value())
         .map_err(|_| ExecutionError::Integrity)?;
     let appends = body
@@ -68,6 +74,7 @@ pub(super) fn evaluate_payment(
             commitment: output.commitment(),
         })
         .collect();
+
     Ok(Decision::Accept(TransactionDelta {
         effect: EffectRecord {
             vertex_id: occurrence.occurrence().vertex_id(),
@@ -102,7 +109,8 @@ mod tests {
         PaymentCountLimits, PaymentEnvelope, TransactionContext, ValidatorId, VertexId,
     };
 
-    /// Creates an exact policy-shaped payment against the actual trusted initial anchor.
+    /// Creates an exact policy shaped payment against the actual trusted initial
+    /// anchor.
     fn fixture() -> (crate::ParentSnapshot, Occurrence) {
         let parent = validate_bootstrap(trusted_manifest())
             .unwrap()
@@ -140,7 +148,8 @@ mod tests {
         (parent, occurrence)
     }
 
-    /// Computes conserved public fee effects while preserving ordered nullifiers and repeated outputs.
+    /// Computes conserved public fee effects while preserving ordered nullifiers and
+    /// repeated outputs.
     #[test]
     fn payment_delta_conserves_fee_and_order() {
         let (parent, occurrence) = fixture();
@@ -150,17 +159,21 @@ mod tests {
             }
             _ => unreachable!(),
         };
+
         let checked = AuthorizedOccurrence::for_test(
             &occurrence,
             &context,
             Some(parent.state().note_anchor()),
         );
+
         let working = WorkingState::reconstruct(parent.state()).unwrap();
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
+
         let Decision::Accept(delta) = evaluate_payment(&rules, &working, &checked).unwrap() else {
             panic!("payment should accept")
         };
         let effect = delta.effect.accepted.unwrap();
+
         assert_eq!(
             (effect.before_pool.atoms(), effect.after_pool.atoms()),
             (100, 96)
@@ -198,10 +211,12 @@ mod tests {
             &context,
             Some(parent.state().note_anchor()),
         );
+
         let mut working = WorkingState::reconstruct(parent.state()).unwrap();
         let n = e.body().inputs().nullifiers()[0];
         working.state.spent.insert(n.into_bytes(), n);
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
+
         assert!(matches!(
             evaluate_payment(&rules, &working, &checked).unwrap(),
             Decision::Reject(houseki_types::ExecutionRejectionReason::SpentNullifier)
@@ -222,16 +237,20 @@ mod tests {
             &context,
             Some(parent.state().note_anchor()),
         );
+
         let mut working = WorkingState::reconstruct(parent.state()).unwrap();
         let n = e.body().inputs().nullifiers()[0];
         working.state.spent.insert(n.into_bytes(), n);
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(10)).unwrap();
+
         assert!(matches!(
             evaluate_payment(&rules, &working, &checked).unwrap(),
             Decision::Reject(houseki_types::ExecutionRejectionReason::OutsideValidityRange)
         ));
     }
-    /// Every simultaneous failure selects the first applicable reason in the explicit table.
+
+    /// Every simultaneous failure selects the first applicable reason in the explicit
+    /// table.
     #[test]
     fn complete_payment_priority_table() {
         use houseki_types::{
@@ -246,8 +265,10 @@ mod tests {
             R::SpentNullifier,
             R::StateBoundsExceeded,
         ];
+
         for (priority, reason) in expected.into_iter().enumerate() {
             let (parent, original) = fixture();
+
             let mut working = WorkingState::reconstruct(parent.state()).unwrap();
             std::sync::Arc::make_mut(&mut working.state.policy)
                 .limits
@@ -258,6 +279,7 @@ mod tests {
                     parent.state().note_anchor(),
                 ));
             }
+
             let houseki_types::TransactionEnvelope::Payment(e) = original.envelope() else {
                 unreachable!()
             };
@@ -267,6 +289,7 @@ mod tests {
                 CheckpointSequence::new(100),
             )
             .unwrap();
+
             let context = TransactionContext::new(
                 if priority == 0 {
                     NetworkId::from_bytes([8; 64])
@@ -282,6 +305,7 @@ mod tests {
                 },
                 validity,
             );
+
             let body = PaymentBody::new(
                 context,
                 e.body().inputs().clone(),
@@ -290,10 +314,12 @@ mod tests {
                 PaymentCountLimits::new(4, 2).unwrap(),
             )
             .unwrap();
+
             if priority <= 5 {
                 let n = body.inputs().nullifiers()[0];
                 working.state.spent.insert(n.into_bytes(), n);
             }
+
             let occurrence = Occurrence::new(
                 original.vertex_id(),
                 original.vertex_author(),
@@ -309,9 +335,11 @@ mod tests {
             );
             let rules =
                 CheckpointRules::derive(working.state(), CheckpointSequence::new(32)).unwrap();
-            assert!(
-                matches!(evaluate_payment(&rules,&working,&checked).unwrap(),Decision::Reject(actual)if actual==reason)
-            );
+
+            assert!(matches!(
+                evaluate_payment(&rules, &working, &checked).unwrap(),
+                Decision::Reject(actual) if actual == reason
+            ));
         }
     }
 }

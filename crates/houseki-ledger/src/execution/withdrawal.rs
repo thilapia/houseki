@@ -1,21 +1,23 @@
 //! Checked gross withdrawal affordability, nonce advancement and account aliasing.
 
-use super::{Decision, ExecutionError, TransactionDelta, common};
+use super::{Decision, ExecutionError, TransactionDelta, context};
 use crate::eligibility::AuthorizedOccurrence;
 use crate::{
     AcceptedEffect, AccountEffect, CheckpointRules, EffectRecord, NoteAppend, WorkingState,
 };
 use houseki_types::{Amount, ExecutionRejectionReason as R, NotePosition, TransactionEnvelope};
 
-/// Builds a complete coalesced withdrawal delta after explicit nonce and gross-funds precedence.
+/// Builds a complete coalesced withdrawal delta after explicit nonce and gross funds
+/// precedence.
 pub(super) fn evaluate_withdrawal(
     rules: &CheckpointRules,
     working: &WorkingState,
     occurrence: &AuthorizedOccurrence<'_>,
 ) -> Result<Decision, ExecutionError> {
-    if let Some(reason) = common::check(rules, working, occurrence)? {
+    if let Some(reason) = context::check(rules, working, occurrence)? {
         return Ok(Decision::Reject(reason));
     }
+
     let TransactionEnvelope::RewardWithdrawal(envelope) = occurrence.occurrence().envelope() else {
         return Err(ExecutionError::Integrity);
     };
@@ -25,16 +27,19 @@ pub(super) fn evaluate_withdrawal(
     if body.context().fee_schedule_id() != policy.fee_schedule() {
         return Ok(Decision::Reject(R::WrongFeeSchedule));
     }
+
     let fee = policy.withdrawal_fee();
     if body.public_fee() != fee {
         return Ok(Decision::Reject(R::WrongFee));
     }
+
     let source = state
         .account(body.reward_account_id())
         .ok_or(ExecutionError::Integrity)?;
     if body.nonce() != source.next_nonce() {
         return Ok(Decision::Reject(R::WrongNonce));
     }
+
     let Some(next_nonce) = source.next_nonce().checked_next() else {
         return Ok(Decision::Reject(R::NonceExhausted));
     };
@@ -46,6 +51,7 @@ pub(super) fn evaluate_withdrawal(
     if source.balance().atoms() < gross {
         return Ok(Decision::Reject(R::InsufficientBalance));
     }
+
     let beneficiary = state
         .beneficiary(occurrence.occurrence().vertex_author())
         .ok_or(ExecutionError::Integrity)?;
@@ -59,9 +65,11 @@ pub(super) fn evaluate_withdrawal(
     } else {
         recipient.balance().checked_add(fee)
     };
+
     if after_pool.is_err() || recipient_balance.is_err() || !enough_notes {
         return Ok(Decision::Reject(R::StateBoundsExceeded));
     }
+
     let mut accounts = if beneficiary == body.reward_account_id() {
         vec![AccountEffect {
             account_id: beneficiary,
@@ -89,6 +97,7 @@ pub(super) fn evaluate_withdrawal(
             },
         ]
     };
+
     accounts.sort_unstable_by_key(|a| a.account_id.into_bytes());
     let position = NotePosition::new(
         u64::try_from(state.note_anchor().count().value())
@@ -126,7 +135,8 @@ mod tests {
         ValidatorId, VertexId, WithdrawalNonce,
     };
 
-    /// Builds a synthetic withdrawal under the actual registered authority and active policy.
+    /// Builds a synthetic withdrawal under the actual registered authority and active
+    /// policy.
     fn fixture(
         balance: u128,
         stored_nonce: u64,
@@ -181,7 +191,8 @@ mod tests {
         (parent, working, occurrence)
     }
 
-    /// Gross affordability is required even when the source also receives this occurrence's fee.
+    /// Gross affordability is required even when the source also receives this
+    /// occurrence's fee.
     #[test]
     fn withdrawal_requires_gross_balance_before_fee_credit() {
         let (parent, working, occurrence) = fixture(3, 0, 0);
@@ -191,6 +202,7 @@ mod tests {
         let context = ProofContext::new(e.body().context()).unwrap();
         let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
+
         assert!(matches!(
             evaluate_withdrawal(&rules, &working, &checked).unwrap(),
             Decision::Reject(R::InsufficientBalance)
@@ -219,13 +231,16 @@ mod tests {
             let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
             let rules =
                 CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
-            assert!(
-                matches!(evaluate_withdrawal(&rules,&working,&checked).unwrap(),Decision::Reject(reason)if reason==expected)
-            );
+
+            assert!(matches!(
+                evaluate_withdrawal(&rules, &working, &checked).unwrap(),
+                Decision::Reject(reason) if reason == expected
+            ));
         }
     }
 
-    /// Source and beneficiary alias produces one merged replacement with one nonce advancement.
+    /// Source and beneficiary alias produces one merged replacement with one nonce
+    /// advancement.
     #[test]
     fn withdrawal_coalesces_aliasing() {
         let (parent, working, occurrence) = fixture(4, 0, 0);
@@ -235,11 +250,13 @@ mod tests {
         let context = ProofContext::new(e.body().context()).unwrap();
         let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
+
         let Decision::Accept(delta) = evaluate_withdrawal(&rules, &working, &checked).unwrap()
         else {
             panic!("withdrawal should accept")
         };
         let effect = delta.effect.accepted.unwrap();
+
         assert_eq!(effect.accounts.len(), 1);
         assert_eq!(effect.accounts[0].after_balance.atoms(), 1);
         assert_eq!(effect.accounts[0].after_nonce.value(), 1);
@@ -248,7 +265,9 @@ mod tests {
             (96, 99)
         );
     }
-    /// A non-validator source remains withdrawable through a distinct mapped fee beneficiary.
+
+    /// A non validator source remains withdrawable through a distinct mapped fee
+    /// beneficiary.
     #[test]
     fn distinct_accounts_preserve_gross_debit_and_fee() {
         let (parent, mut working, occurrence) = fixture(4, 0, 0);
@@ -270,11 +289,13 @@ mod tests {
         let context = ProofContext::new(e.body().context()).unwrap();
         let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
         let rules = CheckpointRules::derive(working.state(), CheckpointSequence::new(0)).unwrap();
+
         let Decision::Accept(delta) = evaluate_withdrawal(&rules, &working, &checked).unwrap()
         else {
             panic!("withdrawal should accept")
         };
         let effect = delta.effect.accepted.unwrap();
+
         assert_eq!(effect.accounts.len(), 2);
         assert_eq!(
             effect
@@ -298,7 +319,8 @@ mod tests {
         );
     }
 
-    /// Gross affordability compares a full-width amount-plus-fee before capped amount conversion.
+    /// Gross affordability compares a full width amount plus fee before capped amount
+    /// conversion.
     #[test]
     fn maximum_amount_plus_fee_is_insufficient_balance() {
         let (parent, mut working, original) = fixture(4, 0, 0);
@@ -337,12 +359,15 @@ mod tests {
         );
         let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
         let rules = CheckpointRules::derive(parent.state(), CheckpointSequence::new(0)).unwrap();
+
         assert!(matches!(
             evaluate_withdrawal(&rules, &working, &checked).unwrap(),
             Decision::Reject(R::InsufficientBalance)
         ));
     }
-    /// A separately identified zero-fee test schedule retains exact gross arithmetic and conservation.
+
+    /// A separately identified zero fee test schedule retains exact gross arithmetic
+    /// and conservation.
     #[test]
     fn zero_fee_requires_a_distinct_schedule() {
         let (parent, mut working, original) = fixture(3, 0, 0);
@@ -382,11 +407,13 @@ mod tests {
         let context = ProofContext::new(context).unwrap();
         let checked = AuthorizedOccurrence::for_test(&occurrence, &context, None);
         let rules = CheckpointRules::derive(working.state(), CheckpointSequence::new(0)).unwrap();
+
         let Decision::Accept(delta) = evaluate_withdrawal(&rules, &working, &checked).unwrap()
         else {
             panic!("zero-fee transfer should accept")
         };
         working.apply(delta).unwrap();
+
         assert_eq!(working.state().pool().atoms(), 100);
         assert_eq!(
             working

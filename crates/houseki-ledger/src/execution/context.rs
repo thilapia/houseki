@@ -1,4 +1,4 @@
-//! Explicit common state-check precedence independent of enum discriminants.
+//! Explicit common state check precedence independent of enum discriminants.
 
 use super::ExecutionError;
 use crate::eligibility::AuthorizedOccurrence;
@@ -23,6 +23,7 @@ pub(super) fn check(
     if occurrence.context().expected() != context {
         return Err(ExecutionError::Integrity);
     }
+
     if context.network_id() != working.state().network()
         || !rules
             .policy()
@@ -30,11 +31,13 @@ pub(super) fn check(
     {
         return Ok(Some(R::UnsupportedContext));
     }
+
     if !context
         .validity_checkpoint_range()
         .contains(rules.sequence())
     {
         return Ok(Some(R::OutsideValidityRange));
     }
+
     Ok(None)
 }

@@ -9,9 +9,17 @@ pub enum ExecutionError {
 
     /// The current working state cannot continue after a local application error.
     #[error(transparent)]
-    State(#[from] crate::StateError),
+    State(
+        /// Original state failure retained as the source.
+        #[from]
+        crate::StateError,
+    ),
 
     /// Exact fee arithmetic or policy interpretation failed unexpectedly.
     #[error(transparent)]
-    Policy(#[from] crate::PolicyError),
+    Policy(
+        /// Original policy failure retained as the source.
+        #[from]
+        crate::PolicyError,
+    ),
 }
