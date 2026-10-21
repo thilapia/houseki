@@ -86,3 +86,24 @@ pub(crate) fn payment_body(inputs: usize, outputs: usize) -> PaymentBody {
     )
     .unwrap()
 }
+
+/// Supplies an expected bootstrap digest computed solely by the independent integer oracle.
+pub(crate) fn trusted_manifest() -> BootstrapManifest {
+    let mut m = manifest();
+    let hex = include_str!("../../fixtures/reference-v1/bootstrap.hex").trim();
+    let bytes = std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap());
+    m.expected_state_commitment = crate::StateCommitment::from_bytes(bytes);
+    let stream = houseki_crypto::ledger_fixture_order_stream(
+        &crate::encode_fixture_stream(&crate::FixtureStreamRecord {
+            network: m.network,
+            starting_artifact_id: m.parent_artifact_id,
+            unit_ids: vec![],
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    m.source_cursor = SourceCursor::Exhausted {
+        stream_id: crate::FixtureStreamId::from_bytes(stream),
+    };
+    m
+}

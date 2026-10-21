@@ -124,3 +124,123 @@ pub fn ledger_fixture_order_stream(canonical: &[u8]) -> Result<[u8; 64], CryptoF
         &[&1_u32.to_le_bytes(), canonical],
     )
 }
+
+/// Independent ledger hash fixtures and registered domain separation.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies all nine fixed domains against an independent integer implementation.
+    #[test]
+    fn ledger_domains_match_independent_vectors() {
+        let actual = ledger_reference_state(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/snapshot.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/snapshot.hex").trim()
+        );
+        let actual = ledger_execution_policy(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/policy.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/policy.hex").trim()
+        );
+        let actual = ledger_ordered_occurrences(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/occurrences.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/occurrences.hex").trim()
+        );
+        let actual = ledger_receipts(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/receipts.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/receipts.hex").trim()
+        );
+        let actual = ledger_public_effects(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/effects.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/effects.hex").trim()
+        );
+        let actual = ledger_system_events(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/system_events.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/system_events.hex").trim()
+        );
+        let actual = ledger_execution_artifact(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/artifact_header.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/artifact_header.hex")
+                .trim()
+        );
+        let actual = ledger_fixture_order_unit(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/fixture_unit.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/fixture_unit.hex").trim()
+        );
+        let actual = ledger_fixture_order_stream(include_bytes!(
+            "../../../houseki-ledger/fixtures/reference-v1/fixture_stream.bin"
+        ))
+        .unwrap();
+        let hex = actual
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            hex,
+            include_str!("../../../houseki-ledger/fixtures/reference-v1/fixture_stream.hex").trim()
+        );
+    }
+}
