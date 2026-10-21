@@ -1,0 +1,30 @@
+[package]
+name = "houseki-ledger-qualification"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+default-run = "houseki-ledger-qualification"
+
+[workspace]
+
+[features]
+default = []
+prover = ["houseki-proofs/prover", "dep:houseki-notes", "houseki-crypto/proofs", "houseki-notes/proofs", "houseki-state/proofs"]
+
+[dependencies]
+houseki-ledger = { path = "..", features = ["experimental-profiles"] }
+houseki-proofs = { path = "../../houseki-proofs", features = ["experimental-profiles"] }
+houseki-types = { path = "../../houseki-types" }
+houseki-crypto = { path = "../../houseki-crypto" }
+houseki-state = { path = "../../houseki-state" }
+houseki-notes = { path = "../../houseki-notes", optional = true }
+
+sha3 = { version = "=0.11.0", default-features = false }
+
+[patch.crates-io]
+p3-util = { path = "../../../vendor/plonky3/util" }
+p3-dft = { path = "../../../vendor/plonky3/dft" }
+p3-fri = { path = "../../../vendor/plonky3/fri" }
+p3-uni-stark = { path = "../../../vendor/plonky3/uni-stark" }
+p3-air = { path = "../../../vendor/plonky3/air" }

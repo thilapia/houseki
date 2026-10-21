@@ -21,3 +21,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 sha3.workspace = true
+
+[[example]]
+name = "replay"
+required-features = ["experimental-profiles"]
