@@ -132,6 +132,45 @@ jobs:
             --features 'prover,p3-maybe-rayon/parallel' compiled_backend_mode_matches_preflight \
             2>&1 | tee validation-logs/proofs-parallel-gate.log
 
+      - name: Validate deterministic ledger boundaries and independent vectors
+        run: |
+          cargo test -p houseki-ledger --locked --no-default-features \
+            2>&1 | tee validation-logs/ledger-default-tests.log
+          cargo test -p houseki-ledger --release --locked --features experimental-profiles -- --test-threads=1 \
+            2>&1 | tee validation-logs/ledger-reference-tests.log
+          python3 crates/houseki-ledger/tools/reference_vectors.py --check crates/houseki-ledger/fixtures/reference-v1 \
+            2>&1 | tee validation-logs/ledger-independent-vectors.log
+          RUSTDOCFLAGS="-D warnings" cargo doc -p houseki-ledger --locked --no-deps \
+            --document-private-items --features experimental-profiles \
+            2>&1 | tee validation-logs/ledger-rustdoc.log
+
+      - name: Generate complete public ledger qualification workloads
+        run: |
+          cargo fmt --manifest-path crates/houseki-ledger/qualification/Cargo.toml --check \
+            2>&1 | tee validation-logs/ledger-qualification-format.log
+          cargo run --release --manifest-path crates/houseki-ledger/qualification/Cargo.toml --locked \
+            --features prover -- generate-all validation-logs/ledger-corpus \
+            2>&1 | tee validation-logs/ledger-generate-all.log
+          HOUSEKI_LEDGER_PUBLIC_CORPUS="$PWD/validation-logs/ledger-corpus" \
+            cargo test --release --manifest-path crates/houseki-ledger/qualification/Cargo.toml \
+            --locked --features prover measurement:: -- --test-threads=1 \
+            2>&1 | tee validation-logs/ledger-measurement-tests.log
+
+      - name: Replay every ledger workload through a fresh verifier graph
+        run: |
+          HOUSEKI_LEDGER_PUBLIC_CORPUS="$PWD/validation-logs/ledger-corpus" \
+            cargo test --release --manifest-path crates/houseki-ledger/qualification/Cargo.toml \
+            --locked verifier_consumer:: -- --test-threads=1 \
+            2>&1 | tee validation-logs/ledger-verifier-consumer-tests.log
+          for fixture in validation-logs/ledger-corpus/*; do
+            cargo run -p houseki-ledger --release --locked --no-default-features \
+              --features experimental-profiles --example replay -- "$fixture" \
+              2>&1 | tee "$fixture/fresh-verifier.log"
+          done
+          cargo tree -p houseki-ledger --locked --no-default-features \
+            --features experimental-profiles -e features > validation-logs/ledger-verifier-features.log
+          python3 -c 'from pathlib import Path; s=Path("validation-logs/ledger-verifier-features.log").read_text(); assert "houseki-proofs feature \"prover\"" not in s; assert "p3-maybe-rayon feature \"parallel\"" not in s; assert " rayon v" not in s'
+
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
