@@ -6,6 +6,7 @@ mod address_checksum;
 mod domain;
 mod hash;
 mod identity;
+mod ledger;
 mod ml_dsa_87;
 mod ml_kem_1024;
 mod note_tree;
@@ -16,6 +17,11 @@ mod suite;
 pub use address_checksum::recipient_descriptor_checksum;
 pub use domain::CryptoFramingError;
 pub use identity::{BodyHashError, payment_transaction_id, withdrawal_transaction_id};
+pub use ledger::{
+    ledger_execution_artifact, ledger_execution_policy, ledger_fixture_order_stream,
+    ledger_fixture_order_unit, ledger_ordered_occurrences, ledger_public_effects, ledger_receipts,
+    ledger_reference_state, ledger_system_events,
+};
 pub use ml_dsa_87::{
     MlDsa87SigningKey, MlDsa87SigningKeyError, MlDsa87VerificationKey, WithdrawalSignatureError,
 };

@@ -9,6 +9,33 @@ pub(crate) use framing::Frame;
 /// Only registered roles can select a cryptographic domain.
 #[derive(Clone, Copy)]
 pub(crate) enum Domain {
+    /// Binds the canonical ledger reference state record under schema 1.
+    LedgerReferenceState,
+
+    /// Binds the canonical ledger execution policy record under schema 1.
+    LedgerExecutionPolicy,
+
+    /// Binds the canonical ledger ordered occurrences record under schema 1.
+    LedgerOrderedOccurrences,
+
+    /// Binds the canonical ledger receipts record under schema 1.
+    LedgerReceipts,
+
+    /// Binds the canonical ledger public effects record under schema 1.
+    LedgerPublicEffects,
+
+    /// Binds the canonical ledger system events record under schema 1.
+    LedgerSystemEvents,
+
+    /// Binds the canonical ledger execution artifact record under schema 1.
+    LedgerExecutionArtifact,
+
+    /// Binds the canonical ledger fixture order unit record under schema 1.
+    LedgerFixtureOrderUnit,
+
+    /// Binds the canonical ledger fixture order stream record under schema 1.
+    LedgerFixtureOrderStream,
+
     /// Separates an empty application note tree leaf from occupied commitments.
     NoteTreeEmpty,
 
@@ -68,6 +95,15 @@ impl Domain {
     /// Returns the exact ASCII label encoded in this domain's transcript.
     pub(crate) fn label(&self) -> &'static [u8] {
         match self {
+            Self::LedgerReferenceState => b"houseki/v1/ledger/reference-state",
+            Self::LedgerExecutionPolicy => b"houseki/v1/ledger/execution-policy",
+            Self::LedgerOrderedOccurrences => b"houseki/v1/ledger/ordered-occurrences",
+            Self::LedgerReceipts => b"houseki/v1/ledger/receipts",
+            Self::LedgerPublicEffects => b"houseki/v1/ledger/public-effects",
+            Self::LedgerSystemEvents => b"houseki/v1/ledger/system-events",
+            Self::LedgerExecutionArtifact => b"houseki/v1/ledger/execution-artifact",
+            Self::LedgerFixtureOrderUnit => b"houseki/v1/ledger/fixture-order-unit",
+            Self::LedgerFixtureOrderStream => b"houseki/v1/ledger/fixture-order-stream",
             Self::NoteTreeEmpty => b"houseki/v1/note-tree/empty",
             Self::NoteTreeLeaf => b"houseki/v1/note-tree/leaf",
             Self::NoteTreeNode => b"houseki/v1/note-tree/node",
