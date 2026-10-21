@@ -1,4 +1,4 @@
-//! Complete unverified canonical source-unit bytes.
+//! Complete unverified canonical source unit bytes.
 
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ impl RawOrderUnit {
         self.bytes
     }
 
-    /// Borrows the complete source-unit representation.
+    /// Borrows the complete source unit representation.
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }

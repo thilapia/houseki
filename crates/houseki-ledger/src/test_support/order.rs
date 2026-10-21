@@ -1,33 +1,10 @@
 //! Complete finite source construction shared only by inline engine tests.
 
-use crate::test_support::{payment_body, trusted_manifest};
 use crate::{
     FixtureManifest, FixtureStreamRecord, FixtureUnitId, FixtureUnitRecord, RawOrderUnit,
     SourceCursor, encode_fixture_stream, encode_fixture_unit, validate_bootstrap,
 };
-use houseki_types::{EncodedTransactionProof, Occurrence, PaymentEnvelope, ValidatorId, VertexId};
-
-/// Constructs an unverified bounded occurrence at a genuine vertex payload slot.
-pub(crate) fn fixture_occurrence(index: u64) -> Occurrence {
-    Occurrence::new(
-        VertexId::from_bytes([1; 64]),
-        ValidatorId::from_bytes([5; 64]),
-        trusted_manifest().committee_context,
-        index,
-        PaymentEnvelope::new(
-            payment_body(1, 1),
-            EncodedTransactionProof::new(vec![1], 1).unwrap(),
-        )
-        .into(),
-    )
-}
-
-/// Creates independent fixture trust declarations for a complete finite source.
-pub(crate) fn fixture_source(
-    units: Vec<Vec<Occurrence>>,
-) -> (crate::ParentSnapshot, FixtureManifest, Vec<RawOrderUnit>) {
-    fixture_source_for(trusted_manifest(), units)
-}
+use houseki_types::Occurrence;
 
 /// Binds complete units to a supplied independently trusted bootstrap fixture.
 pub(crate) fn fixture_source_for(
@@ -49,6 +26,7 @@ pub(crate) fn fixture_source_for(
         ids.push(previous);
         raw.push(RawOrderUnit::new(bytes));
     }
+
     let stream = crate::FixtureStreamId::from_bytes(
         houseki_crypto::ledger_fixture_order_stream(
             &encode_fixture_stream(&FixtureStreamRecord {

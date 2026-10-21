@@ -29,9 +29,17 @@ pub enum OrderError {
 
     /// Canonical representation validation failed.
     #[error(transparent)]
-    Artifact(#[from] crate::ArtifactError),
+    Artifact(
+        /// Original artifact failure retained as the source.
+        #[from]
+        crate::ArtifactError,
+    ),
 
     /// A fixed source commitment could not be constructed.
     #[error(transparent)]
-    Hash(#[from] houseki_crypto::CryptoFramingError),
+    Hash(
+        /// Original hash failure retained as the source.
+        #[from]
+        houseki_crypto::CryptoFramingError,
+    ),
 }

@@ -55,6 +55,7 @@ impl SourceCursor {
                 bytes[64..68].copy_from_slice(&1_u32.to_le_bytes());
             }
         }
+
         bytes
     }
 
@@ -79,7 +80,7 @@ impl SourceCursor {
     }
 }
 
-/// Exact auxiliary cursor representation and malformed-state tests.
+/// Exact auxiliary cursor representation and malformed state tests.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,21 +94,29 @@ mod tests {
             unit_id: FixtureUnitId::from_bytes([2; 64]),
             offset: u64::MAX,
         };
+
         let bytes = cursor.to_bytes();
+
         assert_eq!(bytes.len(), 148);
         assert_eq!(&bytes[68..76], &u64::MAX.to_le_bytes());
         assert_eq!(SourceCursor::from_bytes(&bytes).unwrap(), cursor);
+
         let exhausted = SourceCursor::Exhausted {
             stream_id: FixtureStreamId::from_bytes([1; 64]),
         };
+
         let bytes = exhausted.to_bytes();
+
         assert_eq!(&bytes[64..68], &1_u32.to_le_bytes());
         assert!(bytes[68..].iter().all(|b| *b == 0));
+
         for length in [0, 147] {
             assert!(SourceCursor::from_bytes(&bytes[..length]).is_err());
         }
+
         let mut bad = bytes;
         bad[76] = 1;
+
         assert!(SourceCursor::from_bytes(&bad).is_err());
     }
 }

@@ -6,32 +6,33 @@ use std::sync::Arc;
 
 /// Complete bounded order capability issued only by the fixture verifier.
 ///
-/// This capability establishes fixture order and leaves every proof/signature check pending.
+/// This capability establishes fixture order and leaves every proof/signature check
+/// pending.
 #[derive(Debug)]
 pub struct VerifiedOrderUnit {
     /// Exact finite source identity checked against the trusted parent cursor.
-    pub(crate) stream_id: FixtureStreamId,
+    pub(super) stream_id: FixtureStreamId,
 
     /// Complete canonical unit commitment.
-    pub(crate) unit_id: FixtureUnitId,
+    pub(super) unit_id: FixtureUnitId,
 
-    /// Previous manifest-authenticated unit identity.
-    pub(crate) previous: FixtureUnitId,
+    /// Previous manifest authenticated unit identity.
+    pub(super) previous: FixtureUnitId,
 
     /// Exact source unit ordinal.
-    pub(crate) ordinal: u64,
+    pub(super) ordinal: u64,
 
     /// Authenticated next unit identity or exhausted source.
-    pub(crate) successor: Option<FixtureUnitId>,
+    pub(super) successor: Option<FixtureUnitId>,
 
     /// Every original occurrence in canonical unit order.
-    pub(crate) occurrences: Arc<[Occurrence]>,
+    pub(super) occurrences: Arc<[Occurrence]>,
 
     /// Complete occurrence record lengths, excluding the surrounding list prefixes.
-    pub(crate) record_lengths: Vec<u64>,
+    pub(super) record_lengths: Vec<u64>,
 
     /// Original complete canonical bytes retained for authorization and replay.
-    pub(crate) canonical: Arc<[u8]>,
+    pub(super) canonical: Arc<[u8]>,
 }
 
 impl VerifiedOrderUnit {
@@ -50,12 +51,12 @@ impl VerifiedOrderUnit {
         self.stream_id
     }
 
-    /// Returns the manifest-authenticated predecessor identity.
+    /// Returns the manifest authenticated predecessor identity.
     pub const fn previous_unit_id(&self) -> FixtureUnitId {
         self.previous
     }
 
-    /// Returns the manifest-authenticated successor, if any.
+    /// Returns the manifest authenticated successor, if any.
     pub const fn successor(&self) -> Option<FixtureUnitId> {
         self.successor
     }

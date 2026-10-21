@@ -1,5 +1,6 @@
 //! Full finite fixture declarations bound by the independently expected stream identity.
 
+use super::metadata::UnitMetadata;
 use crate::{
     DecodeLimits, ExecutionArtifactId, FixtureStreamId, FixtureStreamRecord, FixtureUnitId,
     OrderError, ParentSnapshot, RawOrderUnit, SourceCursor, decode_fixture_unit,
@@ -20,21 +21,9 @@ pub struct FixtureManifest {
     /// Trusted starting checkpoint identity, preserved across descendants.
     starting_artifact: ExecutionArtifactId,
 
-    /// Complete bounded units, validated individually before their payload bytes are released.
+    /// Complete bounded units, validated individually before their payload bytes are
+    /// released.
     units: Vec<RawOrderUnit>,
-}
-
-/// Minimal immutable metadata retained after complete manifest validation.
-#[derive(Debug, Clone)]
-pub(super) struct UnitMetadata {
-    /// Exact complete unit identity.
-    pub(super) identity: FixtureUnitId,
-
-    /// Manifest-authenticated preceding identity.
-    pub(super) previous: FixtureUnitId,
-
-    /// Number of complete occurrences declared by this unit.
-    pub(super) count: u64,
 }
 
 impl FixtureManifest {
@@ -52,6 +41,20 @@ impl FixtureManifest {
     }
 
     /// Validates exact complete source bytes and provenance against the trusted parent.
+    ///
+    /// Bounds every unit and the complete finite stream under the parent policy, checks
+    /// the predecessor chain and expected stream identity, and requires unique origins
+    /// with contiguous payload indices from registered authors in the fixed committee.
+    ///
+    /// Each complete occurrence must fit a checkpoint component budget.
+    ///
+    /// Successful validation authenticates fixture provenance without checking wallet
+    /// proofs.
+    ///
+    /// # Errors
+    ///
+    /// Rejects source or progress mismatches, duplicate origins and unsliceable
+    /// occurrences, preserving bounded allocation, codec and hashing failures.
     pub fn validate(&self, parent: &ParentSnapshot) -> Result<(), OrderError> {
         self.inspect(parent).map(|_| ())
     }
@@ -64,7 +67,8 @@ impl FixtureManifest {
         self.inspect_with_ids(parent, None)
     }
 
-    /// Validates complete retained prefix payloads against the independently expected finite list.
+    /// Validates complete retained prefix payloads against the independently expected
+    /// finite list.
     pub(super) fn inspect_with_ids(
         &self,
         parent: &ParentSnapshot,
@@ -77,9 +81,11 @@ impl FixtureManifest {
         {
             return Err(OrderError::Binding);
         }
+
         if parent.artifact().is_none() && self.starting_artifact != parent.head().artifact_id() {
             return Err(OrderError::Binding);
         }
+
         let mut metadata = Vec::new();
         metadata
             .try_reserve_exact(self.units.len())
@@ -92,6 +98,7 @@ impl FixtureManifest {
             if raw.bytes().len() as u128 > u128::from(limits.unit_bytes()) + 72 {
                 return Err(OrderError::Bound);
             }
+
             let unit = decode_fixture_unit(raw.bytes(), DecodeLimits::reference())?;
             if unit.ordinal != ordinal as u64
                 || unit.previous_unit_id != previous
@@ -99,10 +106,12 @@ impl FixtureManifest {
             {
                 return Err(OrderError::Binding);
             }
+
             let components = encode_occurrences(&unit.occurrences)?;
             if components.len() as u128 > u128::from(limits.unit_bytes()) {
                 return Err(OrderError::Bound);
             }
+
             origins
                 .try_reserve(unit.occurrences.len())
                 .map_err(|_| OrderError::Allocation)?;
@@ -118,9 +127,11 @@ impl FixtureManifest {
                 {
                     return Err(OrderError::Binding);
                 }
+
                 if occurrence.transaction_index() >= 8192 {
                     return Err(OrderError::Bound);
                 }
+
                 let origin = (
                     occurrence.vertex_id().into_bytes(),
                     occurrence.transaction_index(),
@@ -128,6 +139,7 @@ impl FixtureManifest {
                 if !origins.insert(origin) {
                     return Err(OrderError::DuplicateOrigin);
                 }
+
                 let record = vertices.entry(origin.0).or_insert((
                     occurrence.vertex_author(),
                     occurrence.committee_context(),
@@ -139,9 +151,11 @@ impl FixtureManifest {
                 {
                     return Err(OrderError::Binding);
                 }
+
                 if occurrence.transaction_index() != record.2 {
                     return Err(OrderError::Binding);
                 }
+
                 record.2 += 1;
                 record.3 = record.3.max(occurrence.transaction_index());
                 let size = encode_occurrences(std::slice::from_ref(occurrence))?.len() as u128;
@@ -149,6 +163,7 @@ impl FixtureManifest {
                     return Err(OrderError::UnitInadmissible);
                 }
             }
+
             previous =
                 FixtureUnitId::from_bytes(houseki_crypto::ledger_fixture_order_unit(raw.bytes())?);
             metadata.push(UnitMetadata {
@@ -157,9 +172,11 @@ impl FixtureManifest {
                 count: unit.occurrences.len() as u64,
             });
         }
+
         if vertices.values().any(|v| v.3 + 1 != v.2) {
             return Err(OrderError::Binding);
         }
+
         let known_ids: Vec<_> = metadata.iter().map(|v| v.identity).collect();
         let ids = if let Some(complete) = complete_ids {
             if complete.len() > 64
@@ -168,10 +185,12 @@ impl FixtureManifest {
             {
                 return Err(OrderError::Binding);
             }
+
             complete.to_vec()
         } else {
             known_ids
         };
+
         let stream = FixtureStreamId::from_bytes(houseki_crypto::ledger_fixture_order_stream(
             &encode_fixture_stream(&FixtureStreamRecord {
                 network: self.network,
@@ -201,6 +220,7 @@ impl FixtureManifest {
                 }
             }
         }
+
         Ok((stream, metadata))
     }
 }
