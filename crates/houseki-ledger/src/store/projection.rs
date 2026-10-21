@@ -1,4 +1,4 @@
-//! Allocation-free accepted-output projection over already checked committed records.
+//! Allocation free accepted output projection over already checked committed records.
 
 use super::{AcceptedOutput, CommittedCheckpoint, OutputBody};
 use houseki_types::{ExecutionOutcome, NoteOutput, TransactionEnvelope};
@@ -28,6 +28,7 @@ pub(super) fn accepted_outputs(
                     OutputBody::RewardWithdrawal(e.body()),
                 ),
             };
+
             accepted.into_iter().flat_map(move |accepted| {
                 outputs.iter().enumerate().zip(&accepted.appends).map(
                     move |((slot, output), append)| AcceptedOutput {

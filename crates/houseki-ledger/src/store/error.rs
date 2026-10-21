@@ -17,37 +17,69 @@ pub enum CommitError {
 
     /// Complete canonical comparison or replay representation failed.
     #[error(transparent)]
-    Artifact(#[from] crate::ArtifactError),
+    Artifact(
+        /// Original artifact failure retained as the source.
+        #[from]
+        crate::ArtifactError,
+    ),
 }
 
 /// Public input replay failed before a reported checkpoint could be reproduced.
 #[derive(Debug, thiserror::Error)]
 pub enum ReplayError {
-    /// Archive identity or a recomputed complete checkpoint differs from the expected record.
+    /// Archive identity or a recomputed complete checkpoint differs from the expected
+    /// record.
     #[error("replay mismatch: {0}")]
-    Mismatch(&'static str),
+    Mismatch(
+        /// Public replay boundary that differed from the recomputed record.
+        &'static str,
+    ),
 
     /// Independent bootstrap validation failed.
     #[error(transparent)]
-    Bootstrap(#[from] crate::BootstrapError),
+    Bootstrap(
+        /// Independently authenticated bootstrap declarations.
+        #[from]
+        crate::BootstrapError,
+    ),
 
     /// Complete public source binding could not be revalidated.
     #[error(transparent)]
-    Order(#[from] crate::OrderError),
+    Order(
+        /// Original order failure retained as the source.
+        #[from]
+        crate::OrderError,
+    ),
 
     /// Fresh cryptographic authorization failed.
     #[error(transparent)]
-    Unit(#[from] crate::UnitPreparationError),
+    Unit(
+        /// Original unit failure retained as the source.
+        #[from]
+        crate::UnitPreparationError,
+    ),
 
     /// Complete checkpoint preparation failed.
     #[error(transparent)]
-    Preparation(#[from] crate::PreparationError),
+    Preparation(
+        /// Original preparation failure retained as the source.
+        #[from]
+        crate::PreparationError,
+    ),
 
     /// Atomic publication of a recomputed candidate failed.
     #[error(transparent)]
-    Commit(#[from] CommitError),
+    Commit(
+        /// Original commit failure retained as the source.
+        #[from]
+        CommitError,
+    ),
 
     /// A public canonical comparison failed.
     #[error(transparent)]
-    Artifact(#[from] crate::ArtifactError),
+    Artifact(
+        /// Original artifact failure retained as the source.
+        #[from]
+        crate::ArtifactError,
+    ),
 }

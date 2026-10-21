@@ -26,7 +26,8 @@ pub(crate) struct ExpectedCheckpoint {
 }
 
 impl ExpectedCheckpoint {
-    /// Compares full canonical reported state and effects against an independently computed record.
+    /// Compares full canonical reported state and effects against an independently
+    /// computed record.
     pub(crate) fn matches_record(
         &self,
         record: &crate::state::CommittedRecord,

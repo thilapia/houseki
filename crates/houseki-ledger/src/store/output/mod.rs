@@ -7,13 +7,14 @@ pub use body::OutputBody;
 use crate::ExecutionArtifactId;
 use houseki_types::{NoteOutput, NotePosition, VertexId};
 
-/// Borrowed accepted output tied to one checked committed occurrence and original body slot.
+/// Borrowed accepted output tied to one checked committed occurrence and original body
+/// slot.
 #[derive(Debug)]
 pub struct AcceptedOutput<'a> {
     /// Complete containing artifact identity.
     pub(in crate::store) artifact_id: ExecutionArtifactId,
 
-    /// Range-relative canonical occurrence index.
+    /// Range relative canonical occurrence index.
     pub(in crate::store) occurrence_index: u64,
 
     /// Exact original vertex and payload position.
@@ -38,7 +39,7 @@ impl<'a> AcceptedOutput<'a> {
         self.artifact_id
     }
 
-    /// Returns the range-relative original occurrence index.
+    /// Returns the range relative original occurrence index.
     pub const fn occurrence_index(&self) -> u64 {
         self.occurrence_index
     }

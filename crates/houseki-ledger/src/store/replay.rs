@@ -4,14 +4,17 @@ use super::{ReferenceStore, ReplayArchive, ReplayError};
 use crate::{AuthorizedUnit, BootstrapManifest, LedgerEngine, SourceCursor};
 use houseki_proofs::ProofRuntime;
 
-/// Rebuilds actual checkpoints with fresh complete-unit verification and exact public comparisons.
+/// Rebuilds actual checkpoints with fresh complete unit verification and exact public
+/// comparisons.
 ///
-/// Archive effects and reported state remain comparison targets and are never applied as writes.
+/// Archive effects and reported state remain comparison targets and are never applied as
+/// writes.
 ///
 /// # Errors
 ///
-/// Rejects independent bootstrap/source mismatch, missing complete unit payloads, cryptographic
-/// failures or any difference in canonical outcomes, effects, state, leaves and continuation.
+/// Rejects independent bootstrap/source mismatch, missing complete unit payloads,
+/// cryptographic failures or any difference in canonical outcomes, effects, state, leaves
+/// and continuation.
 pub fn replay(
     manifest: BootstrapManifest,
     archive: &ReplayArchive,
@@ -29,6 +32,7 @@ pub fn replay(
             "independent bootstrap/source binding",
         ));
     }
+
     let verifier = if archive.expected.is_empty() {
         None
     } else {
@@ -37,6 +41,7 @@ pub fn replay(
             &archive.units,
         )?)
     };
+
     let mut authorized: Option<AuthorizedUnit> = None;
     let engine = LedgerEngine::new();
     for expected in &archive.expected {
@@ -64,22 +69,26 @@ pub fn replay(
                 .verify_unit(raw)?;
             authorized = Some(engine.authorize_unit(&parent, unit, runtime)?);
         }
+
         let prepared =
             engine.prepare_next(&parent, authorized.as_ref().expect("unit authorized above"))?;
         if !expected.matches_record(&prepared.data.record)? {
             return Err(ReplayError::Mismatch("complete checkpoint records"));
         }
+
         store.commit(prepared)?;
     }
+
     if store.archive().to_bytes()? != archive.to_bytes()? {
         return Err(ReplayError::Mismatch(
             "complete canonical archive and authenticated anchor prerequisites",
         ));
     }
+
     Ok(store)
 }
 
-/// Actual cryptographic replay and partial-unit restart tests.
+/// Actual cryptographic replay and partial unit restart tests.
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use super::*;
@@ -91,7 +100,8 @@ mod tests {
     use houseki_proofs::ProofRuntime;
     use houseki_types::Occurrence;
 
-    /// A reduced count policy forces a two-envelope actual signed unit across two checkpoints.
+    /// A reduced count policy forces a two envelope actual signed unit across two
+    /// checkpoints.
     fn fixture() -> (
         crate::BootstrapManifest,
         ReferenceStore,
@@ -131,34 +141,43 @@ mod tests {
         (m, store, authorized)
     }
 
-    /// A fresh verifier reproduces every canonical public byte and excludes rejected outputs.
+    /// A fresh verifier reproduces every canonical public byte and excludes rejected
+    /// outputs.
     #[test]
     fn replay_recomputes_instead_of_trusting_effects() {
         let (m, mut store, unit) = fixture();
+
         for _ in 0..2 {
             let candidate = LedgerEngine::new()
                 .prepare_next(&store.snapshot(), &unit)
                 .unwrap();
             store.commit(candidate).unwrap();
         }
+
         let bytes = store.archive().to_bytes().unwrap();
         let archive = ReplayArchive::from_bytes(&bytes, DecodeLimits::reference()).unwrap();
+
         let replayed = replay(m.clone(), &archive, &ProofRuntime::new()).unwrap();
+
         assert_eq!(replayed.archive().to_bytes().unwrap(), bytes);
         assert_eq!(replayed.snapshot().token(), store.snapshot().token());
+
         let mut bad = archive.clone();
         std::sync::Arc::make_mut(&mut bad.expected[0]).effects[0]
             .accepted
             .as_mut()
             .unwrap()
             .after_pool = houseki_types::Amount::from_atoms(9).unwrap();
+
         assert!(replay(m, &bad, &ProofRuntime::new()).is_err());
     }
 
-    /// Full retained unit bytes are re-authorized after decoding a mid-unit archived prefix.
+    /// Full retained unit bytes are reauthorized after decoding a mid unit archived
+    /// prefix.
     #[test]
     fn resume_mid_unit_reauthorizes_complete_unit() {
         let (m, mut store, unit) = fixture();
+
         let first = LedgerEngine::new()
             .prepare_next(&store.snapshot(), &unit)
             .unwrap();
@@ -166,6 +185,7 @@ mod tests {
         let bytes = store.archive().to_bytes().unwrap();
         drop(unit);
         let archive = ReplayArchive::from_bytes(&bytes, DecodeLimits::reference()).unwrap();
+
         let mut restored = replay(m, &archive, &ProofRuntime::new()).unwrap();
         let raw = archive.verify_unit(&restored.snapshot(), 0).unwrap();
         let authorized = LedgerEngine::new()
@@ -174,38 +194,51 @@ mod tests {
         let next = LedgerEngine::new()
             .prepare_next(&restored.snapshot(), &authorized)
             .unwrap();
+
         assert_eq!(next.artifact().header().order.start_offset, 1);
+
         let result = restored.commit(next).unwrap().checkpoint();
+
         assert_eq!(result.accepted_outputs().count(), 0);
         assert_eq!(restored.snapshot().state().pool().atoms(), 3);
         assert_eq!(restored.snapshot().head().sequence().value(), 2);
     }
 
-    /// Missing units, reordered checkpoints, tampered prerequisites and malformed outer lengths fail.
+    /// Missing units, reordered checkpoints, tampered prerequisites and malformed outer
+    /// lengths fail.
     #[test]
     fn replay_detects_missing_or_reordered_public_inputs() {
         let (m, mut store, unit) = fixture();
+
         for _ in 0..2 {
             let candidate = LedgerEngine::new()
                 .prepare_next(&store.snapshot(), &unit)
                 .unwrap();
             store.commit(candidate).unwrap();
         }
+
         let archive = store.archive();
         let mut missing = archive.clone();
         missing.units.clear();
+
         assert!(replay(m.clone(), &missing, &ProofRuntime::new()).is_err());
+
         let mut reordered = archive.clone();
         reordered.expected.reverse();
+
         assert!(replay(m.clone(), &reordered, &ProofRuntime::new()).is_err());
+
         let mut anchors = archive.clone();
         anchors.anchors[0] = crate::AnchorRecord::new(
             houseki_types::CheckpointSequence::new(99),
             anchors.anchors[0].anchor(),
         );
+
         assert!(replay(m, &anchors, &ProofRuntime::new()).is_err());
+
         let mut bytes = archive.to_bytes().unwrap();
         bytes.push(0);
+
         assert!(ReplayArchive::from_bytes(&bytes, DecodeLimits::reference()).is_err());
     }
 }

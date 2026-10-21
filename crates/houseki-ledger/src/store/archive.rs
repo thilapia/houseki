@@ -60,7 +60,8 @@ impl ReplayArchive {
         }
     }
 
-    /// Borrows complete finite unit identities without authenticating a decoded archive.
+    /// Borrows complete finite unit identities without authenticating a decoded
+    /// archive.
     pub fn unit_ids(&self) -> &[FixtureUnitId] {
         &self.unit_ids
     }
@@ -80,7 +81,7 @@ impl ReplayArchive {
         self.units.len()
     }
 
-    /// Encodes the exact bounded schema-1 public replay container.
+    /// Encodes the exact bounded schema 1 public replay container.
     pub fn to_bytes(&self) -> Result<Vec<u8>, ArtifactError> {
         crate::artifact::encode_archive(self)
     }
@@ -90,7 +91,8 @@ impl ReplayArchive {
         crate::artifact::decode_archive(bytes, limits)
     }
 
-    /// Revalidates retained complete unit bytes against this trusted parent's finite source binding.
+    /// Revalidates retained complete unit bytes against this trusted parent's finite
+    /// source binding.
     pub fn verify_unit(
         &self,
         parent: &crate::ParentSnapshot,
@@ -104,6 +106,7 @@ impl ReplayArchive {
         {
             return Err(crate::OrderError::Binding);
         }
+
         let index = usize::try_from(ordinal).map_err(|_| crate::OrderError::Bound)?;
         let verifier = crate::FixtureOrderVerifier::from_replay(parent, &self.units)?;
         verifier.verify_unit(crate::RawOrderUnit::from_shared(Arc::clone(
@@ -116,6 +119,7 @@ impl ReplayArchive {
         if self.expected.len() >= 8192 {
             return Err(CommitError::Integrity);
         }
+
         let mut units = clone_slice(&self.units)?;
         let mut anchors = clone_slice(&self.anchors)?;
         let mut expected = clone_slice(&self.expected)?;
@@ -132,6 +136,7 @@ impl ReplayArchive {
         if unit_ids.as_ref() != self.unit_ids.as_ref() {
             return Err(CommitError::Integrity);
         }
+
         let ordinal = usize::try_from(u64::from_le_bytes(
             source_unit
                 .get(..8)
@@ -146,6 +151,7 @@ impl ReplayArchive {
         } else if units.get(ordinal).map(AsRef::as_ref) != Some(source_unit.as_ref()) {
             return Err(CommitError::Integrity);
         }
+
         anchors
             .try_reserve(1)
             .map_err(|_| CommitError::Allocation)?;
@@ -169,11 +175,13 @@ impl ReplayArchive {
             leaves: clone_slice(record.state.leaves())?,
             cursor: record.head.source_cursor().clone(),
         };
+
         expected.push(Arc::new(comparison));
         native.push(NativeCheckpoint {
             parent: prepared.expected_parent().clone(),
             record: Arc::clone(record),
         });
+
         Ok(Self {
             network: self.network,
             starting_artifact: self.starting_artifact,
@@ -189,7 +197,7 @@ impl ReplayArchive {
 }
 
 /// Reserves complete bounded collection capacity before cloning owned public elements.
-pub(crate) fn clone_slice<T: Clone>(values: &[T]) -> Result<Vec<T>, ArtifactError> {
+fn clone_slice<T: Clone>(values: &[T]) -> Result<Vec<T>, ArtifactError> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(values.len())
