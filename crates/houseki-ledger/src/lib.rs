@@ -15,7 +15,11 @@ mod store;
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod test_support;
 
-pub use artifact::ExecutionArtifact;
+pub use bootstrap::{BootstrapCandidate, BootstrapError, BootstrapManifest, CommitteeEntry};
+pub use order::SourceCursor;
+pub use policy::{CheckpointRules, ExecutionLimits, ExecutionPolicy, PolicyError};
+pub use state::{AnchorRecord, LogicalState, StateError, WorkingState};
+
 pub use artifact::{
     AcceptedEffect, AccountEffect, ArtifactError, ArtifactHeader, DecodeLimits, EffectRecord,
     ExecutionArtifactId, ExecutionPolicyId, FixtureStreamId, FixtureStreamRecord, FixtureUnitId,
@@ -25,18 +29,29 @@ pub use artifact::{
     encode_effects, encode_fixture_stream, encode_fixture_unit, encode_occurrences, encode_policy,
     encode_receipts, encode_snapshot,
 };
-pub use batch::{PreparationError, PreparationMetrics, PreparedCheckpoint};
-pub use bootstrap::{BootstrapCandidate, BootstrapError, BootstrapManifest, CommitteeEntry};
+
+pub use artifact::ExecutionArtifact;
 pub use bootstrap::{ValidatedBootstrap, validate_bootstrap};
-pub use eligibility::{AuthorizedUnit, UnitPreparationError};
-pub use engine::LedgerEngine;
-pub use execution::ExecutionError;
-pub use order::{
-    FixtureManifest, FixtureOrderVerifier, OrderError, RawOrderUnit, SourceCursor,
-    VerifiedOrderUnit,
-};
-pub use policy::CheckpointRules;
-pub use policy::{ExecutionLimits, ExecutionPolicy, PolicyError};
-pub use state::{AnchorRecord, LogicalState, StateError, WorkingState};
 pub use state::{HeadRecord, ParentSnapshot, ParentToken, ReplayInputs};
-pub use store::ReplayArchive;
+
+pub use order::{
+    FixtureManifest, FixtureOrderVerifier, OrderError, RawOrderUnit, VerifiedOrderUnit,
+};
+
+pub use eligibility::UnitPreparationError;
+pub use engine::LedgerEngine;
+
+pub use eligibility::AuthorizedUnit;
+
+pub use execution::ExecutionError;
+
+pub use batch::{PreparationError, PreparedCheckpoint};
+
+pub use store::{
+    AcceptedOutput, CommitError, CommitResult, CommittedCheckpoint, OutputBody, ReferenceStore,
+    ReplayArchive,
+};
+
+pub use store::ReplayError;
+
+pub use batch::PreparationMetrics;

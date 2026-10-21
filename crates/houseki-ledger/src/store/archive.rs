@@ -1,9 +1,9 @@
 //! Bounded public replay archive and separate native historical ownership.
 
-use super::{ExpectedCheckpoint, NativeCheckpoint};
+use super::{CommitError, ExpectedCheckpoint, NativeCheckpoint};
 use crate::{
     AnchorRecord, ArtifactError, DecodeLimits, ExecutionArtifactId, FixtureStreamId, FixtureUnitId,
-    ReplayInputs, SnapshotRecord, StateCommitment, state::CommittedRecord,
+    PreparedCheckpoint, ReplayInputs, SnapshotRecord, StateCommitment, state::CommittedRecord,
 };
 use houseki_types::NetworkId;
 use std::sync::Arc;
@@ -109,6 +109,82 @@ impl ReplayArchive {
         verifier.verify_unit(crate::RawOrderUnit::from_shared(Arc::clone(
             self.units.get(index).ok_or(crate::OrderError::Binding)?,
         )))
+    }
+
+    /// Constructs every archive/index update before the publication boundary.
+    pub(crate) fn appended(&self, prepared: &PreparedCheckpoint) -> Result<Self, CommitError> {
+        if self.expected.len() >= 8192 {
+            return Err(CommitError::Integrity);
+        }
+        let mut units = clone_slice(&self.units)?;
+        let mut anchors = clone_slice(&self.anchors)?;
+        let mut expected = clone_slice(&self.expected)?;
+        let mut native = clone_slice(&self.native)?;
+        let record = &prepared.data.record;
+        let ReplayInputs::Execution {
+            source_unit,
+            unit_ids,
+            ..
+        } = &record.replay_inputs
+        else {
+            return Err(CommitError::Integrity);
+        };
+        if unit_ids.as_ref() != self.unit_ids.as_ref() {
+            return Err(CommitError::Integrity);
+        }
+        let ordinal = usize::try_from(u64::from_le_bytes(
+            source_unit
+                .get(..8)
+                .ok_or(CommitError::Integrity)?
+                .try_into()
+                .expect("fixed source ordinal"),
+        ))
+        .map_err(|_| CommitError::Integrity)?;
+        if ordinal == units.len() {
+            units.try_reserve(1).map_err(|_| CommitError::Allocation)?;
+            units.push(Arc::clone(source_unit));
+        } else if units.get(ordinal).map(AsRef::as_ref) != Some(source_unit.as_ref()) {
+            return Err(CommitError::Integrity);
+        }
+        anchors
+            .try_reserve(1)
+            .map_err(|_| CommitError::Allocation)?;
+        anchors.push(
+            *record
+                .state
+                .anchors()
+                .last()
+                .ok_or(CommitError::Integrity)?,
+        );
+        expected
+            .try_reserve(1)
+            .map_err(|_| CommitError::Allocation)?;
+        native.try_reserve(1).map_err(|_| CommitError::Allocation)?;
+        let artifact = record.artifact.as_ref().ok_or(CommitError::Integrity)?;
+        let comparison = ExpectedCheckpoint {
+            header: artifact.header().clone(),
+            receipts: clone_slice(&record.receipts)?,
+            effects: clone_slice(&record.effects)?,
+            state: SnapshotRecord::from_state(&record.state)?,
+            leaves: clone_slice(record.state.leaves())?,
+            cursor: record.head.source_cursor().clone(),
+        };
+        expected.push(Arc::new(comparison));
+        native.push(NativeCheckpoint {
+            parent: prepared.expected_parent().clone(),
+            record: Arc::clone(record),
+        });
+        Ok(Self {
+            network: self.network,
+            starting_artifact: self.starting_artifact,
+            starting_state: self.starting_state,
+            stream_id: self.stream_id,
+            unit_ids: Arc::clone(&self.unit_ids),
+            units,
+            anchors,
+            expected,
+            native,
+        })
     }
 }
 
