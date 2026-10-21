@@ -4,6 +4,8 @@
 
 mod artifact;
 mod bootstrap;
+mod eligibility;
+mod engine;
 mod order;
 mod policy;
 mod state;
@@ -23,6 +25,8 @@ pub use artifact::{
 };
 pub use bootstrap::{BootstrapCandidate, BootstrapError, BootstrapManifest, CommitteeEntry};
 pub use bootstrap::{ValidatedBootstrap, validate_bootstrap};
+pub use eligibility::{AuthorizedUnit, UnitPreparationError};
+pub use engine::LedgerEngine;
 pub use order::{
     FixtureManifest, FixtureOrderVerifier, OrderError, RawOrderUnit, SourceCursor,
     VerifiedOrderUnit,
