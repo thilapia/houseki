@@ -1,4 +1,4 @@
-//! Temporary borrows from an owned whole-unit authorization.
+//! Temporary borrows from an owned whole unit authorization.
 
 use houseki_proofs::ProofContext;
 use houseki_types::{NoteTreeAnchor, Occurrence};
@@ -8,7 +8,7 @@ pub(crate) struct AuthorizedOccurrence<'a> {
     /// Exact original immutable occurrence and complete envelope bytes.
     pub(super) occurrence: &'a Occurrence,
 
-    /// Registry-recognized expected context retained by the unit owner.
+    /// Registry recognized expected context retained by the unit owner.
     pub(super) context: &'a ProofContext,
 
     /// Independently trusted payment descriptor, absent for withdrawal.
@@ -31,7 +31,7 @@ impl<'a> AuthorizedOccurrence<'a> {
         self.anchor
     }
 
-    /// Supplies synthetic evidence only within private state-transition tests.
+    /// Supplies synthetic evidence only within private state transition tests.
     #[cfg(all(test, feature = "experimental-profiles"))]
     pub(crate) fn for_test(
         occurrence: &'a Occurrence,

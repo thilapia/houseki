@@ -1,7 +1,9 @@
-//! Whole-unit recognition and local authorization before any state receipt exists.
+//! Whole unit recognition and local authorization before any state receipt exists.
 
 mod anchor;
+mod compatibility;
 mod context;
+mod dependencies;
 mod error;
 mod occurrence;
 mod unit;
@@ -16,14 +18,17 @@ use houseki_proofs::{ProofRuntime, verify_payment, verify_reward_withdrawal};
 use houseki_types::TransactionEnvelope;
 
 impl LedgerEngine {
-    /// Checks every complete source envelope before issuing owned local unit authorization.
+    /// Checks every complete source envelope before issuing owned local unit
+    /// authorization.
     ///
-    /// Verification is serial under one caller-owned runtime and never creates a state receipt.
+    /// Verification is serial under one caller owned runtime and never creates a state
+    /// receipt.
     ///
     /// # Errors
     ///
-    /// Reports missing trusted metadata, unknown claims, mismatched immutable authorities,
-    /// invalid proofs/signatures and operational verifier failures without partial authorization.
+    /// Reports missing trusted metadata, unknown claims, mismatched immutable
+    /// authorities, invalid proofs/signatures and operational verifier failures without
+    /// partial authorization.
     pub fn authorize_unit(
         &self,
         parent: &ParentSnapshot,
@@ -43,6 +48,7 @@ impl LedgerEngine {
                         .verify_reward_withdrawal(e.body(), e.signature(), context.body_limits())?;
                 }
             }
+
             Ok(())
         })
     }
@@ -58,7 +64,7 @@ fn authorize_checked(
         Option<houseki_types::NoteTreeAnchor>,
     ) -> Result<(), UnitPreparationError>,
 ) -> Result<AuthorizedUnit, UnitPreparationError> {
-    let dependencies = context::resolve_dependencies(parent, &unit)?;
+    let dependencies = dependencies::resolve_dependencies(parent, &unit)?;
     for (index, occurrence) in unit.occurrences().iter().enumerate() {
         verify(
             occurrence,
@@ -66,10 +72,12 @@ fn authorize_checked(
             dependencies.anchors[index],
         )?;
     }
+
     Ok(AuthorizedUnit::checked(unit, dependencies))
 }
 
-/// Creates private synthetic state-test evidence while preserving all real dependency resolution.
+/// Creates private synthetic state test evidence while preserving all real dependency
+/// resolution.
 #[cfg(all(test, feature = "experimental-profiles"))]
 pub(crate) fn authorize_for_test(
     parent: &ParentSnapshot,
@@ -78,7 +86,7 @@ pub(crate) fn authorize_for_test(
     authorize_checked(parent, unit, |_, _, _| Ok(()))
 }
 
-/// Real proof/signature whole-unit composition tests.
+/// Real proof/signature whole unit composition tests.
 #[cfg(all(test, feature = "experimental-profiles"))]
 mod tests {
     use super::*;
@@ -121,16 +129,19 @@ mod tests {
         )
     }
 
-    /// A valid first proof never issues partial evidence when a later complete envelope fails.
+    /// A valid first proof never issues partial evidence when a later complete envelope
+    /// fails.
     #[test]
     fn all_occurrences_required_before_authorization() {
         let (m, original) = seed_fixture();
         let (parent, manifest, raw) =
             fixture_source_for(m, vec![vec![at(&original, 0), bad_proof(&original, 1)]]);
+
         let unit = FixtureOrderVerifier::new(manifest, &parent)
             .unwrap()
             .verify_unit(raw[0].clone())
             .unwrap();
+
         assert!(matches!(
             LedgerEngine::new().authorize_unit(&parent, unit, &ProofRuntime::new()),
             Err(UnitPreparationError::InvalidProof(_))
@@ -138,27 +149,32 @@ mod tests {
         assert!(parent.receipts().is_empty());
     }
 
-    /// Authorization owns every byte after temporary proof evidence and input copies disappear.
+    /// Authorization owns every byte after temporary proof evidence and input copies
+    /// disappear.
     #[test]
     fn owned_authorization_retains_exact_envelopes() {
         let (m, original) = seed_fixture();
         let (parent, manifest, raw) = fixture_source_for(m, vec![vec![original.clone()]]);
+
         let unit = FixtureOrderVerifier::new(manifest, &parent)
             .unwrap()
             .verify_unit(raw[0].clone())
             .unwrap();
         let expected = unit.canonical_bytes().to_vec();
+
         let authorized = LedgerEngine::new()
             .authorize_unit(&parent, unit, &ProofRuntime::new())
             .unwrap();
         drop(raw);
+
         assert_eq!(authorized.order_unit().canonical_bytes(), expected);
         assert_eq!(authorized.order_unit().occurrences(), &[original]);
         assert!(authorized.occurrence(0).is_some());
         assert!(authorized.occurrence(1).is_none());
     }
 
-    /// A valid output proof with an invalid required source signature is not authorization.
+    /// A valid output proof with an invalid required source signature is not
+    /// authorization.
     #[test]
     fn authority_signature_and_output_proof_are_all_required() {
         let (m, original) = seed_fixture();
@@ -178,20 +194,25 @@ mod tests {
             .into(),
         );
         let (parent, manifest, raw) = fixture_source_for(m, vec![vec![wrong]]);
+
         let unit = FixtureOrderVerifier::new(manifest, &parent)
             .unwrap()
             .verify_unit(raw[0].clone())
             .unwrap();
+
         assert!(matches!(
             LedgerEngine::new().authorize_unit(&parent, unit, &ProofRuntime::new()),
             Err(UnitPreparationError::Signature(_))
         ));
     }
-    /// Mutable balances and nonces do not invalidate evidence, while fixed authority changes do.
+
+    /// Mutable balances and nonces do not invalidate evidence, while fixed authority
+    /// changes do.
     #[test]
     fn authorization_compatibility_ignores_only_evolving_state() {
         let (m, original) = seed_fixture();
         let (mut parent, manifest, raw) = fixture_source_for(m, vec![vec![original]]);
+
         let unit = FixtureOrderVerifier::new(manifest, &parent)
             .unwrap()
             .verify_unit(raw[0].clone())
@@ -217,23 +238,28 @@ mod tests {
             account.balance(),
             account.next_nonce(),
         );
+
         assert!(matches!(
             authorized.require_compatible(&parent),
             Err(UnitPreparationError::Integrity)
         ));
     }
-    /// Busy and unavailable local verification abort before any further envelope or receipt.
+
+    /// Busy and unavailable local verification abort before any further envelope or
+    /// receipt.
     #[test]
     fn operational_verifier_failures_abort_unit() {
         for unavailable in [false, true] {
             let (m, original) = seed_fixture();
             let (parent, manifest, raw) =
                 fixture_source_for(m, vec![vec![at(&original, 0), at(&original, 1)]]);
+
             let unit = FixtureOrderVerifier::new(manifest, &parent)
                 .unwrap()
                 .verify_unit(raw[0].clone())
                 .unwrap();
             let mut calls = 0;
+
             let result = authorize_checked(&parent, unit, |_, _, _| {
                 calls += 1;
                 Err(if unavailable {
@@ -243,6 +269,7 @@ mod tests {
                 }
                 .into())
             });
+
             assert!(matches!(result, Err(UnitPreparationError::Operational(_))));
             assert_eq!(calls, 1);
             assert!(parent.receipts().is_empty());

@@ -16,16 +16,21 @@ pub(super) fn resolve_anchor(
             {
                 return Err(UnitPreparationError::Integrity);
             }
+
             found = Some(anchor);
         }
+
         Ok(())
     };
+
     for anchor in parent.known_anchors() {
         consider(anchor)?;
     }
+
     for anchor in parent.state().anchors() {
         consider(anchor.anchor())?;
     }
+
     match parent.replay_inputs() {
         ReplayInputs::Bootstrap(manifest) => {
             for anchor in &manifest.anchors {
@@ -40,6 +45,7 @@ pub(super) fn resolve_anchor(
             }
         }
     }
+
     found.ok_or(UnitPreparationError::UnresolvedAnchor)
 }
 
@@ -57,6 +63,7 @@ mod tests {
         let parent = validate_bootstrap(trusted_manifest())
             .unwrap()
             .into_snapshot();
+
         assert_eq!(
             resolve_anchor(&parent, parent.state().note_anchor().root()).unwrap(),
             parent.state().note_anchor()
@@ -67,7 +74,8 @@ mod tests {
         ));
     }
 
-    /// Expiry is an execution decision and does not erase an understood proof descriptor.
+    /// Expiry is an execution decision and does not erase an understood proof
+    /// descriptor.
     #[test]
     fn expired_known_anchor_still_resolves() {
         let parent = validate_bootstrap(trusted_manifest())
@@ -75,6 +83,7 @@ mod tests {
             .into_snapshot();
         let rules =
             crate::CheckpointRules::derive(parent.state(), CheckpointSequence::new(64)).unwrap();
+
         assert!(!rules.eligible_sequences().contains(&0));
         assert!(resolve_anchor(&parent, parent.state().note_anchor().root()).is_ok());
     }

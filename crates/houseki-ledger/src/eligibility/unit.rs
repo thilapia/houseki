@@ -1,8 +1,7 @@
-//! Owned successful whole-unit authorization without runtime leases or self references.
+//! Owned successful whole unit authorization without runtime leases or self references.
 
 use super::{
-    context::{Compatibility, UnitDependencies},
-    occurrence::AuthorizedOccurrence,
+    compatibility::Compatibility, dependencies::UnitDependencies, occurrence::AuthorizedOccurrence,
 };
 use crate::{ParentSnapshot, UnitPreparationError, VerifiedOrderUnit};
 
@@ -32,19 +31,22 @@ impl AuthorizedUnit {
         }
     }
 
-    /// Borrows complete immutable source inputs without allowing authorization replacement.
+    /// Borrows complete immutable source inputs without allowing authorization
+    /// replacement.
     pub const fn order_unit(&self) -> &VerifiedOrderUnit {
         &self.order
     }
 
-    /// Iterates independently authenticated payment descriptors retained for later slices/replay.
+    /// Iterates independently authenticated payment descriptors retained for later
+    /// slices/replay.
     pub(crate) fn trusted_anchors(
         &self,
     ) -> impl Iterator<Item = houseki_types::NoteTreeAnchor> + '_ {
         self.dependencies.anchors.iter().flatten().copied()
     }
 
-    /// Requires exactly the same immutable interpretation across slices or later parent states.
+    /// Requires exactly the same immutable interpretation across slices or later parent
+    /// states.
     pub(crate) fn require_compatible(
         &self,
         parent: &ParentSnapshot,
@@ -52,10 +54,12 @@ impl AuthorizedUnit {
         if self.dependencies.compatibility != Compatibility::capture(parent)? {
             return Err(UnitPreparationError::Integrity);
         }
+
         Ok(())
     }
 
-    /// Borrows one checked occurrence without escaping references into a different owner.
+    /// Borrows one checked occurrence without escaping references into a different
+    /// owner.
     pub(crate) fn occurrence(&self, index: usize) -> Option<AuthorizedOccurrence<'_>> {
         Some(AuthorizedOccurrence {
             occurrence: self.order.occurrences().get(index)?,
