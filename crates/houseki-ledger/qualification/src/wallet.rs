@@ -10,7 +10,7 @@ pub(crate) struct Owner {
     /// Original spending authority.
     pub(crate) spending: SpendingKey,
 
-    /// Original position-bound nullifier authority.
+    /// Original position bound nullifier authority.
     pub(crate) nullifier: NullifierKey,
 
     /// Original recipient decapsulation owner.
@@ -21,7 +21,8 @@ pub(crate) struct Owner {
 }
 
 impl Owner {
-    /// Generates fresh local authority and delivery secrets for the demonstration network.
+    /// Generates fresh local authority and delivery secrets for the demonstration
+    /// network.
     pub(crate) fn new(network: NetworkId) -> Result<Self, Box<dyn Error>> {
         let spending = SpendingKey::generate()?;
         let nullifier = NullifierKey::generate()?;

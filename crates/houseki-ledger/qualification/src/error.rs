@@ -5,13 +5,15 @@ use std::{error::Error, fmt};
 /// A public fixture workload could not be generated or independently verified.
 #[derive(Debug)]
 pub enum QualificationError {
-    /// A command, workload declaration or observed public result violates qualification requirements.
+    /// A command, workload declaration or observed public result violates qualification
+    /// requirements.
     Input(
         /// Fixed public input diagnostic.
         &'static str,
     ),
 
-    /// An underlying bounded native proof, crypto, ledger or filesystem operation failed.
+    /// An underlying bounded native proof, crypto, ledger or filesystem operation
+    /// failed.
     Native(
         /// Original public diagnostic without wallet witnesses or private traces.
         Box<dyn Error>,

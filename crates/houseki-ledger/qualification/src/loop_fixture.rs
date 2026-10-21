@@ -1,4 +1,4 @@
-//! Real value-loop construction with recovery from actual committed context.
+//! Real value loop construction with recovery from actual committed context.
 
 use crate::{
     Measurement, PublicFixture, Workload,
@@ -23,7 +23,7 @@ use houseki_types::{
 };
 use std::{error::Error, time::Instant};
 
-/// Executes the exact three-step value loop with original recipient secrets kept locally.
+/// Executes the exact three step value loop with original recipient secrets kept locally.
 pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>> {
     let network = NetworkId::from_bytes([7; 64]);
     let sender = Owner::new(network)?;
@@ -45,6 +45,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
     } else {
         [0, 1, 2]
     };
+
     let m = bootstrap(
         leaves.clone(),
         100,
@@ -143,6 +144,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
     } else {
         vec![first, occurrence(withdrawal.into(), 1, 12, 0)]
     };
+
     // A provisional complete one-unit fixture supplies committed recovery context before the
     // final finite two-unit stream can bind the freshly generated subsequent randomized proof.
     let preliminary = run(m.clone(), vec![first_unit.clone()], Measurement::default())?;
@@ -162,6 +164,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
         for &leaf in checkpoint.state().leaves() {
             actual_tree.append(leaf)?;
         }
+
         let path = actual_tree.witness(&accepted.position())?;
         let marker = derive_nullifier(&recovered, &recipient.nullifier, &accepted.position())?;
         let next_output = opening(&sender, 1)?;
@@ -194,6 +197,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
             marker,
         )
     };
+
     drop(preliminary);
     let next = occurrence(next_envelope.into(), 2, 13, 0);
     let public = run(m, vec![first_unit, vec![next]], measurement)?;
@@ -203,6 +207,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
     } else {
         0
     };
+
     assert_eq!(
         public.checkpoints[0].effects()[payment_index]
             .accepted
@@ -253,6 +258,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
             2
         );
     }
+
     for accepted in public.checkpoints[0].accepted_outputs() {
         if let houseki_ledger::OutputBody::RewardWithdrawal(body) = accepted.body() {
             let recovered =
@@ -264,6 +270,7 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
             );
         }
     }
+
     if workload == Workload::FailedEarlyCopy {
         use houseki_types::{ExecutionOutcome as O, ExecutionRejectionReason as R};
         assert_eq!(
@@ -280,15 +287,17 @@ pub(crate) fn build(workload: Workload) -> Result<PublicFixture, Box<dyn Error>>
             ]
         );
     }
+
     Ok(public)
 }
 
-/// Full real-proof local execution consumers.
+/// Full real proof local execution consumers.
 #[cfg(all(test, feature = "prover"))]
 mod tests {
     use crate::{Workload, generate};
 
-    /// Pins the fee-funded withdrawal and recovered-note respend to the exact development amounts.
+    /// Pins the fee funded withdrawal and recovered note respend to the exact
+    /// development amounts.
     #[test]
     fn real_value_loop_matches_fixed_accounting() {
         let directory =
@@ -296,8 +305,10 @@ mod tests {
         if directory.exists() {
             std::fs::remove_dir_all(&directory).unwrap();
         }
+
         let fixture = generate(Workload::ValueLoop, &directory).unwrap();
         let checkpoints = fixture.checkpoints();
+
         assert_eq!(checkpoints.len(), 2);
         assert_eq!(
             checkpoints[0].effects()[0]
@@ -312,10 +323,12 @@ mod tests {
         assert_eq!(checkpoints[1].state().pool().atoms(), 97);
         assert_eq!(checkpoints[0].accepted_outputs().count(), 3);
         assert_eq!(checkpoints[1].accepted_outputs().count(), 1);
+
         std::fs::remove_dir_all(directory).unwrap();
     }
 
-    /// Every admitted payment family produces actual accepted effects and recoverable output views.
+    /// Every admitted payment family produces actual accepted effects and recoverable
+    /// output views.
     #[test]
     fn all_shapes_execute_with_actual_verification() {
         for inputs in 1..=4 {
@@ -327,12 +340,15 @@ mod tests {
                 if directory.exists() {
                     std::fs::remove_dir_all(&directory).unwrap();
                 }
+
                 let fixture = generate(Workload::Payment { inputs, outputs }, &directory).unwrap();
+
                 assert_eq!(
                     fixture.checkpoints()[0].state().pool().atoms(),
                     inputs as u128 * 100 - (inputs + outputs) as u128
                 );
                 assert_eq!(fixture.checkpoints()[0].accepted_outputs().count(), outputs);
+
                 std::fs::remove_dir_all(directory).unwrap();
             }
         }

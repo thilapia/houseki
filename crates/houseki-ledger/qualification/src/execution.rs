@@ -1,4 +1,4 @@
-//! Public-API-only source construction and synchronous native qualification execution.
+//! Public API only source construction and synchronous native qualification execution.
 
 use crate::{Measurement, PublicFixture};
 use houseki_crypto::MlDsa87SigningKey;
@@ -17,7 +17,8 @@ use houseki_types::{
 };
 use std::{error::Error, path::PathBuf, time::Instant};
 
-/// Constructs actual public state from original commitments and registered authority owners.
+/// Constructs actual public state from original commitments and registered authority
+/// owners.
 pub(crate) fn bootstrap(
     leaves: Vec<NoteCommitment>,
     pool: u128,
@@ -31,6 +32,7 @@ pub(crate) fn bootstrap(
     for &leaf in &leaves {
         tree.append(leaf)?;
     }
+
     let accounts: Vec<_> = keys
         .iter()
         .zip(balances)
@@ -45,6 +47,7 @@ pub(crate) fn bootstrap(
             ))
         })
         .collect::<Result<_, Box<dyn Error>>>()?;
+
     let committee = mapping
         .iter()
         .enumerate()
@@ -57,6 +60,7 @@ pub(crate) fn bootstrap(
             )
         })
         .collect();
+
     let issued = balances
         .iter()
         .try_fold(pool, |sum, b| sum.checked_add(*b))
@@ -101,6 +105,7 @@ fn source(
         ids.push(previous);
         raw.push(RawOrderUnit::new(bytes));
     }
+
     let stream = FixtureStreamId::from_bytes(houseki_crypto::ledger_fixture_order_stream(
         &encode_fixture_stream(&FixtureStreamRecord {
             network: m.network,
@@ -127,7 +132,8 @@ fn source(
     Ok((m, manifest, raw))
 }
 
-/// Executes complete units, measures distinct phases and independently replays every public record.
+/// Executes complete units, measures distinct phases and independently replays every public
+/// record.
 pub(crate) fn run(
     manifest: BootstrapManifest,
     units: Vec<Vec<Occurrence>>,
@@ -154,6 +160,7 @@ pub(crate) fn run(
             }
         }
     }
+
     let (manifest, fixture, raw) = source(manifest, units)?;
     let mut store = ReferenceStore::bootstrap(manifest.clone())?;
     let started = Instant::now();
@@ -170,8 +177,10 @@ pub(crate) fn run(
         let started = Instant::now();
         let authorized = engine.authorize_unit(&store.snapshot(), unit, &runtime)?;
         measurement.authorization += started.elapsed();
-        while matches!(store.snapshot().head().source_cursor(),SourceCursor::Unit{unit_id,..}if *unit_id==identity)
-        {
+        while matches!(
+            store.snapshot().head().source_cursor(),
+            SourceCursor::Unit { unit_id, .. } if *unit_id == identity
+        ) {
             let prepared = engine.prepare_next(&store.snapshot(), &authorized)?;
             measurement.preparation(prepared.metrics());
             let started = Instant::now();
@@ -181,6 +190,7 @@ pub(crate) fn run(
             checkpoints.push(checkpoint);
         }
     }
+
     let archive = store.archive().clone();
     let started = Instant::now();
     let reproduced = replay(manifest.clone(), &archive, &ProofRuntime::new())?;
@@ -188,6 +198,7 @@ pub(crate) fn run(
     if reproduced.archive().to_bytes()? != archive.to_bytes()? {
         return Err("native replay bytes differ".into());
     }
+
     measurement.archive(&archive)?;
     Ok(PublicFixture {
         directory: PathBuf::new(),

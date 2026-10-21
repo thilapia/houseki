@@ -1,4 +1,4 @@
-//! Independent verifier-only consumer and explicitly enabled public fixture production.
+//! Independent verifier only consumer and explicitly enabled public fixture production.
 
 #![warn(missing_docs, clippy::missing_docs_in_private_items)]
 

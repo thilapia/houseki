@@ -32,12 +32,14 @@ pub enum Workload {
     /// Multiple distinct authors share one registered fee beneficiary.
     SharedBeneficiary,
 
-    /// A real old proof still verifies after pruning but its expired anchor is state rejected.
+    /// A real old proof still verifies after pruning but its expired anchor is state
+    /// rejected.
     AnchorPruning,
 }
 
 impl Workload {
-    /// Requires actual named outcomes and accounting independently of archive replay consistency.
+    /// Requires actual named outcomes and accounting independently of archive replay
+    /// consistency.
     pub(crate) fn validate_checkpoints(
         self,
         checkpoints: &[houseki_ledger::CommittedCheckpoint],
@@ -48,6 +50,7 @@ impl Workload {
                 if !(1..=4).contains(&inputs) || !(1..=2).contains(&outputs) {
                     return Err(QualificationError::Input("unsupported payment shape"));
                 }
+
                 vec![(
                     vec![O::Accepted],
                     outputs,
@@ -84,11 +87,13 @@ impl Workload {
                 (vec![O::Accepted], 1, 97),
             ],
         };
+
         if checkpoints.len() != expected.len() {
             return Err(QualificationError::Input(
                 "unexpected workload checkpoint count",
             ));
         }
+
         for (checkpoint, (outcomes, outputs, pool)) in checkpoints.iter().zip(expected) {
             if !checkpoint
                 .receipts()
@@ -103,6 +108,7 @@ impl Workload {
                 ));
             }
         }
+
         if let Self::Payment { inputs, outputs } = self {
             let checkpoint = &checkpoints[0];
             let occurrence = &checkpoint.artifact().occurrences()[0];
@@ -130,6 +136,7 @@ impl Workload {
                 ));
             }
         }
+
         Ok(())
     }
 
@@ -156,6 +163,7 @@ impl Workload {
                 if !(1..=4).contains(&inputs) || !(1..=2).contains(&outputs) {
                     return Err(QualificationError::Input("unsupported payment shape"));
                 }
+
                 Ok(Self::Payment { inputs, outputs })
             }
         }
@@ -175,7 +183,8 @@ impl Workload {
         }
     }
 
-    /// Returns all nine family workloads, four named scenarios and two boundary workloads.
+    /// Returns all nine family workloads, four named scenarios and two boundary
+    /// workloads.
     pub fn all() -> Vec<Self> {
         let mut all = vec![];
         for inputs in 1..=4 {
@@ -183,6 +192,7 @@ impl Workload {
                 all.push(Self::Payment { inputs, outputs });
             }
         }
+
         all.extend([
             Self::Withdrawal,
             Self::ValueLoop,

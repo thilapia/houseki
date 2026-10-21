@@ -98,6 +98,7 @@ impl Fixture {
                 }
             })
             .collect();
+
         let context = TransactionContext::new(
             network,
             ProtocolVersion::new(1),
@@ -174,7 +175,8 @@ pub(crate) fn opening(owner: &Owner, amount: u128) -> Result<NoteOpening, Box<dy
     )?)
 }
 
-/// Seals every actual output and compares the reconstructed encryption core before authorization.
+/// Seals every actual output and compares the reconstructed encryption core before
+/// authorization.
 pub(crate) fn encrypted_body(
     context: TransactionContext,
     inputs: PaymentInputs,
@@ -199,6 +201,7 @@ pub(crate) fn encrypted_body(
             encrypt_payment_output(&core, index as u64, &owner.recipient, note, 4096)
         })
         .collect::<Result<_, _>>()?;
+
     let body = PaymentBody::new(
         context,
         core.inputs().clone(),

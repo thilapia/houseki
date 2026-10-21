@@ -4,10 +4,12 @@ use houseki_ledger::{CommittedCheckpoint, OutputBody, PreparationMetrics, Replay
 use houseki_types::{ExecutionOutcome, TransactionEnvelope};
 use std::{error::Error, time::Duration};
 
-/// Complete local workload observations with overlapping byte categories explicitly retained.
+/// Complete local workload observations with overlapping byte categories explicitly
+/// retained.
 #[derive(Debug, Default, Clone)]
 pub struct Measurement {
-    /// Per-checkpoint public rows in actual execution order, including empty checkpoints.
+    /// Per checkpoint public rows in actual execution order, including empty
+    /// checkpoints.
     pub(crate) checkpoints: Vec<crate::checkpoint_measurement::CheckpointMeasurement>,
 
     /// Fresh proving duration across all actual proof calls.
@@ -19,7 +21,7 @@ pub struct Measurement {
     /// Complete cryptographic unit authorization time.
     pub(crate) authorization: Duration,
 
-    /// Independently reconstructed working-state time.
+    /// Independently reconstructed working state time.
     pub(crate) reconstruction: Duration,
 
     /// Ordered state effects and alignment time.
@@ -34,7 +36,7 @@ pub struct Measurement {
     /// Independent native replay time in this producer graph.
     pub(crate) replay: Duration,
 
-    /// Complete length-prefixed component-input bytes across unique source units.
+    /// Complete length prefixed component input bytes across unique source units.
     pub(crate) component_bytes: u64,
 
     /// Complete original body bytes, including outputs and recovery context.
@@ -43,7 +45,7 @@ pub struct Measurement {
     /// Proof bytes across every genuine occurrence, including state rejections.
     pub(crate) proof_bytes: u64,
 
-    /// Complete encoded source-unit storage retained once per unit.
+    /// Complete encoded source unit storage retained once per unit.
     pub(crate) retained_unit_bytes: u64,
 
     /// Exact serialized public replay bytes.
@@ -58,19 +60,20 @@ pub struct Measurement {
     /// Accepted original output instances including repeated commitments.
     pub(crate) accepted_outputs: u64,
 
-    /// Accepted position-bound public marker bytes.
+    /// Accepted position bound public marker bytes.
     pub(crate) accepted_nullifier_bytes: u64,
 
     /// Accepted encapsulation bytes, overlapping the complete body/context category.
     pub(crate) accepted_encapsulation_bytes: u64,
 
-    /// Accepted opaque encrypted payload bytes, overlapping complete body/context bytes.
+    /// Accepted opaque encrypted payload bytes, overlapping complete body/context
+    /// bytes.
     pub(crate) accepted_payload_bytes: u64,
 
     /// Full accepted body bytes counted once per origin even for multiple outputs.
     pub(crate) accepted_body_context_bytes: u64,
 
-    /// Process high-water memory when directly available on this platform.
+    /// Process high water memory when directly available on this platform.
     pub(crate) peak_memory_bytes: Option<u64>,
 }
 
@@ -82,7 +85,8 @@ impl Measurement {
         self.commitments += metrics.commitments();
     }
 
-    /// Counts committed accepted contexts once per origin and output payloads once per actual append.
+    /// Counts committed accepted contexts once per origin and output payloads once per
+    /// actual append.
     pub(crate) fn checkpoint(
         &mut self,
         checkpoint: &CommittedCheckpoint,
@@ -118,11 +122,13 @@ impl Measurement {
                 ExecutionOutcome::Rejected(_) => self.rejected += 1,
             }
         }
+
         for effect in checkpoint.effects() {
             if let Some(effect) = &effect.accepted {
                 self.accepted_nullifier_bytes += effect.nullifiers.len() as u64 * 64;
             }
         }
+
         for output in checkpoint.accepted_outputs() {
             self.accepted_outputs += 1;
             self.accepted_encapsulation_bytes +=
@@ -132,12 +138,14 @@ impl Measurement {
                 OutputBody::Payment(_) | OutputBody::RewardWithdrawal(_) => {}
             }
         }
+
         self.checkpoints
             .push(crate::checkpoint_measurement::CheckpointMeasurement::capture(checkpoint));
         Ok(())
     }
 
-    /// Records actual serialized retention instead of multiplying shared owners by slice count.
+    /// Records actual serialized retention instead of multiplying shared owners by
+    /// slice count.
     pub(crate) fn archive(&mut self, archive: &ReplayArchive) -> Result<(), Box<dyn Error>> {
         self.retained_unit_bytes = archive.source_units().map(|b| b.len() as u64).sum();
         self.archive_bytes = archive.to_bytes()?.len() as u64;
@@ -145,7 +153,8 @@ impl Measurement {
         Ok(())
     }
 
-    /// Produces explicit local observations with no throughput or production-assurance claim.
+    /// Produces explicit local observations with no throughput or production assurance
+    /// claim.
     pub fn report(&self) -> String {
         let mut report = format!(
             "fixture_order=true\nconsensus_finality=unconfirmed\nexecution_proof=unverified\nbyte_categories_overlap=true\nproving_ns={}\norder_ns={}\nauthorization_ns={}\nreconstruction_ns={}\nexecution_ns={}\ncommitments_ns={}\npublication_ns={}\nproducer_graph_replay_ns={}\ncomponent_input_bytes={}\nbody_bytes={}\nproof_bytes={}\nretained_unit_bytes={}\narchive_bytes={}\naccepted={}\nrejected={}\naccepted_outputs={}\naccepted_nullifier_bytes={}\naccepted_encapsulation_bytes={}\naccepted_payload_bytes={}\naccepted_body_context_bytes={}\npeak_memory_bytes={}\n",
@@ -176,11 +185,12 @@ impl Measurement {
         for checkpoint in &self.checkpoints {
             report.push_str(&checkpoint.report());
         }
+
         report
     }
 }
 
-/// Reads Linux's observed process high-water mark without interpreting absent data as zero.
+/// Reads Linux's observed process high water mark without interpreting absent data as zero.
 fn peak_memory() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
@@ -193,6 +203,7 @@ fn peak_memory() -> Option<u64> {
             .ok()?
             .checked_mul(1024);
     }
+
     #[cfg(not(target_os = "linux"))]
     {
         None
@@ -209,7 +220,8 @@ mod tests {
     use houseki_types::{ExecutionProofStatus, FinalityStatus};
     use std::path::PathBuf;
 
-    /// Requires the complete generated public corpus rather than silently skipping measurements.
+    /// Requires the complete generated public corpus rather than silently skipping
+    /// measurements.
     fn directory(name: &str) -> PathBuf {
         PathBuf::from(
             std::env::var_os("HOUSEKI_LEDGER_PUBLIC_CORPUS")
@@ -225,6 +237,7 @@ mod tests {
         let mut measurement = Measurement::default();
         measurement.archive(&archive).unwrap();
         let unit = archive.source_units().next().unwrap();
+
         assert_eq!(measurement.retained_unit_bytes, unit.len() as u64);
         assert_eq!(
             measurement.archive_bytes,
@@ -232,7 +245,9 @@ mod tests {
                 .unwrap()
                 .len()
         );
+
         let decoded = decode_fixture_unit(unit, DecodeLimits::reference()).unwrap();
+
         assert_eq!(
             houseki_ledger::encode_occurrences(&decoded.occurrences)
                 .unwrap()
@@ -242,14 +257,17 @@ mod tests {
         );
     }
 
-    /// Sixty-five real checkpoints retain sixty-four unique unit payloads under the fixed caps.
+    /// Sixty five real checkpoints retain sixty four unique unit payloads under the
+    /// fixed caps.
     #[test]
     fn fixture_limits_bound_retention() {
         let (_, manifest, archive) = load(&directory("anchor-pruning")).unwrap();
+
         assert_eq!(archive.source_unit_count(), 64);
         assert_eq!(archive.checkpoint_count(), 65);
         assert_eq!(manifest.policy.limits().unit_occurrences(), 128);
         assert_eq!(manifest.policy.limits().fixture_units(), 64);
+
         for unit in archive.source_units() {
             assert!(unit.len() <= 33554432 + 72);
             assert!(
@@ -262,10 +280,12 @@ mod tests {
         }
     }
 
-    /// Every retained checkpoint has public identity and counts whose sums equal the totals.
+    /// Every retained checkpoint has public identity and counts whose sums equal the
+    /// totals.
     #[test]
     fn per_checkpoint_counts_match_aggregate() {
         let (_, manifest, archive) = load(&directory("anchor-pruning")).unwrap();
+
         let store = replay(manifest, &archive, &ProofRuntime::new()).unwrap();
         let mut identity = store.snapshot().head().artifact_id();
         let mut checkpoints = vec![];
@@ -277,16 +297,20 @@ mod tests {
                 break;
             }
         }
+
         let mut measurement = Measurement::default();
         for checkpoint in checkpoints.iter().rev() {
             measurement.checkpoint(checkpoint).unwrap();
         }
+
         let report = measurement.report();
         let fields: std::collections::BTreeMap<_, _> = report
             .lines()
             .filter_map(|line| line.split_once('='))
             .collect();
+
         assert_eq!(fields.get("checkpoint_rows"), Some(&"65"));
+
         for (suffix, aggregate) in [
             ("accepted", measurement.accepted),
             ("rejected", measurement.rejected),
@@ -299,8 +323,10 @@ mod tests {
                         .unwrap()
                 })
                 .sum();
+
             assert_eq!(total, aggregate);
         }
+
         for checkpoint in checkpoints {
             let identity: String = checkpoint
                 .artifact()
@@ -310,6 +336,7 @@ mod tests {
                 .map(|b| format!("{b:02x}"))
                 .collect();
             let sequence = checkpoint.artifact().header().sequence.value();
+
             assert_eq!(
                 fields[format!("checkpoint.{sequence}.artifact_id").as_str()],
                 identity
@@ -317,17 +344,20 @@ mod tests {
         }
     }
 
-    /// Output contexts are counted once per accepted body, including two-output and rejected-copy cases.
+    /// Output contexts are counted once per accepted body, including two output and
+    /// rejected copy cases.
     #[test]
     fn accepted_output_measurements_preserve_context_cost() {
         for name in ["1-2", "conflicts"] {
             let (_, manifest, archive) = load(&directory(name)).unwrap();
+
             let store = replay(manifest, &archive, &ProofRuntime::new()).unwrap();
             let checkpoint = store
                 .checkpoint(store.snapshot().head().artifact_id())
                 .unwrap();
             let mut measurement = Measurement::default();
             measurement.checkpoint(&checkpoint).unwrap();
+
             let unit = decode_fixture_unit(
                 archive.source_units().next().unwrap(),
                 DecodeLimits::reference(),
@@ -341,12 +371,14 @@ mod tests {
                 .to_bytes(ProofContext::new(e.body().context()).unwrap().body_limits())
                 .unwrap()
                 .len() as u64;
+
             assert_eq!(measurement.accepted_body_context_bytes, length);
             assert_eq!(
                 measurement.accepted_encapsulation_bytes,
                 measurement.accepted_outputs * 1568
             );
             assert_eq!(measurement.accepted, 1);
+
             if name == "1-2" {
                 assert_eq!(measurement.accepted_outputs, 2)
             } else {
@@ -355,14 +387,17 @@ mod tests {
         }
     }
 
-    /// Local publication and public replay preserve explicit consensus and execution-proof status.
+    /// Local publication and public replay preserve explicit consensus and execution
+    /// proof status.
     #[test]
     fn consumer_status_never_implies_finality() {
         let (_, manifest, archive) = load(&directory("withdrawal")).unwrap();
+
         let store = replay(manifest, &archive, &ProofRuntime::new()).unwrap();
         let checkpoint = store
             .checkpoint(store.snapshot().head().artifact_id())
             .unwrap();
+
         assert_eq!(checkpoint.finality_status(), FinalityStatus::Unconfirmed);
         assert_eq!(
             checkpoint.execution_proof_status(),

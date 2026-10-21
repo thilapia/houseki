@@ -15,7 +15,8 @@ use houseki_types::{
 };
 use std::error::Error;
 
-/// Native private owners and a fully encrypted public body retained only for this example run.
+/// Native private owners and a fully encrypted public body retained only for this example
+/// run.
 pub(crate) struct Fixture {
     /// Complete canonical public transaction to be bound by both proof and signature.
     pub(crate) body: RewardWithdrawalBody,
@@ -34,7 +35,8 @@ pub(crate) struct Fixture {
 }
 
 impl Fixture {
-    /// Creates fresh native private randomness and encrypts one synthetic ordinary output.
+    /// Creates fresh native private randomness and encrypts one synthetic ordinary
+    /// output.
     pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
         let network = NetworkId::from_bytes([7; 64]);
         let decryption = MlKem1024DecapsulationKey::generate()?;

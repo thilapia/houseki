@@ -1,4 +1,4 @@
-//! Explicitly opted in fresh public signed-unit fixture producer.
+//! Explicitly opted in fresh public signed unit fixture producer.
 
 use std::{alloc::System, error::Error, path::PathBuf};
 

@@ -1,4 +1,4 @@
-//! Per-checkpoint public outcome observations derived from committed records.
+//! Per checkpoint public outcome observations derived from committed records.
 
 use houseki_ledger::{CommittedCheckpoint, ExecutionArtifactId};
 use houseki_types::ExecutionOutcome;
@@ -15,7 +15,7 @@ pub(crate) struct CheckpointMeasurement {
     /// Accepted genuine occurrences.
     accepted: usize,
 
-    /// State-rejected genuine occurrences.
+    /// State rejected genuine occurrences.
     rejected: usize,
 
     /// Actual appended outputs, retaining equal commitments at distinct positions.
@@ -39,7 +39,8 @@ impl CheckpointMeasurement {
         }
     }
 
-    /// Encodes separately keyed rows so empty checkpoints and identities remain visible.
+    /// Encodes separately keyed rows so empty checkpoints and identities remain
+    /// visible.
     pub(crate) fn report(&self) -> String {
         let identity: String = self
             .artifact

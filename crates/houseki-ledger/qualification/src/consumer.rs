@@ -1,4 +1,4 @@
-//! Fresh verifier-only replay over digest-bound public fixture files.
+//! Fresh verifier only replay over digest bound public fixture files.
 
 use crate::QualificationError;
 use houseki_ledger::{
@@ -12,13 +12,14 @@ use houseki_types::{
 use sha3::{Digest, Sha3_512};
 use std::{error::Error, fs, path::Path, time::Instant};
 
-/// Verified native local replay observations without recipient recovery or consensus claims.
+/// Verified native local replay observations without recipient recovery or consensus
+/// claims.
 #[derive(Debug)]
 pub struct VerificationSummary {
     /// Exact named public workload selected by the fixture producer.
     workload: String,
 
-    /// Number of byte-identical reproduced checkpoints.
+    /// Number of byte identical reproduced checkpoints.
     checkpoints: usize,
 
     /// Identity and exact counts at every independently reproduced checkpoint.
@@ -27,7 +28,7 @@ pub struct VerificationSummary {
     /// Accepted genuine occurrence results across the complete archive.
     accepted: usize,
 
-    /// State-rejected genuine occurrence results across the complete archive.
+    /// State rejected genuine occurrence results across the complete archive.
     rejected: usize,
 
     /// Final reproduced position, without a global freshness assertion.
@@ -42,12 +43,13 @@ pub struct VerificationSummary {
     /// Actual reference checkpoint consensus status.
     finality: FinalityStatus,
 
-    /// Actual checkpoint execution-proof package status.
+    /// Actual checkpoint execution proof package status.
     execution_proof: ExecutionProofStatus,
 }
 
 impl VerificationSummary {
-    /// Reports explicit fixture-local replay scope and distinct certification/recovery status.
+    /// Reports explicit fixture local replay scope and distinct certification/recovery
+    /// status.
     pub fn report(&self) -> String {
         let mut report = format!(
             "workload={}\nfixture_order=true\ncheckpoints={}\naccepted={}\nrejected={}\nsequence={}\narchive_bytes={}\nfresh_verifier_replay_ns={}\nconsensus_finality={:?}\nexecution_proof={:?}\nrecipient_recovery=not_established_by_replay\n",
@@ -65,11 +67,13 @@ impl VerificationSummary {
         for checkpoint in &self.checkpoint_rows {
             report.push_str(&checkpoint.report());
         }
+
         report
     }
 }
 
-/// Verifies every pinned public file before decoding and freshly reproducing the complete archive.
+/// Verifies every pinned public file before decoding and freshly reproducing the complete
+/// archive.
 pub fn verify(directory: &Path) -> Result<VerificationSummary, QualificationError> {
     verify_inner(directory).map_err(QualificationError::Native)
 }
@@ -80,10 +84,12 @@ fn read(directory: &Path, name: &str, maximum: usize) -> Result<Vec<u8>, Box<dyn
     if fs::metadata(&path)?.len() as u128 > maximum as u128 {
         return Err("fixture file exceeds bound".into());
     }
+
     let bytes = fs::read(path)?;
     if bytes.len() > maximum {
         return Err("fixture file grew beyond bound".into());
     }
+
     Ok(bytes)
 }
 
@@ -93,10 +99,12 @@ fn digest(bytes: &[u8]) -> Result<[u8; 64], Box<dyn Error>> {
     if text.len() != 128 || !text.as_bytes().iter().all(u8::is_ascii_hexdigit) {
         return Err("invalid public digest width".into());
     }
+
     let mut output = [0; 64];
     for (i, byte) in output.iter_mut().enumerate() {
         *byte = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16)?;
     }
+
     Ok(output)
 }
 
@@ -110,6 +118,7 @@ pub(crate) fn load(
     {
         return Err("unsupported fixture manifest".into());
     }
+
     let workload = metadata
         .lines()
         .find_map(|l| l.strip_prefix("workload="))
@@ -137,12 +146,15 @@ pub(crate) fn load(
         if matches.next().is_some() {
             return Err("duplicate pinned file digest".into());
         }
+
         let bytes = read(directory, name, maximum)?;
         if Sha3_512::digest(&bytes).as_slice() != expected {
             return Err("public fixture file digest mismatch".into());
         }
+
         files.push(bytes);
     }
+
     let record: SnapshotRecord = decode_snapshot(&files[0], DecodeLimits::reference())?;
     let archive = ReplayArchive::from_bytes(&files[4], DecodeLimits::reference())?;
     let state = StateCommitment::from_bytes(digest(&files[2])?);
@@ -151,10 +163,12 @@ pub(crate) fn load(
     if leafbytes.len() < 8 {
         return Err("truncated bootstrap leaves".into());
     }
+
     let count = usize::try_from(u64::from_le_bytes(leafbytes[..8].try_into()?))?;
     if count > 4096 || leafbytes.len() != 8 + count * 72 {
         return Err("invalid bootstrap leaf count".into());
     }
+
     let mut leaves = Vec::new();
     leaves.try_reserve_exact(count)?;
     for index in 0..count {
@@ -162,10 +176,12 @@ pub(crate) fn load(
         if &leafbytes[start..start + 8] != 64_u64.to_le_bytes().as_slice() {
             return Err("invalid leaf record width".into());
         }
+
         leaves.push(NoteCommitment::from_bytes(
             leafbytes[start + 8..start + 72].try_into()?,
         ));
     }
+
     let ids = archive.unit_ids().to_vec();
     let cursor = if let Some(first) = ids.first() {
         SourceCursor::Unit {
@@ -177,6 +193,7 @@ pub(crate) fn load(
     } else {
         SourceCursor::Exhausted { stream_id: stream }
     };
+
     let manifest = BootstrapManifest {
         network: record.network,
         sequence: CheckpointSequence::new(0),
@@ -195,10 +212,12 @@ pub(crate) fn load(
         pool: record.pool,
         issued: record.issued,
     };
+
     Ok((workload, manifest, archive))
 }
 
-/// Runs public verification without enabling prover features or borrowing any wallet secret.
+/// Runs public verification without enabling prover features or borrowing any wallet
+/// secret.
 fn verify_inner(directory: &Path) -> Result<VerificationSummary, Box<dyn Error>> {
     let (workload, manifest, archive) = load(directory)?;
     let started = Instant::now();
@@ -223,13 +242,16 @@ fn verify_inner(directory: &Path) -> Result<VerificationSummary, Box<dyn Error>>
                 ExecutionOutcome::Rejected(_) => rejected += 1,
             }
         }
+
         let previous = checkpoint.artifact().header().parent_artifact_id;
         checkpoints.push(checkpoint);
         if previous == ExecutionArtifactId::from_bytes([0; 64]) {
             break;
         }
+
         identity = previous;
     }
+
     checkpoints.reverse();
     crate::Workload::parse(&workload)?.validate_checkpoints(&checkpoints)?;
     let checkpoint = store
@@ -252,7 +274,8 @@ fn verify_inner(directory: &Path) -> Result<VerificationSummary, Box<dyn Error>>
     })
 }
 
-/// Default-feature supervision tests require a deliberately generated complete public corpus.
+/// Default feature supervision tests require a deliberately generated complete public
+/// corpus.
 #[cfg(test)]
 mod verifier_consumer {
     use super::*;
@@ -260,33 +283,39 @@ mod verifier_consumer {
     use houseki_ledger::{CommitResult, LedgerEngine, ReferenceStore};
     use std::path::PathBuf;
 
-    /// Locates required generated inputs and fails explicitly when qualification was not prepared.
+    /// Locates required generated inputs and fails explicitly when qualification was
+    /// not prepared.
     fn corpus() -> PathBuf {
         PathBuf::from(std::env::var_os("HOUSEKI_LEDGER_PUBLIC_CORPUS").expect(
             "generate-all and set HOUSEKI_LEDGER_PUBLIC_CORPUS before verifier qualification tests",
         ))
     }
 
-    /// Valid UTF-8 that is not hexadecimal returns an error without slicing code points.
+    /// Valid UTF-8 that is not hexadecimal returns an error without slicing code
+    /// points.
     #[test]
     fn non_ascii_hexadecimal_metadata_returns_error() {
         let malformed = format!("0€{}", "0".repeat(124));
+
         assert_eq!(malformed.len(), 128);
         assert!(digest(malformed.as_bytes()).is_err());
     }
 
-    /// Every documented workload is freshly checked in this separately built verifier-only graph.
+    /// Every documented workload is freshly checked in this separately built verifier
+    /// only graph.
     #[test]
     fn fresh_verifier_replays_every_public_workload() {
         for workload in Workload::all() {
             let summary = verify(&corpus().join(workload.name())).unwrap();
+
             assert!(summary.checkpoints > 0);
             assert_eq!(summary.finality, FinalityStatus::Unconfirmed);
             assert_eq!(summary.execution_proof, ExecutionProofStatus::Unverified);
         }
     }
 
-    /// A consistently replayed rejection is insufficient to qualify an ordinary payment family.
+    /// A consistently replayed rejection is insufficient to qualify an ordinary payment
+    /// family.
     #[test]
     fn all_rejected_payment_cannot_qualify() {
         use houseki_ledger::{
@@ -297,6 +326,7 @@ mod verifier_consumer {
         let (_, mut manifest, archive) = load(&source).unwrap();
         manifest.pool = Amount::from_atoms(0).unwrap();
         manifest.issued = Amount::from_atoms(0).unwrap();
+
         let state = encode_snapshot(
             &SnapshotRecord::from_state(manifest.clone().candidate().unwrap().state()).unwrap(),
         )
@@ -314,6 +344,7 @@ mod verifier_consumer {
         )
         .unwrap();
         let engine = LedgerEngine::new();
+
         let unit = engine
             .authorize_unit(
                 &store.snapshot(),
@@ -323,11 +354,14 @@ mod verifier_consumer {
             .unwrap();
         let prepared = engine.prepare_next(&store.snapshot(), &unit).unwrap();
         let checkpoint = store.commit(prepared).unwrap().checkpoint();
+
         assert_eq!(
             checkpoint.receipts()[0].outcome(),
             ExecutionOutcome::Rejected(ExecutionRejectionReason::StateBoundsExceeded)
         );
+
         let bytes = store.archive().to_bytes().unwrap();
+
         assert_eq!(
             replay(manifest.clone(), store.archive(), &ProofRuntime::new())
                 .unwrap()
@@ -336,6 +370,7 @@ mod verifier_consumer {
                 .unwrap(),
             bytes
         );
+
         let directory = std::env::temp_dir().join(format!(
             "houseki-ledger-all-rejected-{}",
             std::process::id()
@@ -369,21 +404,27 @@ mod verifier_consumer {
             metadata.push_str(&format!("{name}={hash}\n"));
             fs::write(directory.join(name), content).unwrap();
         }
+
         fs::write(directory.join("manifest.txt"), metadata).unwrap();
+
         let result = verify(&directory);
         fs::remove_dir_all(&directory).unwrap();
+
         assert!(
             result.is_err(),
             "a rejected family must not qualify: {result:?}"
         );
     }
 
-    /// Intact source bindings reject authorization-byte mutations before invented state receipts.
+    /// Intact source bindings reject authorization byte mutations before invented state
+    /// receipts.
     #[test]
     fn public_mutations_fail_at_the_correct_boundary() {
         let (_, manifest, archive) = load(&corpus().join("withdrawal")).unwrap();
+
         let store = replay(manifest.clone(), &archive, &ProofRuntime::new()).unwrap();
         let bytes = archive.to_bytes().unwrap();
+
         let unit = houseki_ledger::decode_fixture_unit(
             archive.source_units().next().unwrap(),
             DecodeLimits::reference(),
@@ -408,12 +449,14 @@ mod verifier_consumer {
                 changed[start + offset] ^= 1;
                 let decoded =
                     ReplayArchive::from_bytes(&changed, DecodeLimits::reference()).unwrap();
+
                 assert!(matches!(
                     replay(manifest.clone(), &decoded, &ProofRuntime::new()),
                     Err(houseki_ledger::ReplayError::Order(_))
                 ));
             }
         }
+
         let effects = houseki_ledger::encode_effects(store.snapshot().effects()).unwrap();
         let start = bytes
             .windows(effects.len())
@@ -423,19 +466,22 @@ mod verifier_consumer {
         let last = start + effects.len() - 16;
         changed[last] ^= 1;
         let changed = ReplayArchive::from_bytes(&changed, DecodeLimits::reference()).unwrap();
+
         assert!(matches!(
             replay(manifest, &changed, &ProofRuntime::new()),
             Err(houseki_ledger::ReplayError::Mismatch(_))
         ));
     }
 
-    /// Exact historical retries preserve the newest complete head and the original output context.
+    /// Exact historical retries preserve the newest complete head and the original
+    /// output context.
     #[test]
     fn historical_retry_preserves_latest_head() {
         let (_, manifest, archive) = load(&corpus().join("value-loop")).unwrap();
         let mut store = ReferenceStore::bootstrap(manifest).unwrap();
         let engine = LedgerEngine::new();
         let runtime = ProofRuntime::new();
+
         let first = archive.verify_unit(&store.snapshot(), 0).unwrap();
         let first = engine
             .authorize_unit(&store.snapshot(), first, &runtime)
@@ -443,6 +489,7 @@ mod verifier_consumer {
         let candidate = engine.prepare_next(&store.snapshot(), &first).unwrap();
         let retained = candidate.clone();
         let id = candidate.artifact().identity();
+
         store.commit(candidate).unwrap();
         let second = archive.verify_unit(&store.snapshot(), 1).unwrap();
         let second = engine
@@ -451,6 +498,7 @@ mod verifier_consumer {
         let candidate = engine.prepare_next(&store.snapshot(), &second).unwrap();
         store.commit(candidate).unwrap();
         let token = store.snapshot().token();
+
         assert!(matches!(
             store.commit(retained).unwrap(),
             CommitResult::AlreadyCommitted(_)
@@ -460,13 +508,15 @@ mod verifier_consumer {
         assert_eq!(store.snapshot().state().pool().atoms(), 97);
     }
 
-    /// Two independent public stores publish identical original-order prefixes and recovery views.
+    /// Two independent public stores publish identical original order prefixes and
+    /// recovery views.
     #[test]
     fn independent_stores_publish_identical_prefixes() {
         let (_, manifest, archive) = load(&corpus().join("value-loop")).unwrap();
         let mut a = ReferenceStore::bootstrap(manifest.clone()).unwrap();
         let mut b = ReferenceStore::bootstrap(manifest).unwrap();
         let engine = LedgerEngine::new();
+
         for ordinal in 0..archive.source_unit_count() as u64 {
             let ua = engine
                 .authorize_unit(
@@ -484,12 +534,15 @@ mod verifier_consumer {
                 .unwrap();
             let pa = engine.prepare_next(&a.snapshot(), &ua).unwrap();
             let pb = engine.prepare_next(&b.snapshot(), &ub).unwrap();
+
             assert_eq!(
                 pa.artifact().canonical_header().unwrap(),
                 pb.artifact().canonical_header().unwrap()
             );
+
             let ca = a.commit(pa).unwrap().checkpoint();
             let cb = b.commit(pb).unwrap().checkpoint();
+
             assert_eq!(ca.effects(), cb.effects());
             assert_eq!(ca.receipts(), cb.receipts());
             assert_eq!(

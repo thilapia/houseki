@@ -23,11 +23,13 @@ use std::{
     time::Instant,
 };
 
-/// Generates one actual proof and required source signature with no retained private inputs.
+/// Generates one actual proof and required source signature with no retained private
+/// inputs.
 pub fn seed(directory: &Path) -> Result<(), Box<dyn Error>> {
     if directory.exists() {
         return Err("seed destination already exists".into());
     }
+
     let fixture = Fixture::new()?;
     let context = ProofContext::new(fixture.body.context())?;
     let signature = fixture
@@ -114,6 +116,7 @@ pub fn seed(directory: &Path) -> Result<(), Box<dyn Error>> {
         pool: Amount::from_atoms(0)?,
         issued: Amount::from_atoms(100)?,
     };
+
     let state = encode_snapshot(&SnapshotRecord::from_state(
         manifest.clone().candidate()?.state(),
     )?)?;
@@ -138,6 +141,7 @@ pub fn seed(directory: &Path) -> Result<(), Box<dyn Error>> {
             .open(directory.join(name))?;
         file.write_all(bytes)?;
     }
+
     println!(
         "public signed withdrawal seed generated: proof_bytes={}, elapsed_ms={}",
         proof.byte_len(),
@@ -161,6 +165,7 @@ pub fn generate(
             "fixture destination already exists",
         ));
     }
+
     generate_inner(workload, directory).map_err(crate::QualificationError::Native)
 }
 
@@ -176,13 +181,15 @@ fn generate_inner(
         crate::Workload::Withdrawal => withdrawal_workload()?,
         _ => payment_workload(workload)?,
     };
+
     workload.validate_checkpoints(&fixture.checkpoints)?;
     fixture.directory = directory.to_path_buf();
     fixture.write(workload)?;
     Ok(fixture)
 }
 
-/// Proves one complete payment through the protected native owner API and records only duration.
+/// Proves one complete payment through the protected native owner API and records only
+/// duration.
 pub(crate) fn prove_payment_body(
     body: &houseki_types::PaymentBody,
     anchor: &houseki_types::NoteTreeAnchor,
@@ -205,7 +212,7 @@ pub(crate) fn prove_payment_body(
     Ok(proof)
 }
 
-/// Builds actual family, repeated-output, conflict and historical-anchor payment workloads.
+/// Builds actual family, repeated output, conflict and historical anchor payment workloads.
 fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, Box<dyn Error>> {
     use crate::{
         Measurement, Workload,
@@ -221,6 +228,7 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
         Workload::Conflicts | Workload::AnchorPruning => (1, 1, false),
         _ => return Err("not a payment workload".into()),
     };
+
     let fixture = PaymentFixture::new(inputs, outputs, repeated)?;
     let mut measurement = Measurement::default();
     let proof = prove_payment_body(
@@ -239,6 +247,7 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
         bytes[136..144].copy_from_slice(&1_u64.to_le_bytes());
         policy = decode_policy(&bytes, DecodeLimits::reference())?;
     }
+
     let m = bootstrap(
         fixture.initial_leaves()?,
         inputs as u128 * 100,
@@ -256,11 +265,13 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
             for _ in 1..63 {
                 units.push(vec![]);
             }
+
             units.push(vec![occurrence(envelope.into(), 1, 12, 0)]);
             units
         }
         _ => vec![vec![first]],
     };
+
     let public = run(m, units, measurement)?;
     let mut nullifiers = vec![];
     for checkpoint in &public.checkpoints {
@@ -280,6 +291,7 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
             if recovered.commitment()? != output.output().commitment() {
                 return Err("committed output recovery mismatch".into());
             }
+
             nullifiers.push(houseki_notes::derive_nullifier(
                 &recovered,
                 &owner.nullifier,
@@ -287,15 +299,18 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
             )?);
         }
     }
+
     if repeated && (nullifiers.len() != 2 || nullifiers[0] == nullifiers[1]) {
         return Err("repeated commitments lost distinct note positions".into());
     }
+
     if workload == Workload::Conflicts {
         assert_eq!(
             public.checkpoints[0].receipts()[1].outcome(),
             ExecutionOutcome::Rejected(ExecutionRejectionReason::SpentNullifier)
         );
     }
+
     if workload == Workload::AnchorPruning {
         assert_eq!(public.checkpoints.len(), 65);
         assert_eq!(
@@ -309,6 +324,7 @@ fn payment_workload(workload: crate::Workload) -> Result<crate::PublicFixture, B
             2
         );
     }
+
     Ok(public)
 }
 
@@ -359,6 +375,7 @@ fn withdrawal_workload() -> Result<crate::PublicFixture, Box<dyn Error>> {
         assert_eq!(recovered.amount().atoms(), 3);
         assert_eq!(recovered.commitment()?, output.output().commitment());
     }
+
     assert_eq!(public.checkpoints[0].state().pool().atoms(), 3);
     Ok(public)
 }

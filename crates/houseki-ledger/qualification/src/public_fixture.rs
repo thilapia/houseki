@@ -1,4 +1,4 @@
-//! Public-only fixture retention and digest-bound reproducible files.
+//! Public only fixture retention and digest bound reproducible files.
 
 use crate::{Measurement, Workload};
 use houseki_ledger::{
@@ -56,6 +56,7 @@ impl PublicFixture {
             leaves.extend_from_slice(&64_u64.to_le_bytes());
             leaves.extend_from_slice(leaf.as_bytes());
         }
+
         let root = hex(self.manifest.expected_state_commitment.as_bytes()).into_bytes();
         let stream = hex(self.manifest.source_cursor.stream_id().as_bytes()).into_bytes();
         let archive = self.archive.to_bytes()?;
@@ -73,6 +74,7 @@ impl PublicFixture {
             metadata.push_str(&format!("{name}={}\n", hex(&Sha3_512::digest(&bytes))));
             write_new(&self.directory.join(name), &bytes)?;
         }
+
         write_new(&self.directory.join("manifest.txt"), metadata.as_bytes())?;
         write_new(
             &self.directory.join("measurement.txt"),
